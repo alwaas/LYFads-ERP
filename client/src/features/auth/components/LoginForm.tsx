@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Input from "../../../components/ui/Input";
+import Button from "../../../components/ui/Button";
 
 import {
   loginSchema,
@@ -56,12 +57,9 @@ function LoginForm() {
 
         </div>
 
-        <button
-          className="w-full rounded-lg bg-blue-600 p-3 font-semibold text-white hover:bg-blue-700"
-          type="submit"
-        >
-          Login
-        </button>
+        <Button type="submit">
+            Login
+        </Button>
       </form>
     </div>
   );
