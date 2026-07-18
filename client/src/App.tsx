@@ -1,6 +1,11 @@
+import AppProviders from "./app/AppProviders";
+import AppRouter from "./routes/AppRouter";
+
 function App() {
   return (
-    <h1>Welcome to LYFads ERP 🚀</h1>
+    <AppProviders>
+      <AppRouter />
+    </AppProviders>
   );
 }
 
