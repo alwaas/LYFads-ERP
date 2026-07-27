@@ -1,7 +1,8 @@
 export type LeaveStatus =
   | "PENDING"
   | "APPROVED"
-  | "REJECTED";
+  | "REJECTED"
+  | "CANCELLED";
 
 export type LeaveType =
   | "CASUAL"
@@ -29,21 +30,15 @@ export interface Leave {
 
   leaveType: LeaveType;
 
-  fromDate: string;
+  startDate: string;
 
-  toDate: string;
-
-  totalDays: number;
+  endDate: string;
 
   reason: string;
 
+  remarks?: string;
+
   status: LeaveStatus;
-
-  approvedBy?: string;
-
-  approvedAt?: string;
-
-  rejectionReason?: string;
 
   createdAt: string;
 
@@ -55,9 +50,11 @@ export interface CreateLeaveDto {
 
   leaveType: LeaveType;
 
-  fromDate: string;
+  startDate: string;
 
-  toDate: string;
+  endDate: string;
 
   reason: string;
+
+  remarks?: string;
 }

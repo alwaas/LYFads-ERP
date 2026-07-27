@@ -25,32 +25,31 @@ function LeaveForm({
   onSubmit,
   loading = false,
 }: Props) {
-  const [formData, setFormData] =
-    useState<CreateLeaveDto>({
-      employeeId: "",
-      leaveType: "CASUAL",
-      fromDate: "",
-      toDate: "",
-      reason: "",
-    });
+  const [formData, setFormData] = useState({
+    employeeId: "",
+    leaveType: "CASUAL" as LeaveType,
+    fromDate: "",
+    toDate: "",
+    reason: "",
+    remarks: "",
+  });
 
   useEffect(() => {
     if (!initialData) return;
 
     setFormData({
-      employeeId:
-        initialData.employeeId ?? "",
+      employeeId: initialData.employeeId ?? "",
       leaveType:
         (initialData.leaveType as LeaveType) ??
         "CASUAL",
       fromDate:
-        initialData.fromDate?.split("T")[0] ??
+        initialData.startDate?.split("T")[0] ??
         "",
       toDate:
-        initialData.toDate?.split("T")[0] ??
+        initialData.endDate?.split("T")[0] ??
         "",
-      reason:
-        initialData.reason ?? "",
+      reason: initialData.reason ?? "",
+      remarks: initialData.remarks ?? "",
     });
   }, [initialData]);
 
@@ -63,8 +62,7 @@ function LeaveForm({
   ) => {
     setFormData({
       ...formData,
-      [e.target.name]:
-        e.target.value,
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -73,17 +71,26 @@ function LeaveForm({
   ) => {
     e.preventDefault();
 
-    onSubmit(formData);
+    onSubmit({
+      employeeId: formData.employeeId,
+      leaveType: formData.leaveType,
+      startDate: new Date(
+        formData.fromDate
+      ).toISOString(),
+      endDate: new Date(
+        formData.toDate
+      ).toISOString(),
+      reason: formData.reason,
+      remarks: formData.remarks,
+    });
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-xl shadow border p-6 space-y-5"
+      className="space-y-6"
     >
-
       <div>
-
         <label className="block mb-2 font-medium">
           Employee
         </label>
@@ -99,28 +106,19 @@ function LeaveForm({
             Select Employee
           </option>
 
-          {employees.map(
-            (employee) => (
-              <option
-                key={employee.id}
-                value={employee.id}
-              >
-                {employee.employeeCode}
-                {" - "}
-                {
-                  employee.user
-                    .fullName
-                }
-              </option>
-            )
-          )}
-
+          {employees.map((employee) => (
+            <option
+              key={employee.id}
+              value={employee.id}
+            >
+              {employee.employeeCode} -{" "}
+              {employee.user.fullName}
+            </option>
+          ))}
         </select>
-
       </div>
 
       <div>
-
         <label className="block mb-2 font-medium">
           Leave Type
         </label>
@@ -134,35 +132,26 @@ function LeaveForm({
           <option value="CASUAL">
             Casual Leave
           </option>
-
           <option value="SICK">
             Sick Leave
           </option>
-
           <option value="EARNED">
             Earned Leave
           </option>
-
           <option value="UNPAID">
             Unpaid Leave
           </option>
-
           <option value="MATERNITY">
             Maternity Leave
           </option>
-
           <option value="PATERNITY">
             Paternity Leave
           </option>
-
         </select>
-
       </div>
 
       <div className="grid md:grid-cols-2 gap-5">
-
         <div>
-
           <label className="block mb-2 font-medium">
             From Date
           </label>
@@ -175,11 +164,9 @@ function LeaveForm({
             className="w-full border rounded-lg px-4 py-3"
             required
           />
-
         </div>
 
         <div>
-
           <label className="block mb-2 font-medium">
             To Date
           </label>
@@ -192,13 +179,10 @@ function LeaveForm({
             className="w-full border rounded-lg px-4 py-3"
             required
           />
-
         </div>
-
       </div>
 
       <div>
-
         <label className="block mb-2 font-medium">
           Reason
         </label>
@@ -211,7 +195,20 @@ function LeaveForm({
           className="w-full border rounded-lg px-4 py-3"
           required
         />
+      </div>
 
+      <div>
+        <label className="block mb-2 font-medium">
+          Remarks
+        </label>
+
+        <textarea
+          name="remarks"
+          value={formData.remarks}
+          onChange={handleChange}
+          rows={3}
+          className="w-full border rounded-lg px-4 py-3"
+        />
       </div>
 
       <button
@@ -223,7 +220,6 @@ function LeaveForm({
           ? "Saving..."
           : "Save Leave"}
       </button>
-
     </form>
   );
 }

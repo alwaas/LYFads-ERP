@@ -1,17 +1,20 @@
 import { Link } from "react-router-dom";
-import type { Leave } from "../../types/leave";
+
+import type {
+  DailyWorkReport,
+} from "../../types/daily-work-report";
 
 type Props = {
-  leaves: Leave[];
+  reports: DailyWorkReport[];
   onDelete: (id: string) => void;
 };
 
-function LeaveTable({
-  leaves,
+function DailyWorkReportTable({
+  reports,
   onDelete,
 }: Props) {
   return (
-    <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
+    <div className="bg-white rounded-xl shadow overflow-x-auto">
 
       <table className="min-w-full">
 
@@ -24,19 +27,15 @@ function LeaveTable({
             </th>
 
             <th className="px-6 py-4 text-left">
-              Leave Type
+              Date
             </th>
 
             <th className="px-6 py-4 text-left">
-              From
+              Project
             </th>
 
             <th className="px-6 py-4 text-left">
-              To
-            </th>
-
-            <th className="px-6 py-4 text-left">
-              Days
+              Hours
             </th>
 
             <th className="px-6 py-4 text-left">
@@ -53,78 +52,63 @@ function LeaveTable({
 
         <tbody>
 
-          {leaves.length === 0 ? (
+          {reports.length === 0 ? (
 
             <tr>
 
               <td
-                colSpan={7}
+                colSpan={6}
                 className="text-center py-12 text-gray-500"
               >
-                No Leave Requests Found
+                No Daily Work Reports Found
               </td>
 
             </tr>
 
           ) : (
 
-            leaves.map((leave) => (
+            reports.map((report) => (
 
               <tr
-                key={leave.id}
+                key={report.id}
                 className="border-b hover:bg-gray-50"
               >
 
                 <td className="px-6 py-4">
-
-                  {leave.employee.user.fullName}
-
+                  {report.employee.user.fullName}
                 </td>
 
                 <td className="px-6 py-4">
-
-                  {leave.leaveType}
-
-                </td>
-
-                <td className="px-6 py-4">
-
                   {new Date(
-                    leave.startDate
+                    report.reportDate
                   ).toLocaleDateString()}
-
                 </td>
 
                 <td className="px-6 py-4">
-
-                  {new Date(
-                    leave.endDate
-                  ).toLocaleDateString()}
-
+                  {report.project?.name ?? "-"}
                 </td>
 
                 <td className="px-6 py-4">
-                    {Math.ceil(
-                        (new Date(leave.endDate).getTime() -
-                        new Date(leave.startDate).getTime()) /
-                        (1000 * 60 * 60 * 24)
-                    ) + 1}
+                  {Number(
+                    report.hoursWorked
+                  ).toFixed(2)}
                 </td>
 
                 <td className="px-6 py-4">
 
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    leave.status === "APPROVED"
-                        ? "bg-green-100 text-green-700"
-                        : leave.status === "REJECTED"
-                        ? "bg-red-100 text-red-700"
-                        : leave.status === "CANCELLED"
-                        ? "bg-gray-200 text-gray-700"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold
+                      ${
+                        report.status === "COMPLETED"
+                          ? "bg-green-100 text-green-700"
+                          : report.status === "IN_PROGRESS"
+                          ? "bg-blue-100 text-blue-700"
+                          : report.status === "PLANNED"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
                   >
-                    {leave.status}
+                    {report.status}
                   </span>
 
                 </td>
@@ -134,14 +118,14 @@ function LeaveTable({
                   <div className="flex justify-center gap-2">
 
                     <Link
-                      to={`/leaves/view/${leave.id}`}
+                      to={`/daily-work-reports/view/${report.id}`}
                       className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
                     >
                       View
                     </Link>
 
                     <Link
-                      to={`/leaves/edit/${leave.id}`}
+                      to={`/daily-work-reports/edit/${report.id}`}
                       className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
                     >
                       Edit
@@ -149,7 +133,7 @@ function LeaveTable({
 
                     <button
                       onClick={() =>
-                        onDelete(leave.id)
+                        onDelete(report.id)
                       }
                       className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
                     >
@@ -174,4 +158,4 @@ function LeaveTable({
   );
 }
 
-export default LeaveTable;
+export default DailyWorkReportTable;

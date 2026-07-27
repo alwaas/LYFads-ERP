@@ -15,6 +15,11 @@ function Sidebar() {
         <NavLink to="/tasks">Tasks</NavLink>
         <NavLink to="/attendance">Attendance</NavLink>
         <NavLink to="/leaves">Leaves</NavLink>
+
+        <NavLink to="/daily-work-reports">
+          Daily Work Reports
+        </NavLink>
+
         <NavLink to="/notifications">Notifications</NavLink>
         <NavLink to="/activity-logs">Activity Logs</NavLink>
         <NavLink to="/settings">Settings</NavLink>

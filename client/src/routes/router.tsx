@@ -32,6 +32,11 @@ import AddLeavePage from "../pages/leaves/AddLeavePage";
 import EditLeavePage from "../pages/leaves/EditLeavePage";
 import ViewLeavePage from "../pages/leaves/ViewLeavePage";
 
+import DailyWorkReportsPage from "../pages/daily-work-reports/DailyWorkReportsPage";
+import AddDailyWorkReportPage from "../pages/daily-work-reports/AddDailyWorkReportPage";
+import EditDailyWorkReportPage from "../pages/daily-work-reports/EditDailyWorkReportPage";
+import ViewDailyWorkReportPage from "../pages/daily-work-reports/ViewDailyWorkReportPage";
+
 import NotificationsPage from "../pages/notifications/NotificationsPage";
 import ActivityLogsPage from "../pages/activity-logs/ActivityLogsPage";
 import SettingsPage from "../pages/settings/SettingsPage";
@@ -122,7 +127,6 @@ const router = createBrowserRouter([
     ),
   },
 
-
   {
     path: "/projects",
     element: (
@@ -179,7 +183,7 @@ const router = createBrowserRouter([
     path: "/tasks/view/:id",
     element: (
       <ProtectedRoute>
-        <ViewTaskPage />,
+        <ViewTaskPage />
       </ProtectedRoute>
     ),
   },
@@ -195,49 +199,97 @@ const router = createBrowserRouter([
 
   {
     path: "/attendance",
-    element: <AttendancePage />,
+    element: (
+      <ProtectedRoute>
+        <AttendancePage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/attendance/checkin",
-    element: <CheckInPage />,
+    element: (
+      <ProtectedRoute>
+        <CheckInPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/attendance/history",
-    element: <AttendanceHistoryPage />,
+    element: (
+      <ProtectedRoute>
+        <AttendanceHistoryPage />
+      </ProtectedRoute>
+    ),
   },
 
-{
-  path: "/leaves",
-  element: (
-    <ProtectedRoute>
-      <LeavesPage />
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/leaves/add",
-  element: (
-    <ProtectedRoute>
-      <AddLeavePage />
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/leaves/edit/:id",
-  element: (
-    <ProtectedRoute>
-      <EditLeavePage />
-    </ProtectedRoute>
-  ),
-},
-{
-  path: "/leaves/view/:id",
-  element: (
-    <ProtectedRoute>
-      <ViewLeavePage />
-    </ProtectedRoute>
-  ),
-},
+  {
+    path: "/leaves",
+    element: (
+      <ProtectedRoute>
+        <LeavesPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/leaves/add",
+    element: (
+      <ProtectedRoute>
+        <AddLeavePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/leaves/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <EditLeavePage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/leaves/view/:id",
+    element: (
+      <ProtectedRoute>
+        <ViewLeavePage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/daily-work-reports",
+    element: (
+      <ProtectedRoute>
+        <DailyWorkReportsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/daily-work-reports/add",
+    element: (
+      <ProtectedRoute>
+        <AddDailyWorkReportPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/daily-work-reports/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <EditDailyWorkReportPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/daily-work-reports/view/:id",
+    element: (
+      <ProtectedRoute>
+        <ViewDailyWorkReportPage />
+      </ProtectedRoute>
+    ),
+  },
 
   {
     path: "/notifications",

@@ -67,21 +67,27 @@ function LeavesPage() {
   };
 
   const filteredLeaves = useMemo(() => {
-    return leaves.filter((leave) => {
+    return (leaves ?? []).filter((leave) => {
+      const employeeName =
+        leave.employee?.user?.fullName ?? "";
+
+      const employeeCode =
+        leave.employee?.employeeCode ?? "";
+
       const matchesSearch =
-        leave.employee.user.fullName
+        employeeName
           .toLowerCase()
           .includes(search.toLowerCase()) ||
-        leave.employee.employeeCode
+        employeeCode
           .toLowerCase()
           .includes(search.toLowerCase());
 
       const matchesStatus =
-        statusFilter === "" ||
+        !statusFilter ||
         leave.status === statusFilter;
 
       const matchesType =
-        typeFilter === "" ||
+        !typeFilter ||
         leave.leaveType === typeFilter;
 
       return (

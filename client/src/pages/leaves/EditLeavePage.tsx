@@ -3,127 +3,233 @@ import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
-import LeaveForm from "../../components/leaves/LeaveForm";
 
 import {
   getLeaveById,
   updateLeave,
 } from "../../services/leave.service";
 
-import { getEmployees } from "../../services/employee.service";
-
-import type {
-  Leave,
-  CreateLeaveDto,
-} from "../../types/leave";
-
-type Employee = {
-  id: string;
-  employeeCode: string;
-  user: {
-    fullName: string;
-  };
-};
+import type { Leave } from "../../types/leave";
 
 function EditLeavePage() {
   const { id } = useParams();
 
   const navigate = useNavigate();
 
-  const [leave, setLeave] =
-    useState<Leave>();
+  const [loading, setLoading] = useState(true);
+//   const [employeeId, setEmployeeId] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const [employees, setEmployees] =
-    useState<Employee[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [saving, setSaving] =
-    useState(false);
+  const [form, setForm] = useState({
+    leaveType: "",
+    fromDate: "",
+    toDate: "",
+    reason: "",
+    remarks: "",
+  });
 
   useEffect(() => {
     if (id) {
-      loadData();
+      loadLeave(id);
     }
   }, [id]);
 
-  const loadData = async () => {
+  const loadLeave = async (leaveId: string) => {
     try {
-      const [
-        leaveData,
-        employeeData,
-      ] = await Promise.all([
-        getLeaveById(id!),
-        getEmployees(),
-      ]);
+      const leave: Leave = await getLeaveById(leaveId);
 
-      setLeave(leaveData);
+    //   setEmployeeId(leave.employeeId);
 
-      setEmployees(employeeData);
+      setForm({
+        leaveType: leave.leaveType,
+        fromDate: leave.startDate.slice(0, 10),
+        toDate: leave.endDate.slice(0, 10),
+        reason: leave.reason,
+        remarks: "",
+      });
     } catch (error) {
       console.error(error);
-
-      toast.error(
-        "Failed to load leave."
-      );
+      toast.error("Failed to load leave.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (
-    data: CreateLeaveDto
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
+    e.preventDefault();
+
+    if (!id) return;
+
+    setSaving(true);
+
     try {
-      setSaving(true);
+        await updateLeave(id, {
+            leaveType: form.leaveType as any,
+            startDate: `${form.fromDate}T00:00:00.000Z`,
+            endDate: `${form.toDate}T00:00:00.000Z`,
+            reason: form.reason,
+            remarks: form.remarks,
+        });
 
-      await updateLeave(id!, data);
-
-      toast.success(
-        "Leave updated successfully."
-      );
+        toast.success("Leave updated successfully.");
 
       navigate("/leaves");
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-
-      toast.error(
-        error?.response?.data?.message ??
-          "Failed to update leave."
-      );
+      toast.error("Failed to update leave.");
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
 
-      <div className="space-y-6">
+      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow p-8">
 
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-3xl font-bold mb-8">
           Edit Leave
         </h1>
 
-        {loading ? (
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6"
+        >
 
-          <div className="flex justify-center py-20">
+          <div>
 
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+            <label className="block mb-2 font-medium">
+              Leave Type
+            </label>
+
+            <select
+              name="leaveType"
+              value={form.leaveType}
+              onChange={handleChange}
+              className="w-full border rounded-lg px-4 py-3"
+            >
+              <option value="CASUAL">Casual</option>
+              <option value="SICK">Sick</option>
+              <option value="EARNED">Earned</option>
+              <option value="UNPAID">Unpaid</option>
+              <option value="MATERNITY">Maternity</option>
+              <option value="PATERNITY">Paternity</option>
+            </select>
 
           </div>
 
-        ) : (
+          <div className="grid md:grid-cols-2 gap-6">
 
-          <LeaveForm
-            initialData={leave}
-            employees={employees}
-            onSubmit={handleSubmit}
-            loading={saving}
-          />
+            <div>
 
-        )}
+              <label className="block mb-2 font-medium">
+                From Date
+              </label>
+
+              <input
+                type="date"
+                name="fromDate"
+                value={form.fromDate}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-3"
+              />
+
+            </div>
+
+            <div>
+
+              <label className="block mb-2 font-medium">
+                To Date
+              </label>
+
+              <input
+                type="date"
+                name="toDate"
+                value={form.toDate}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-3"
+              />
+
+            </div>
+
+          </div>
+
+          <div>
+
+            <label className="block mb-2 font-medium">
+              Reason
+            </label>
+
+            <textarea
+              rows={4}
+              name="reason"
+              value={form.reason}
+              onChange={handleChange}
+              className="w-full border rounded-lg px-4 py-3"
+            />
+
+          </div>
+
+          <div>
+
+            <label className="block mb-2 font-medium">
+              Remarks
+            </label>
+
+            <textarea
+              rows={3}
+              name="remarks"
+              value={form.remarks}
+              onChange={handleChange}
+              className="w-full border rounded-lg px-4 py-3"
+            />
+
+          </div>
+
+          <div className="flex gap-4">
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg disabled:opacity-50"
+            >
+              {saving ? "Updating..." : "Update Leave"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/leaves")}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg"
+            >
+              Cancel
+            </button>
+
+          </div>
+
+        </form>
 
       </div>
 

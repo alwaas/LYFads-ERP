@@ -12,7 +12,6 @@ import type {
 export const getLeaves = async (): Promise<Leave[]> => {
   const response = await api.get("/leaves");
 
-
   return response.data.data.data;
 };
 
@@ -23,9 +22,7 @@ export const getLeaves = async (): Promise<Leave[]> => {
 export const getLeaveById = async (
   id: string
 ): Promise<Leave> => {
-  const response = await api.get(
-    `/leaves/${id}`
-  );
+  const response = await api.get(`/leaves/${id}`);
 
   return response.data.data;
 };
@@ -42,7 +39,7 @@ export const createLeave = async (
     data
   );
 
-  return response.data;
+  return response.data.data;
 };
 
 /* ===========================
@@ -58,7 +55,7 @@ export const updateLeave = async (
     data
   );
 
-  return response.data;
+  return response.data.data;
 };
 
 /* ===========================
@@ -72,7 +69,27 @@ export const deleteLeave = async (
     `/leaves/${id}`
   );
 
-  return response.data;
+  return response.data.data;
+};
+
+/* ===========================
+   Update Leave Status
+=========================== */
+
+export const updateLeaveStatus = async (
+  id: string,
+  status: "APPROVED" | "REJECTED" | "PENDING",
+  remarks?: string
+) => {
+  const response = await api.patch(
+    `/leaves/${id}/status`,
+    {
+      status,
+      remarks,
+    }
+  );
+
+  return response.data.data;
 };
 
 /* ===========================
@@ -80,13 +97,14 @@ export const deleteLeave = async (
 =========================== */
 
 export const approveLeave = async (
-  id: string
+  id: string,
+  remarks?: string
 ) => {
-  const response = await api.patch(
-    `/leaves/${id}/approve`
+  return updateLeaveStatus(
+    id,
+    "APPROVED",
+    remarks
   );
-
-  return response.data;
 };
 
 /* ===========================
@@ -95,14 +113,11 @@ export const approveLeave = async (
 
 export const rejectLeave = async (
   id: string,
-  rejectionReason: string
+  remarks?: string
 ) => {
-  const response = await api.patch(
-    `/leaves/${id}/reject`,
-    {
-      rejectionReason,
-    }
+  return updateLeaveStatus(
+    id,
+    "REJECTED",
+    remarks
   );
-
-  return response.data;
 };

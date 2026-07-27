@@ -9,11 +9,9 @@ import type { Leave } from "../../types/leave";
 
 function ViewLeavePage() {
   const { id } = useParams();
-
   const navigate = useNavigate();
 
   const [leave, setLeave] = useState<Leave | null>(null);
-
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,11 +23,9 @@ function ViewLeavePage() {
   const loadLeave = async (leaveId: string) => {
     try {
       const data = await getLeaveById(leaveId);
-
       setLeave(data);
     } catch (error) {
       console.error(error);
-
       toast.error("Failed to load leave.");
     } finally {
       setLoading(false);
@@ -49,7 +45,7 @@ function ViewLeavePage() {
   if (!leave) {
     return (
       <DashboardLayout>
-        <div className="text-center py-20 text-red-600 font-semibold">
+        <div className="text-center py-20 text-xl">
           Leave Not Found
         </div>
       </DashboardLayout>
@@ -58,11 +54,9 @@ function ViewLeavePage() {
 
   return (
     <DashboardLayout>
-
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8 space-y-6">
 
         <div className="flex justify-between items-center">
-
           <h1 className="text-3xl font-bold">
             Leave Details
           </h1>
@@ -73,7 +67,6 @@ function ViewLeavePage() {
           >
             Back
           </button>
-
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -101,14 +94,14 @@ function ViewLeavePage() {
           <Info
             label="From Date"
             value={new Date(
-              leave.fromDate
+              leave.startDate
             ).toLocaleDateString()}
           />
 
           <Info
             label="To Date"
             value={new Date(
-              leave.toDate
+              leave.endDate
             ).toLocaleDateString()}
           />
 
@@ -127,7 +120,6 @@ function ViewLeavePage() {
         </div>
 
         <div>
-
           <h2 className="font-semibold mb-2">
             Reason
           </h2>
@@ -135,13 +127,22 @@ function ViewLeavePage() {
           <div className="border rounded-lg p-4 bg-gray-50">
             {leave.reason}
           </div>
-
         </div>
 
-        {leave.rejectionReason && (
-
+        {leave.remarks && (
           <div>
+            <h2 className="font-semibold mb-2">
+              Remarks
+            </h2>
 
+            <div className="border rounded-lg p-4 bg-gray-50">
+              {leave.remarks}
+            </div>
+          </div>
+        )}
+
+        {leave.rejectionReason && (
+          <div>
             <h2 className="font-semibold text-red-600 mb-2">
               Rejection Reason
             </h2>
@@ -149,13 +150,10 @@ function ViewLeavePage() {
             <div className="border border-red-200 rounded-lg p-4 bg-red-50">
               {leave.rejectionReason}
             </div>
-
           </div>
-
         )}
 
       </div>
-
     </DashboardLayout>
   );
 }
@@ -171,7 +169,6 @@ function Info({
 }: InfoProps) {
   return (
     <div>
-
       <p className="text-sm text-gray-500">
         {label}
       </p>
@@ -179,7 +176,6 @@ function Info({
       <p className="font-semibold">
         {value}
       </p>
-
     </div>
   );
 }
