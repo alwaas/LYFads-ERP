@@ -1,12 +1,10 @@
-import AppProviders from "./app/AppProviders";
-import AppRouter from "./routes/AppRouter";
+import { RouterProvider } from "react-router-dom";
+import AddEmployeePage from "./pages/employees/AddEmployeePage";
+
+import router from "./routes/router";
 
 function App() {
-  return (
-    <AppProviders>
-      <AppRouter />
-    </AppProviders>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;
