@@ -10,7 +10,6 @@ import ViewEmployeePage from "../pages/employees/ViewEmployeePage";
 
 import ClientsPage from "../pages/clients/ClientsPage";
 import AddClientPage from "../pages/clients/AddClientPage";
-import ViewClientPage from "../pages/clients/ViewClientPage";
 import EditClientPage from "../pages/clients/EditClientPage";
 
 import ProjectsPage from "../pages/projects/ProjectsPage";

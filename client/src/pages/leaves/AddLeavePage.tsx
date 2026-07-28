@@ -33,24 +33,18 @@ function AddLeavePage() {
     loadEmployees();
   }, []);
 
-    const loadEmployees = async () => {
+  const loadEmployees = async () => {
     try {
-        const response = await getEmployees();
-
-        setEmployees(
-        Array.isArray(response)
-            ? response
-            : response?.data ?? []
-        );
+      const employeeData = await getEmployees();
+      setEmployees(employeeData);
     } catch (error) {
-        console.error(error);
+      console.error(error);
 
-        toast.error(
+      toast.error(
         "Failed to load employees."
-        );
+      );
     }
-    };
-
+  };
   const handleSubmit = async (
     data: CreateLeaveDto
   ) => {

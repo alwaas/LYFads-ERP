@@ -90,7 +90,7 @@ function EditDailyWorkReportPage() {
       </h1>
 
       <DailyWorkReportForm
-        initialData={report}
+        initialData={report ?? undefined}
         employees={employees}
         projects={projects}
         tasks={tasks}

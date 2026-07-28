@@ -38,6 +38,10 @@ export interface Leave {
 
   remarks?: string;
 
+  totalDays?: number;
+
+  rejectionReason?: string;
+
   status: LeaveStatus;
 
   createdAt: string;
