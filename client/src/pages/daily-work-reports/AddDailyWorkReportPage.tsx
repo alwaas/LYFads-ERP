@@ -10,15 +10,18 @@ import { createDailyWorkReport } from "../../services/daily-work-report.service"
 import { getEmployees } from "../../services/employee.service";
 import { getProjects } from "../../services/project.service";
 import { getTasks } from "../../services/task.service";
+import type { Employee } from "../../types/employee";
+import type { Project } from "../../types/project";
+import type { Task } from "../../types/task";
 
 import type { CreateDailyWorkReportDto } from "../../types/daily-work-report";
 
 function AddDailyWorkReportPage() {
   const navigate = useNavigate();
 
-  const [employees, setEmployees] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const [loading, setLoading] = useState(false);
 

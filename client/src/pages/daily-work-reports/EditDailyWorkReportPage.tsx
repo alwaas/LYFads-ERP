@@ -5,6 +5,11 @@ import toast from "react-hot-toast";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import DailyWorkReportForm from "../../components/daily-work-reports/DailyWorkReportForm";
 
+import type { Employee } from "../../types/employee";
+import type { Project } from "../../types/project";
+import type { Task } from "../../types/task";
+import type { DailyWorkReport } from "../../types/daily-work-report";
+
 import {
   getDailyWorkReportById,
   updateDailyWorkReport,
@@ -19,11 +24,11 @@ function EditDailyWorkReportPage() {
 
   const navigate = useNavigate();
 
-  const [employees, setEmployees] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-  const [report, setReport] = useState<any>(null);
+  const [report, setReport] = useState<DailyWorkReport | null>(null);
 
   const [loading, setLoading] = useState(true);
 

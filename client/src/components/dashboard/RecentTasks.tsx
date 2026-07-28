@@ -18,15 +18,8 @@ function RecentTasks() {
 
   const loadTasks = async () => {
     try {
-      const response = await getTasks();
-
-      const list =
-        response.items ??
-        response.tasks ??
-        response.data ??
-        response;
-
-      setTasks(Array.isArray(list) ? list.slice(0, 5) : []);
+      const list = await getTasks();
+      setTasks(list.slice(0, 5));
     } catch (error) {
       console.error(error);
     } finally {

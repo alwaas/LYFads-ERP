@@ -11,6 +11,7 @@ export type ClientFormData = {
   city?: string;
   state?: string;
   country?: string;
+  pincode?: string;
 };
 
 type Props = {
@@ -143,6 +144,17 @@ function ClientForm({ loading, onSubmit, defaultValues, }: Props) {
           <label className="block mb-1 font-medium">
             Country
           </label>
+
+          <div>
+            <label className="block mb-1 font-medium">
+              Pincode
+            </label>
+
+            <input
+              {...register("pincode")}
+              className="w-full border rounded-lg px-4 py-2"
+            />
+          </div>
 
           <input
             {...register("country")}

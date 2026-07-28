@@ -11,6 +11,18 @@ export type Employee = {
 
   salary: number | null;
 
+  phone: string | null;
+
+  address: string | null;
+
+  city: string | null;
+
+  state: string | null;
+
+  country: string | null;
+
+  pincode: string | null;
+
   status?: string;
 
   user: {

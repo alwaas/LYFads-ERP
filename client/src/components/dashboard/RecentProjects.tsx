@@ -21,21 +21,15 @@ function RecentProjects() {
 
   const loadProjects = async () => {
     try {
-      const response = await getProjects();
+      const list = await getProjects();
+      setProjects(list.slice(0, 5));
 
-      const list =
-        response.items ??
-        response.projects ??
-        response.data ??
-        response;
-
-      setProjects(Array.isArray(list) ? list.slice(0, 5) : []);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+       } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6">

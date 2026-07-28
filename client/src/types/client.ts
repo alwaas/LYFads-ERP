@@ -3,24 +3,23 @@ export type Client = {
 
   companyName: string;
   contactPerson: string;
+
   email: string;
   phone: string;
 
   website?: string;
-
   industry?: string;
 
-  city?: string;
-
-  state?: string;
-
-  country?: string;
+  gstNumber?: string;
 
   address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
 
   isActive: boolean;
 
   createdAt: string;
-
   updatedAt: string;
 };

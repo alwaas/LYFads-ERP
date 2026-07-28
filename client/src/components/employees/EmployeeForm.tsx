@@ -14,21 +14,24 @@ type EmployeeFormData = {
 type Props = {
   onSubmit: (data: EmployeeFormData) => void;
   loading?: boolean;
+  defaultValues?: Partial<EmployeeFormData>;
 };
 
 function EmployeeForm({
   onSubmit,
   loading = false,
+  defaultValues,
 }: Props) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<EmployeeFormData>({
-    defaultValues: {
-      role: "EMPLOYEE",
-    },
-  });
+const {
+  register,
+  handleSubmit,
+  formState: { errors },
+} = useForm<EmployeeFormData>({
+  defaultValues: {
+    role: "EMPLOYEE",
+    ...defaultValues,
+  },
+});
 
   return (
     <form
