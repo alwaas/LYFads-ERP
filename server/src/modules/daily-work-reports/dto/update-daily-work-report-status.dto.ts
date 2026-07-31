@@ -1,12 +1,6 @@
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-} from "class-validator";
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 
-import {
-  WorkStatus,
-} from "@prisma/client";
+import { WorkStatus } from '@prisma/client';
 
 export class UpdateDailyWorkReportStatusDto {
   @IsEnum(WorkStatus)

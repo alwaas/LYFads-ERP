@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getTasks } from "../../services/task.service";
+import { getRecentTasks } from "../../services/dashboard.service";
 
 type Task = {
   id: string;
@@ -18,8 +18,9 @@ function RecentTasks() {
 
   const loadTasks = async () => {
     try {
-      const list = await getTasks();
-      setTasks(list.slice(0, 5));
+      const response = await getRecentTasks();
+
+      setTasks(response.data ?? []);
     } catch (error) {
       console.error(error);
     } finally {

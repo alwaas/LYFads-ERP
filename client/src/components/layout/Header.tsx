@@ -1,13 +1,18 @@
+import Breadcrumbs from "./Breadcrumbs";
+import HeaderActions from "./HeaderActions";
+
 function Header() {
   return (
-    <header className="h-16 bg-white shadow flex items-center justify-between px-6">
-      <h1 className="text-xl font-bold text-blue-600">
-        LYFads ERP
-      </h1>
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
 
-      <span className="text-gray-500">
-        Welcome
-      </span>
+      <div className="flex items-center justify-between px-8 py-4">
+
+        <Breadcrumbs />
+
+        <HeaderActions />
+
+      </div>
+
     </header>
   );
 }

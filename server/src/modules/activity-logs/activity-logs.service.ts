@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto';
@@ -23,89 +23,84 @@ export class ActivityLogsService {
     });
   }
 
-  async findAll(
-    pagination: PaginationDto,
-    search: SearchDto,
-    ) {
+  async findAll(pagination: PaginationDto, search: SearchDto) {
     const { skip, limit } = pagination;
 
     const where: Prisma.ActivityLogWhereInput = search.search
-        ? {
-            OR: [
+      ? {
+          OR: [
             {
-                action: {
+              action: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
-                },
+              },
             },
             {
-                module: {
+              module: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
-                },
+              },
             },
             {
-                description: {
+              description: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
-                },
+              },
             },
-            ],
+          ],
         }
-        : {};
+      : {};
 
     const [data, total] = await this.prisma.$transaction([
-        this.prisma.activityLog.findMany({
+      this.prisma.activityLog.findMany({
         where,
         skip,
         take: limit,
         include: {
-            user: {
+          user: {
             select: {
-                id: true,
-                fullName: true,
-                email: true,
+              id: true,
+              fullName: true,
+              email: true,
             },
-            },
+          },
         },
         orderBy: {
-            createdAt: 'desc',
+          createdAt: 'desc',
         },
-        }),
-        this.prisma.activityLog.count({
+      }),
+      this.prisma.activityLog.count({
         where,
-        }),
+      }),
     ]);
 
     return {
-        total,
-        page: pagination.page,
-        limit: pagination.limit,
-        totalPages: Math.ceil(total / pagination.limit),
-        data,
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
     };
   }
 
   async findOne(id: string) {
     const activityLog = await this.prisma.activityLog.findUnique({
-        where: {
+      where: {
         id,
-        },
-        include: {
+      },
+      include: {
         user: {
-            select: {
+          select: {
             id: true,
             fullName: true,
             email: true,
-            },
+          },
         },
-        },
+      },
     });
 
     if (!activityLog) {
-        throw new NotFoundException(
-        'Activity log not found.',
-        );
+      throw new NotFoundException('Activity log not found.');
     }
 
     return activityLog;
@@ -115,14 +110,14 @@ export class ActivityLogsService {
     await this.findOne(id);
 
     await this.prisma.activityLog.delete({
-        where: {
+      where: {
         id,
-        },
+      },
     });
 
     return {
-        success: true,
-        message: 'Activity log deleted successfully.',
+      success: true,
+      message: 'Activity log deleted successfully.',
     };
   }
 
@@ -131,25 +126,24 @@ export class ActivityLogsService {
 
     today.setHours(0, 0, 0, 0);
 
-    const [totalLogs, todayLogs, totalUsers] =
-        await this.prisma.$transaction([
-        this.prisma.activityLog.count(),
+    const [totalLogs, todayLogs, totalUsers] = await this.prisma.$transaction([
+      this.prisma.activityLog.count(),
 
-        this.prisma.activityLog.count({
-            where: {
-            createdAt: {
-                gte: today,
-            },
-            },
-        }),
+      this.prisma.activityLog.count({
+        where: {
+          createdAt: {
+            gte: today,
+          },
+        },
+      }),
 
-        this.prisma.user.count(),
-        ]);
+      this.prisma.user.count(),
+    ]);
 
     return {
-        totalLogs,
-        todayLogs,
-        totalUsers,
+      totalLogs,
+      todayLogs,
+      totalUsers,
     };
   }
 
@@ -160,36 +154,36 @@ export class ActivityLogsService {
     userId?: string;
     ipAddress?: string;
     userAgent?: string;
-    }) {
+  }) {
     const activityData: Prisma.ActivityLogCreateInput = {
-        action: data.action,
-        module: data.module,
-        description: data.description,
-        ipAddress: data.ipAddress,
-        userAgent: data.userAgent,
+      action: data.action,
+      module: data.module,
+      description: data.description,
+      ipAddress: data.ipAddress,
+      userAgent: data.userAgent,
     };
 
     if (data.userId) {
-        const userExists = await this.prisma.user.findUnique({
+      const userExists = await this.prisma.user.findUnique({
         where: {
-            id: data.userId,
+          id: data.userId,
         },
         select: {
-            id: true,
+          id: true,
         },
-        });
+      });
 
-        if (userExists) {
+      if (userExists) {
         activityData.user = {
-            connect: {
+          connect: {
             id: data.userId,
-            },
+          },
         };
-        }
+      }
     }
 
     return this.prisma.activityLog.create({
-        data: activityData,
+      data: activityData,
     });
-    }
+  }
 }

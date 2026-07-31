@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getActivity } from "../../services/activity.service";
+import { getRecentActivities } from "../../services/dashboard.service";
 
 type Activity = {
   id: string;
@@ -17,7 +17,7 @@ function ActivityFeed() {
 
   const loadActivity = async () => {
     try {
-      const response = await getActivity();
+      const response = await getRecentActivities();
 
       const list =
         response.items ??

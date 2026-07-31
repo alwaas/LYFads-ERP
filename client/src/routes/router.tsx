@@ -1,9 +1,11 @@
+import PageLoader from "../components/common/PageLoader";
 import { createBrowserRouter } from "react-router-dom";
+import { lazy, Suspense } from "react";
 
 import LoginPage from "../pages/auth/LoginPage";
-import DashboardPage from "../pages/dashboard/DashboardPage";
+// import DashboardPage from "../pages/dashboard/DashboardPage";
 
-import EmployeesPage from "../pages/employees/EmployeesPage";
+// import EmployeesPage from "../pages/employees/EmployeesPage";
 import AddEmployeePage from "../pages/employees/AddEmployeePage";
 import EditEmployeePage from "../pages/employees/EditEmployeePage";
 import ViewEmployeePage from "../pages/employees/ViewEmployeePage";
@@ -12,7 +14,7 @@ import ClientsPage from "../pages/clients/ClientsPage";
 import AddClientPage from "../pages/clients/AddClientPage";
 import EditClientPage from "../pages/clients/EditClientPage";
 
-import ProjectsPage from "../pages/projects/ProjectsPage";
+// import ProjectsPage from "../pages/projects/ProjectsPage";
 import AddProjectPage from "../pages/projects/AddProjectPage";
 import ViewProjectPage from "../pages/projects/ViewProjectPage";
 import EditProjectPage from "../pages/projects/EditProjectPage";
@@ -30,6 +32,16 @@ import LeavesPage from "../pages/leaves/LeavesPage";
 import AddLeavePage from "../pages/leaves/AddLeavePage";
 import EditLeavePage from "../pages/leaves/EditLeavePage";
 import ViewLeavePage from "../pages/leaves/ViewLeavePage";
+import ReportsPage from "../pages/reports/ReportsPage";
+
+import LeadsPage from "../pages/crm/LeadsPage";
+import AddLeadPage from "../pages/crm/AddLeadPage";
+import EditLeadPage from "../pages/crm/EditLeadPage";
+import ViewLeadPage from "../pages/crm/ViewLeadPage";
+
+import CommentsPage from "../components/comments/CommentsPage";
+import AddCommentPage from "../pages/comments/AddCommentPage";
+// import EditCommentPage from "../pages/comments/EditCommentPage";
 
 import DailyWorkReportsPage from "../pages/daily-work-reports/DailyWorkReportsPage";
 import AddDailyWorkReportPage from "../pages/daily-work-reports/AddDailyWorkReportPage";
@@ -42,6 +54,18 @@ import SettingsPage from "../pages/settings/SettingsPage";
 import NotFoundPage from "../pages/NotFoundPage";
 
 import ProtectedRoute from "./ProtectedRoute";
+
+const DashboardPage = lazy(
+  () => import("../pages/dashboard/DashboardPage")
+);
+
+const EmployeesPage = lazy(
+  () => import("../pages/employees/EmployeesPage")
+);
+
+const ProjectsPage = lazy(
+  () => import("../pages/projects/ProjectsPage")
+);
 
 const router = createBrowserRouter([
   {
@@ -58,16 +82,20 @@ const router = createBrowserRouter([
     path: "/dashboard",
     element: (
       <ProtectedRoute>
-        <DashboardPage />
+        <Suspense fallback={<PageLoader />}>
+          <DashboardPage />
+        </Suspense>
       </ProtectedRoute>
-    ),
+    )
   },
 
   {
     path: "/employees",
     element: (
       <ProtectedRoute>
-        <EmployeesPage />
+        <Suspense fallback={<PageLoader />}>
+          <EmployeesPage />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -130,7 +158,9 @@ const router = createBrowserRouter([
     path: "/projects",
     element: (
       <ProtectedRoute>
-        <ProjectsPage />
+        <Suspense fallback={<PageLoader />}>
+          <ProjectsPage />
+        </Suspense>
       </ProtectedRoute>
     ),
   },
@@ -304,6 +334,78 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ActivityLogsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports",
+    element: (
+      <ProtectedRoute>
+        <ReportsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/comments",
+    element: (
+      <ProtectedRoute>
+        <CommentsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/comments/add",
+    element: (
+      <ProtectedRoute>
+        <AddCommentPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // {
+  //   path: "/comments/edit/:id",
+  //   element: (
+  //     <ProtectedRoute>
+  //       <EditCommentPage />
+  //     </ProtectedRoute>
+  //   ),
+  // },
+
+  {
+    path: "/crm",
+    element: (
+      <ProtectedRoute>
+        <LeadsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/crm/add",
+    element: (
+      <ProtectedRoute>
+        <AddLeadPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/crm/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <EditLeadPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/crm/view/:id",
+    element: (
+      <ProtectedRoute>
+        <ViewLeadPage />
       </ProtectedRoute>
     ),
   },

@@ -4,8 +4,6 @@ import type { Client } from "../types/client";
 export const getClients = async (): Promise<Client[]> => {
   const response = await api.get("/clients");
 
-  console.log("Clients Response:", response.data);
-
   return response.data.data.data;
 };
 

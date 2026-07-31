@@ -28,10 +28,7 @@ export class TasksController {
   }
 
   @Get()
-    findAll(
-    @Query() pagination: PaginationDto,
-    @Query() search: SearchDto,
-    ) {
+  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
     return this.tasksService.findAll(pagination, search);
   }
 
@@ -41,15 +38,12 @@ export class TasksController {
   }
 
   @Patch(':id')
-    update(
-    @Param('id') id: string,
-    @Body() dto: UpdateTaskDto,
-    ) {
+  update(@Param('id') id: string, @Body() dto: UpdateTaskDto) {
     return this.tasksService.update(id, dto);
-    }
+  }
 
   @Delete(':id')
-    remove(@Param('id') id: string) {
+  remove(@Param('id') id: string) {
     return this.tasksService.remove(id);
-    }
+  }
 }

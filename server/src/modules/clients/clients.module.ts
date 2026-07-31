@@ -6,7 +6,7 @@ import { ClientsService } from './clients.service';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
-  imports: [PrismaModule , ActivityLogsModule,],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [ClientsController],
   providers: [ClientsService],
 })

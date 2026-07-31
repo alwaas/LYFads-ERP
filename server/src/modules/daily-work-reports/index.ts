@@ -1,2 +1,2 @@
-export * from "./daily-work-reports.module";
-export * from "./daily-work-reports.service";
+export * from './daily-work-reports.module';
+export * from './daily-work-reports.service';

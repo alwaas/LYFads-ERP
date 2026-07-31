@@ -6,7 +6,7 @@ import {
 
 import { PrismaService } from '../../database';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
-import { AttendanceHistoryDto } from "./dto/attendance-history.dto";
+import { AttendanceHistoryDto } from './dto/attendance-history.dto';
 // import { PaginationDto } from '../../common/dto/pagination.dto';
 // import { SearchDto } from '../../common/dto/search.dto';
 import { Prisma } from '@prisma/client';
@@ -69,128 +69,123 @@ export class AttendanceService {
     today.setHours(0, 0, 0, 0);
 
     const attendance = await this.prisma.attendance.findFirst({
-        where: {
+      where: {
         employeeId,
         date: {
-            gte: today,
+          gte: today,
         },
-        },
+      },
     });
 
     if (!attendance) {
-        throw new NotFoundException('Check-in not found for today.');
+      throw new NotFoundException('Check-in not found for today.');
     }
 
     if (attendance.checkOut) {
-        throw new ConflictException('Already checked out today.');
+      throw new ConflictException('Already checked out today.');
     }
 
     return this.prisma.attendance.update({
-        where: {
+      where: {
         id: attendance.id,
-        },
-        data: {
+      },
+      data: {
         checkOut: new Date(),
-        },
-        include: {
+      },
+      include: {
         employee: {
-            include: {
+          include: {
             user: {
-                select: {
+              select: {
                 fullName: true,
                 email: true,
-                },
+              },
             },
-            },
+          },
         },
-        },
+      },
     });
-    }
+  }
 
   async todayAttendance() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return this.prisma.attendance.findMany({
-        where: {
+      where: {
         date: {
-            gte: today,
+          gte: today,
         },
-        },
-        include: {
+      },
+      include: {
         employee: {
-            include: {
+          include: {
             user: {
-                select: {
+              select: {
                 id: true,
                 fullName: true,
                 email: true,
-                },
+              },
             },
-            },
+          },
         },
+      },
+      orderBy: {
+        checkIn: 'asc',
+      },
+    });
+  }
+
+  async attendanceHistory(query: AttendanceHistoryDto) {
+    const { skip, limit } = query;
+
+    const where: Prisma.AttendanceWhereInput = query.search
+      ? {
+          employee: {
+            user: {
+              fullName: {
+                contains: query.search,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+          },
+        }
+      : {};
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.attendance.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          employee: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
         },
         orderBy: {
-        checkIn: 'asc',
+          date: 'desc',
         },
-    });
-    }
+      }),
 
-    async attendanceHistory(
-      query: AttendanceHistoryDto,
-    ) {
-      const { skip, limit } = query;
+      this.prisma.attendance.count({
+        where,
+      }),
+    ]);
 
-      const where: Prisma.AttendanceWhereInput =
-        query.search
-          ? {
-              employee: {
-                user: {
-                  fullName: {
-                    contains: query.search,
-                    mode: Prisma.QueryMode.insensitive,
-                  },
-                },
-              },
-            }
-          : {};
-
-      const [data, total] =
-        await this.prisma.$transaction([
-          this.prisma.attendance.findMany({
-            where,
-            skip,
-            take: limit,
-            include: {
-              employee: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      fullName: true,
-                      email: true,
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: {
-              date: "desc",
-            },
-          }),
-
-          this.prisma.attendance.count({
-            where,
-          }),
-        ]);
-
-      return {
-        total,
-        page: query.page,
-        limit: query.limit,
-        totalPages: Math.ceil(total / query.limit),
-        data,
-      };
-    }
-
+    return {
+      total,
+      page: query.page,
+      limit: query.limit,
+      totalPages: Math.ceil(total / query.limit),
+      data,
+    };
+  }
 }

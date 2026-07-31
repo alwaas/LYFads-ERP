@@ -4,8 +4,6 @@ import type { Employee } from "../types/employee";
 export const getEmployees = async (): Promise<Employee[]> => {
   const response = await api.get("/employees");
 
-  console.log("Employees Response:", response.data);
-
   return response.data.data.data;
 };
 

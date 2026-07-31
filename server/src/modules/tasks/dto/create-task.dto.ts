@@ -6,10 +6,7 @@ import {
   IsString,
 } from 'class-validator';
 
-import {
-  TaskPriority,
-  TaskStatus,
-} from '@prisma/client';
+import { TaskPriority, TaskStatus } from '@prisma/client';
 
 export class CreateTaskDto {
   @IsString()

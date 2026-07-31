@@ -44,8 +44,8 @@ function TasksPage() {
 
   const loadTasks = async () => {
     try {
-      const data = await getTasks();
-      setTasks(data);
+      const response = await getTasks();
+      setTasks(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load tasks.");

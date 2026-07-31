@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -10,9 +18,7 @@ import { SearchDto } from '../../common/dto/search.dto';
 @Controller('activity-logs')
 @Roles(UserRole.SUPER_ADMIN)
 export class ActivityLogsController {
-  constructor(
-    private readonly activityLogsService: ActivityLogsService,
-  ) {}
+  constructor(private readonly activityLogsService: ActivityLogsService) {}
 
   @Post()
   create(@Body() dto: CreateActivityLogDto) {
@@ -20,14 +26,8 @@ export class ActivityLogsController {
   }
 
   @Get()
-findAll(
-    @Query() pagination: PaginationDto,
-    @Query() search: SearchDto,
-    ) {
-    return this.activityLogsService.findAll(
-        pagination,
-        search,
-    );
+  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
+    return this.activityLogsService.findAll(pagination, search);
   }
 
   @Get('statistics')
@@ -36,7 +36,7 @@ findAll(
   }
 
   @Get(':id')
-    findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string) {
     return this.activityLogsService.findOne(id);
   }
 

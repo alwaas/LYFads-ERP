@@ -99,10 +99,7 @@ export class ClientsService {
     return client;
   }
 
-  async update(
-    id: string,
-    dto: UpdateClientDto,
-  ) {
+  async update(id: string, dto: UpdateClientDto) {
     await this.findOne(id);
 
     const client = await this.prisma.client.update({

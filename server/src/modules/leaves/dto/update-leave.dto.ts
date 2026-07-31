@@ -1,17 +1,12 @@
-import {
-  IsDateString,
-  IsEnum,
-  IsOptional,
-  IsString,
-} from "class-validator";
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export enum LeaveType {
-  CASUAL = "CASUAL",
-  SICK = "SICK",
-  EARNED = "EARNED",
-  UNPAID = "UNPAID",
-  MATERNITY = "MATERNITY",
-  PATERNITY = "PATERNITY",
+  CASUAL = 'CASUAL',
+  SICK = 'SICK',
+  EARNED = 'EARNED',
+  UNPAID = 'UNPAID',
+  MATERNITY = 'MATERNITY',
+  PATERNITY = 'PATERNITY',
 }
 
 export class UpdateLeaveDto {

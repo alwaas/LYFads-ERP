@@ -17,7 +17,7 @@ import { TasksModule } from './modules/tasks/tasks.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { LeavesModule } from './modules/leaves/leaves.module';
-import { DailyWorkReportsModule } from "./modules/daily-work-reports";
+import { DailyWorkReportsModule } from './modules/daily-work-reports';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module';
@@ -25,6 +25,11 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { MilestonesModule } from './modules/milestones/milestones.module';
+import { CommentsModule } from './modules/comments/comments.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
+import { ReportsModule } from './reports/reports.module';
+import { CrmModule } from './/modules/crm/crm.module';
 
 @Module({
   imports: [
@@ -46,6 +51,11 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     UploadsModule,
     ActivityLogsModule,
     DailyWorkReportsModule,
+    MilestonesModule,
+    CommentsModule,
+    AttachmentsModule,
+    ReportsModule,
+    CrmModule,
   ],
   providers: [
     {
@@ -57,12 +67,12 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
       useClass: RolesGuard,
     },
     {
-    provide: APP_INTERCEPTOR,
-    useClass: ResponseInterceptor,
+      provide: APP_INTERCEPTOR,
+      useClass: ResponseInterceptor,
     },
     {
-    provide: APP_FILTER,
-    useClass: HttpExceptionFilter,
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
     },
     TasksService,
   ],

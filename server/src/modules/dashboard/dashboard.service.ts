@@ -97,94 +97,94 @@ export class DashboardService {
 
   async getRecentProjects() {
     return this.prisma.project.findMany({
-        take: 5,
-        orderBy: {
+      take: 5,
+      orderBy: {
         createdAt: 'desc',
-        },
-        include: {
+      },
+      include: {
         client: {
-            select: {
+          select: {
             id: true,
             companyName: true,
-            },
+          },
         },
         manager: {
-            select: {
+          select: {
             id: true,
             fullName: true,
             email: true,
-            },
+          },
         },
-        },
+      },
     });
   }
 
   async getRecentTasks() {
     return this.prisma.task.findMany({
-        take: 5,
-        orderBy: {
+      take: 5,
+      orderBy: {
         createdAt: 'desc',
-        },
-        include: {
+      },
+      include: {
         project: {
-            select: {
+          select: {
             id: true,
             projectCode: true,
             name: true,
-            },
+          },
         },
         employee: {
-            include: {
+          include: {
             user: {
-                select: {
+              select: {
                 id: true,
                 fullName: true,
                 email: true,
-                },
+              },
             },
-            },
+          },
         },
-        },
+      },
     });
-    }
+  }
 
   async getActivitySummary() {
     const [
-        totalProjects,
-        activeProjects,
-        completedProjects,
-        totalTasks,
-        completedTasks,
-        inProgressTasks,
-        pendingTasks,
-        overdueTasks,
-        highPriorityTasks,
-        totalEmployees,
-        totalClients,
+      totalProjects,
+      activeProjects,
+      completedProjects,
+      totalTasks,
+      completedTasks,
+      inProgressTasks,
+      pendingTasks,
+      overdueTasks,
+      highPriorityTasks,
+      totalEmployees,
+      totalClients,
     ] = await this.prisma.$transaction([
-        this.prisma.project.count(),
-        this.prisma.project.count({
+      this.prisma.project.count(),
+      this.prisma.project.count({
         where: {
-            status: 'ACTIVE',
+          status: 'ACTIVE',
         },
-        }),
-        this.prisma.project.count({
+      }),
+      this.prisma.project.count({
         where: {
-            status: 'COMPLETED',
+          status: 'COMPLETED',
         },
-        }),
-        this.prisma.task.count(),
-        this.prisma.task.count({
+      }),
+      this.prisma.task.count(),
+      this.prisma.task.count({
         where: {
-            status: 'COMPLETED',
+          status: 'COMPLETED',
         },
-        }),
-        this.prisma.task.count({
+      }),
+      this.prisma.task.count({
         where: {
-            status: 'IN_PROGRESS',
+          status: 'IN_PROGRESS',
         },
-        }),
-        this.prisma.task.count({
+      }),
+      this.prisma.task.count({
         where: {
           status: 'TODO',
         },
@@ -215,18 +215,18 @@ export class DashboardService {
     ]);
 
     const completionRate =
-        totalTasks === 0
+      totalTasks === 0
         ? 0
         : Number(((completedTasks / totalTasks) * 100).toFixed(2));
 
     return {
-        projects: {
+      projects: {
         total: totalProjects,
         active: activeProjects,
         completed: completedProjects,
-        },
+      },
 
-        tasks: {
+      tasks: {
         total: totalTasks,
         completed: completedTasks,
         inProgress: inProgressTasks,
@@ -236,13 +236,13 @@ export class DashboardService {
         completionRate,
       },
 
-        employees: totalEmployees,
+      employees: totalEmployees,
 
-        clients: totalClients,
+      clients: totalClients,
     };
   }
 
-    async getCharts() {
+  async getCharts() {
     const [
       activeProjects,
       completedProjects,

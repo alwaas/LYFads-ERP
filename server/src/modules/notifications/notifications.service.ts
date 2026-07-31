@@ -32,83 +32,80 @@ export class NotificationsService {
 
   async markAsRead(id: string) {
     const notification = await this.prisma.notification.findUnique({
-        where: {
+      where: {
         id,
-        },
+      },
     });
 
     if (!notification) {
-        throw new NotFoundException('Notification not found.');
+      throw new NotFoundException('Notification not found.');
     }
 
     return this.prisma.notification.update({
-        where: {
+      where: {
         id,
-        },
-        data: {
+      },
+      data: {
         isRead: true,
-        },
+      },
     });
   }
 
-  async findAll(
-    pagination: PaginationDto,
-    search: SearchDto,
-    ) {
+  async findAll(pagination: PaginationDto, search: SearchDto) {
     const { skip, limit } = pagination;
 
     const where: Prisma.NotificationWhereInput = search.search
-        ? {
-            OR: [
+      ? {
+          OR: [
             {
-                title: {
+              title: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
-                },
+              },
             },
             {
-                message: {
+              message: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
-                },
+              },
             },
-            ],
+          ],
         }
-        : {};
+      : {};
 
     const [data, total] = await this.prisma.$transaction([
-        this.prisma.notification.findMany({
+      this.prisma.notification.findMany({
         where,
         skip,
         take: limit,
         orderBy: {
-            createdAt: 'desc',
+          createdAt: 'desc',
         },
-        }),
-        this.prisma.notification.count({
+      }),
+      this.prisma.notification.count({
         where,
-        }),
+      }),
     ]);
 
     return {
-        total,
-        page: pagination.page,
-        limit: pagination.limit,
-        totalPages: Math.ceil(total / pagination.limit),
-        data,
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
     };
-    }
+  }
 
-    async unreadCount(userId: string) {
+  async unreadCount(userId: string) {
     const count = await this.prisma.notification.count({
-        where: {
+      where: {
         userId,
         isRead: false,
-        },
+      },
     });
 
     return {
-        unread: count,
+      unread: count,
     };
   }
 }

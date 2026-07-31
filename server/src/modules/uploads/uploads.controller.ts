@@ -11,49 +11,45 @@ import { extname } from 'path';
 
 @Controller('uploads')
 export class UploadsController {
- @Post('single')
-    @UseInterceptors(
+  @Post('single')
+  @UseInterceptors(
     FileInterceptor('file', {
-        storage: diskStorage({
+      storage: diskStorage({
         destination: './uploads/temp',
         filename: (req, file, cb) => {
-            const uniqueName =
+          const uniqueName =
             Date.now() +
             '-' +
             Math.round(Math.random() * 1e9) +
             extname(file.originalname);
 
-            cb(null, uniqueName);
+          cb(null, uniqueName);
         },
-        }),
+      }),
     }),
-    )
-    uploadSingle(
-    @UploadedFile() file: Express.Multer.File,
-    ) {
+  )
+  uploadSingle(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
-        throw new BadRequestException('File is required.');
+      throw new BadRequestException('File is required.');
     }
 
     const allowedTypes = [
-        'image/jpeg',
-        'image/png',
-        'image/webp',
-        'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'application/pdf',
     ];
 
     if (!allowedTypes.includes(file.mimetype)) {
-        throw new BadRequestException(
+      throw new BadRequestException(
         'Only JPG, PNG, WEBP and PDF files are allowed.',
-        );
+      );
     }
 
     const maxSize = 5 * 1024 * 1024;
 
     if (file.size > maxSize) {
-        throw new BadRequestException(
-        'Maximum file size is 5 MB.',
-        );
+      throw new BadRequestException('Maximum file size is 5 MB.');
     }
 
     return {

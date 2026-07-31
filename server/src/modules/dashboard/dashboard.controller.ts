@@ -15,21 +15,21 @@ export class DashboardController {
   }
 
   @Get('recent-projects')
-    getRecentProjects() {
+  getRecentProjects() {
     return this.dashboardService.getRecentProjects();
-    }
+  }
 
   @Get('recent-tasks')
-    getRecentTasks() {
+  getRecentTasks() {
     return this.dashboardService.getRecentTasks();
-    }
+  }
 
   @Get('activity-summary')
-    getActivitySummary() {
+  getActivitySummary() {
     return this.dashboardService.getActivitySummary();
-    }
+  }
 
-    @Get('charts')
+  @Get('charts')
   getCharts() {
     return this.dashboardService.getCharts();
   }

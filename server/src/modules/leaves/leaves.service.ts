@@ -77,10 +77,7 @@ export class LeavesService {
     });
   }
 
-  async update(
-    id: string,
-    dto: UpdateLeaveDto,
-  ) {
+  async update(id: string, dto: UpdateLeaveDto) {
     const leave = await this.prisma.leave.findUnique({
       where: {
         id,
@@ -88,7 +85,7 @@ export class LeavesService {
     });
 
     if (!leave) {
-      throw new NotFoundException('Leave request not found.', );
+      throw new NotFoundException('Leave request not found.');
     }
 
     if (
@@ -142,106 +139,100 @@ export class LeavesService {
     });
   }
 
-  async updateStatus(
-    id: string,
-    dto: UpdateLeaveStatusDto,
-    ) {
+  async updateStatus(id: string, dto: UpdateLeaveStatusDto) {
     const leave = await this.prisma.leave.findUnique({
-        where: {
+      where: {
         id,
-        },
+      },
     });
 
     if (!leave) {
-        throw new NotFoundException('Leave request not found.');
+      throw new NotFoundException('Leave request not found.');
     }
 
     return this.prisma.leave.update({
-        where: {
+      where: {
         id,
-        },
-        data: {
+      },
+      data: {
         status: dto.status,
         remarks: dto.remarks ?? leave.remarks,
-        },
-        include: {
+      },
+      include: {
         employee: {
-            include: {
+          include: {
             user: {
-                select: {
+              select: {
                 id: true,
                 fullName: true,
                 email: true,
-                },
+              },
             },
-            },
+          },
         },
-        },
+      },
     });
   }
 
-  async findAll(
-    pagination: PaginationDto,
-    search: SearchDto,
-    ) {
+  async findAll(pagination: PaginationDto, search: SearchDto) {
     const { skip, limit } = pagination;
 
     const where: Prisma.LeaveWhereInput = search.search
-        ? {
-            OR: [
+      ? {
+          OR: [
             {
-                reason: {
+              reason: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
-                },
+              },
             },
             {
-                employee: {
+              employee: {
                 user: {
-                    fullName: {
+                  fullName: {
                     contains: search.search,
                     mode: Prisma.QueryMode.insensitive,
-                    },
+                  },
                 },
-                },
+              },
             },
-            ],
+          ],
         }
-        : {};
+      : {};
 
     const [data, total] = await this.prisma.$transaction([
-        this.prisma.leave.findMany({
+      this.prisma.leave.findMany({
         where,
         skip,
         take: limit,
         include: {
-            employee: {
+          employee: {
             include: {
-                user: {
+              user: {
                 select: {
-                    id: true,
-                    fullName: true,
-                    email: true,
+                  id: true,
+                  fullName: true,
+                  email: true,
                 },
-                },
+              },
             },
-            },
+          },
         },
         orderBy: {
-            createdAt: 'desc',
+          createdAt: 'desc',
         },
-        }),
-        this.prisma.leave.count({
+      }),
+      this.prisma.leave.count({
         where,
-        }),
+      }),
     ]);
 
     return {
-        total,
-        page: pagination.page,
-        limit: pagination.limit,
-        totalPages: Math.ceil(total / pagination.limit),
-        data,
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
     };
   }
 
@@ -266,12 +257,9 @@ export class LeavesService {
     });
 
     if (!leave) {
-      throw new NotFoundException(
-        "Leave request not found.",
-      );
+      throw new NotFoundException('Leave request not found.');
     }
 
     return leave;
   }
-  
 }

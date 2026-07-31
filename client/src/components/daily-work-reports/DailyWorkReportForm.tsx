@@ -208,7 +208,8 @@ function DailyWorkReportForm({
               Select Task
             </option>
 
-            {tasks.map((task) => (
+            {Array.isArray(tasks) &&
+              tasks.map((task) => (
               <option
                 key={task.id}
                 value={task.id}

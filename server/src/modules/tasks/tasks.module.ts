@@ -6,7 +6,7 @@ import { TasksService } from './tasks.service';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
-  imports: [PrismaModule, ActivityLogsModule, ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [TasksController],
   providers: [TasksService],
 })

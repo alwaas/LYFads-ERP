@@ -33,9 +33,9 @@ function LoginPage() {
 
       const response = await login(data);
 
-        console.log("Access Token:", response.accessToken);
-        console.log("User:", response.user);
-        console.log("Full Response:", JSON.stringify(response, null, 2));
+        // console.log("Access Token:", response.data.accessToken);
+        // console.log("User:", response.data.user);
+        // console.log("Full Response:", JSON.stringify(response, null, 2));
 
         auth.login(
         response.data.accessToken,

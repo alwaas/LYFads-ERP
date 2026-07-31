@@ -1,7 +1,7 @@
-import { Module } from "@nestjs/common";
+import { Module } from '@nestjs/common';
 
-import { DailyWorkReportsController } from "./daily-work-reports.controller";
-import { DailyWorkReportsService } from "./daily-work-reports.service";
+import { DailyWorkReportsController } from './daily-work-reports.controller';
+import { DailyWorkReportsService } from './daily-work-reports.service';
 
 @Module({
   controllers: [DailyWorkReportsController],

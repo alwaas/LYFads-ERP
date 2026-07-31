@@ -13,7 +13,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class AuthService {
-constructor(
+  constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly activityLogsService: ActivityLogsService,

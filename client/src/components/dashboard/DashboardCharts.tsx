@@ -13,18 +13,16 @@ import {
   CartesianGrid,
 } from "recharts";
 
-import { getDashboardCharts } from "../../services/dashboardCharts.service";
+import { getDashboardCharts } from "../../services/dashboard.service";
+
+type ChartItem = {
+  name: string;
+  value: number;
+};
 
 type ChartData = {
-  projectStatus: {
-    name: string;
-    value: number;
-  }[];
-
-  taskStatus: {
-    name: string;
-    value: number;
-  }[];
+  projectStatus: ChartItem[];
+  taskStatus: ChartItem[];
 };
 
 const COLORS = [
@@ -35,36 +33,51 @@ const COLORS = [
 ];
 
 function DashboardCharts() {
-  const [data, setData] = useState<ChartData | null>(null);
+  const [data, setData] = useState<ChartData>({
+    projectStatus: [],
+    taskStatus: [],
+  });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadCharts();
   }, []);
 
-  const loadCharts = async () => {
+  async function loadCharts() {
     try {
-      const response = await getDashboardCharts();
-      setData(response);
+      const charts = await getDashboardCharts();
+
+      setData({
+        projectStatus: Array.isArray(charts?.projectStatus)
+          ? charts.projectStatus
+          : [],
+        taskStatus: Array.isArray(charts?.taskStatus)
+          ? charts.taskStatus
+          : [],
+      });
     } catch (error) {
-      console.error(error);
+      console.error("Dashboard Charts Error:", error);
+
+      setData({
+        projectStatus: [],
+        taskStatus: [],
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-md p-8 text-center">
-        Loading Charts...
-      </div>
-    );
-  }
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl shadow-md p-6">
+          Loading Charts...
+        </div>
 
-  if (!data) {
-    return (
-      <div className="bg-red-100 text-red-600 rounded-xl p-6">
-        Failed to load charts.
+        <div className="bg-white rounded-xl shadow-md p-6">
+          Loading Charts...
+        </div>
       </div>
     );
   }
@@ -72,18 +85,13 @@ function DashboardCharts() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
-      {/* Project Status */}
-
       <div className="bg-white rounded-xl shadow-md p-6">
-
         <h2 className="text-xl font-semibold mb-5">
           Project Status
         </h2>
 
         <ResponsiveContainer width="100%" height={320}>
-
           <PieChart>
-
             <Pie
               data={data.projectStatus}
               dataKey="value"
@@ -100,27 +108,18 @@ function DashboardCharts() {
             </Pie>
 
             <Tooltip />
-
             <Legend />
-
           </PieChart>
-
         </ResponsiveContainer>
-
       </div>
 
-      {/* Task Status */}
-
       <div className="bg-white rounded-xl shadow-md p-6">
-
         <h2 className="text-xl font-semibold mb-5">
           Task Status
         </h2>
 
         <ResponsiveContainer width="100%" height={320}>
-
           <BarChart data={data.taskStatus}>
-
             <CartesianGrid strokeDasharray="3 3" />
 
             <XAxis dataKey="name" />
@@ -134,11 +133,8 @@ function DashboardCharts() {
               fill="#2563eb"
               radius={[8, 8, 0, 0]}
             />
-
           </BarChart>
-
         </ResponsiveContainer>
-
       </div>
 
     </div>

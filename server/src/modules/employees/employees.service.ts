@@ -3,9 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SearchDto } from '../../common/dto/search.dto';
+
 import * as bcrypt from 'bcrypt';
-import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -29,7 +28,7 @@ export class EmployeesService {
       });
 
       if (existingUser) {
-        throw new ConflictException("Email already exists.");
+        throw new ConflictException('Email already exists.');
       }
 
       const existingEmployee = await this.prisma.employee.findUnique({
@@ -39,7 +38,7 @@ export class EmployeesService {
       });
 
       if (existingEmployee) {
-        throw new ConflictException("Employee code already exists.");
+        throw new ConflictException('Employee code already exists.');
       }
 
       const hashedPassword = await bcrypt.hash(dto.password, 12);
@@ -89,7 +88,7 @@ export class EmployeesService {
 
       return employee;
     } catch (error) {
-      console.error("========== CREATE EMPLOYEE ERROR ==========");
+      console.error('========== CREATE EMPLOYEE ERROR ==========');
       console.error(error);
       throw error;
     }
@@ -153,10 +152,7 @@ export class EmployeesService {
     return employee;
   }
 
-  async update(
-    id: string,
-    dto: UpdateEmployeeDto,
-  ) {
+  async update(id: string, dto: UpdateEmployeeDto) {
     await this.findOne(id);
 
     const employee = await this.prisma.employee.update({

@@ -4,12 +4,9 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-} from "class-validator";
+} from 'class-validator';
 
-import {
-  ProjectPriority,
-  ProjectStatus,
-} from "@prisma/client";
+import { ProjectPriority, ProjectStatus } from '@prisma/client';
 
 export class CreateProjectDto {
   @IsString()

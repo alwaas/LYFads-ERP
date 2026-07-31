@@ -1,10 +1,5 @@
-import {
-  IsDateString,
-  IsEnum,
-  IsOptional,
-  IsString,
-} from "class-validator";
-import { LeaveType } from "@prisma/client";
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { LeaveType } from '@prisma/client';
 
 export class CreateLeaveDto {
   @IsString()

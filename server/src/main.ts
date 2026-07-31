@@ -11,9 +11,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(
-    AppModule,
-  );
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Security
   app.use(helmet());
@@ -58,4 +56,4 @@ async function bootstrap() {
   console.log(`📚 Swagger Docs: http://localhost:${port}/docs`);
 }
 
-bootstrap();
+void bootstrap();

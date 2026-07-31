@@ -98,71 +98,68 @@ export class TasksService {
     return task;
   }
 
- async findAll(
-    pagination: PaginationDto,
-    search: SearchDto,
-    ) {
+  async findAll(pagination: PaginationDto, search: SearchDto) {
     const { skip, limit } = pagination;
 
     const where: Prisma.TaskWhereInput = search.search
-        ? {
-            OR: [
+      ? {
+          OR: [
             {
-                title: {
+              title: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
-                },
+              },
             },
             {
-                taskCode: {
+              taskCode: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
-                },
+              },
             },
-            ],
+          ],
         }
-        : {};
+      : {};
 
     const [data, total] = await this.prisma.$transaction([
-        this.prisma.task.findMany({
+      this.prisma.task.findMany({
         where,
         skip,
         take: limit,
         include: {
-            project: {
+          project: {
             select: {
-                id: true,
-                projectCode: true,
-                name: true,
+              id: true,
+              projectCode: true,
+              name: true,
             },
-            },
-            employee: {
+          },
+          employee: {
             include: {
-                user: {
+              user: {
                 select: {
-                    id: true,
-                    fullName: true,
-                    email: true,
+                  id: true,
+                  fullName: true,
+                  email: true,
                 },
-                },
+              },
             },
-            },
+          },
         },
         orderBy: {
-            createdAt: 'desc',
+          createdAt: 'desc',
         },
-        }),
-        this.prisma.task.count({ where }),
+      }),
+      this.prisma.task.count({ where }),
     ]);
 
     return {
-        total,
-        page: pagination.page,
-        limit: pagination.limit,
-        totalPages: Math.ceil(total / pagination.limit),
-        data,
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
     };
-    }
+  }
 
   async findOne(id: string) {
     const task = await this.prisma.task.findUnique({
@@ -203,31 +200,31 @@ export class TasksService {
 
   async update(id: string, dto: UpdateTaskDto) {
     const task = await this.prisma.task.findUnique({
-        where: { id },
+      where: { id },
     });
 
     if (!task) {
-        throw new NotFoundException('Task not found.');
+      throw new NotFoundException('Task not found.');
     }
 
     if (dto.projectId) {
-        const project = await this.prisma.project.findUnique({
+      const project = await this.prisma.project.findUnique({
         where: { id: dto.projectId },
-        });
+      });
 
-        if (!project) {
+      if (!project) {
         throw new NotFoundException('Project not found.');
-        }
+      }
     }
 
     if (dto.employeeId) {
-        const employee = await this.prisma.employee.findUnique({
+      const employee = await this.prisma.employee.findUnique({
         where: { id: dto.employeeId },
-        });
+      });
 
-        if (!employee) {
+      if (!employee) {
         throw new NotFoundException('Employee not found.');
-        }
+      }
     }
 
     const updatedTask = await this.prisma.task.update({
@@ -254,18 +251,18 @@ export class TasksService {
     });
 
     return updatedTask;
- }
+  }
 
- async remove(id: string) {
+  async remove(id: string) {
     const task = await this.prisma.task.findUnique({
-        where: { id },
+      where: { id },
     });
 
     if (!task) {
-        throw new NotFoundException('Task not found.');
+      throw new NotFoundException('Task not found.');
     }
 
-await this.prisma.task.delete({
+    await this.prisma.task.delete({
       where: { id },
     });
 
