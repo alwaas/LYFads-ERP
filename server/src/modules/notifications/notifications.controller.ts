@@ -16,7 +16,12 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('notifications')
-@Roles(UserRole.SUPER_ADMIN)
+@Roles(
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.MANAGER,
+  UserRole.EMPLOYEE,
+)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 

@@ -16,7 +16,12 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('activity-logs')
-@Roles(UserRole.SUPER_ADMIN)
+@Roles(
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.MANAGER,
+  UserRole.EMPLOYEE,
+)
 export class ActivityLogsController {
   constructor(private readonly activityLogsService: ActivityLogsService) {}
 

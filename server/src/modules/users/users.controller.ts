@@ -7,7 +7,12 @@ import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
-@Roles(UserRole.SUPER_ADMIN)
+@Roles(
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.MANAGER,
+  UserRole.EMPLOYEE,
+)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

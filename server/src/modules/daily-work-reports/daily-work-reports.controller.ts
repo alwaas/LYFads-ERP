@@ -22,7 +22,12 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('daily-work-reports')
-@Roles(UserRole.SUPER_ADMIN)
+@Roles(
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.MANAGER,
+  UserRole.EMPLOYEE,
+)
 export class DailyWorkReportsController {
   constructor(
     private readonly dailyWorkReportsService: DailyWorkReportsService,

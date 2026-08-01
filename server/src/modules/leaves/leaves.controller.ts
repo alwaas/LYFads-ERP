@@ -18,7 +18,12 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('leaves')
-@Roles(UserRole.SUPER_ADMIN)
+@Roles(
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.MANAGER,
+  UserRole.EMPLOYEE,
+)
 export class LeavesController {
   constructor(private readonly leavesService: LeavesService) {}
 

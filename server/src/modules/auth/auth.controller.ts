@@ -27,7 +27,12 @@ export class AuthController {
   me(@Req() req: any) {
     return req.user;
   }
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.MANAGER,
+  UserRole.EMPLOYEE,
+)
   @Get('admin')
   admin() {
     return {
