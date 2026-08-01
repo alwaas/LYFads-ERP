@@ -19,12 +19,13 @@ type AuthState = {
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: localStorage.getItem("accessToken"),
 
-  user: null,
+  user: JSON.parse(localStorage.getItem("user") || "null"),
 
   isAuthenticated: !!localStorage.getItem("accessToken"),
 
   login: (token, user) => {
     localStorage.setItem("accessToken", token);
+    localStorage.setItem("user", JSON.stringify(user));
 
     set({
       accessToken: token,
@@ -35,6 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("user");
 
     set({
       accessToken: null,
