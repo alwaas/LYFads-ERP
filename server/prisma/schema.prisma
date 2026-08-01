@@ -82,6 +82,29 @@ enum WorkStatus {
   BLOCKED
 }
 
+enum PayrollStatus {
+  PENDING
+  GENERATED
+  PAID
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CARD
+  CHEQUE
+}
+
 model User {
   id       String   @id @default(cuid())
   fullName String
@@ -141,6 +164,8 @@ model Employee {
   attendances      Attendance[]
   leaves           Leave[]
   dailyWorkReports DailyWorkReport[]
+  timesheets       Timesheet[]
+  payrolls         Payroll[]
 
   @@map("employees")
 }
@@ -172,6 +197,8 @@ model Client {
 
   projects Project[]
 
+  invoices Invoice[]
+
   isActive Boolean @default(true)
 
   accountManagerId String?
@@ -201,6 +228,8 @@ model Project {
   milestones  Milestone[]
   comments    Comment[]
   attachments Attachment[]
+  timesheets  Timesheet[]
+  invoices    Invoice[]
 
   budget Decimal? @db.Decimal(12, 2)
 
@@ -242,6 +271,7 @@ model Task {
   dailyWorkReports DailyWorkReport[]
   comments         Comment[]
   attachments      Attachment[]
+  timesheets       Timesheet[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -386,6 +416,34 @@ model DailyWorkReport {
   @@map("daily_work_reports")
 }
 
+model Timesheet {
+  id String @id @default(cuid())
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  workDate DateTime
+
+  startTime DateTime?
+  endTime   DateTime?
+
+  hours Decimal @db.Decimal(4, 2)
+
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([workDate])
+}
+
 model Milestone {
   id String @id @default(cuid())
 
@@ -522,4 +580,140 @@ model FollowUp {
   createdAt DateTime @default(now())
 
   @@map("follow_ups")
+}
+
+model Payroll {
+  id String @id @default(cuid())
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  month Int
+  year  Int
+
+  basicSalary Decimal @db.Decimal(12, 2)
+
+  totalHours Decimal @default(0) @db.Decimal(6, 2)
+
+  overtimeHours Decimal @default(0) @db.Decimal(6, 2)
+
+  overtimeAmount Decimal @default(0) @db.Decimal(12, 2)
+
+  hra Decimal @default(0) @db.Decimal(12, 2)
+
+  allowances Decimal @default(0) @db.Decimal(12, 2)
+
+  bonus Decimal @default(0) @db.Decimal(12, 2)
+
+  incentives Decimal @default(0) @db.Decimal(12, 2)
+
+  grossSalary Decimal @default(0) @db.Decimal(12, 2)
+
+  pf Decimal @default(0) @db.Decimal(12, 2)
+
+  esi Decimal @default(0) @db.Decimal(12, 2)
+
+  tds Decimal @default(0) @db.Decimal(12, 2)
+
+  deductions Decimal @default(0) @db.Decimal(12, 2)
+
+  totalDeduction Decimal @default(0) @db.Decimal(12, 2)
+
+  netSalary Decimal @db.Decimal(12, 2)
+
+  status PayrollStatus @default(PENDING)
+
+  generatedAt DateTime?
+
+  paidAt DateTime?
+
+  payslipNo String? @unique
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, month, year])
+  @@index([employeeId])
+  @@index([month])
+  @@index([year])
+}
+
+model Invoice {
+  id String @id @default(cuid())
+
+  invoiceNumber String @unique
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  issueDate DateTime
+  dueDate   DateTime
+
+  subtotal Decimal @db.Decimal(12, 2)
+
+  tax Decimal @default(0) @db.Decimal(12, 2)
+
+  discount Decimal @default(0) @db.Decimal(12, 2)
+
+  total Decimal @db.Decimal(12, 2)
+
+  paidAmount Decimal @default(0) @db.Decimal(12, 2)
+
+  balanceAmount Decimal @db.Decimal(12, 2)
+
+  status InvoiceStatus @default(DRAFT)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id String @id @default(cuid())
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  description String
+
+  quantity Decimal @db.Decimal(8, 2)
+
+  unitPrice Decimal @db.Decimal(12, 2)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  paymentDate DateTime
+
+  method PaymentMethod
+
+  referenceNo String?
+
+  remarks String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceId])
 }

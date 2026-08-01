@@ -30,6 +30,13 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { ReportsModule } from './reports/reports.module';
 import { CrmModule } from './/modules/crm/crm.module';
+import { ProjectTimelineModule } from './modules/project-timeline/project-timeline.module';
+import { KanbanModule } from './modules/kanban/kanban.module';
+import { TimesheetsModule } from './modules/timesheets/timesheets.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
+import { InvoiceModule } from './modules/invoice/invoice.module';
+import { InvoiceItemsModule } from './modules/invoice-items/invoice-items.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -56,6 +63,13 @@ import { CrmModule } from './/modules/crm/crm.module';
     AttachmentsModule,
     ReportsModule,
     CrmModule,
+    ProjectTimelineModule,
+    KanbanModule,
+    TimesheetsModule,
+    PayrollModule,
+    InvoiceModule,
+    InvoiceItemsModule,
+    PaymentsModule,
   ],
   providers: [
     {

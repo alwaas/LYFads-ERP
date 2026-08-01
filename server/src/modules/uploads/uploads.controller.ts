@@ -9,8 +9,14 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 
+import { AttachmentsService } from '../attachments/attachments.service';
+
 @Controller('uploads')
 export class UploadsController {
+  constructor(
+    private readonly attachmentsService: AttachmentsService,
+  ) {}
+
   @Post('single')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -28,7 +34,9 @@ export class UploadsController {
       }),
     }),
   )
-  uploadSingle(@UploadedFile() file: Express.Multer.File) {
+  async uploadSingle(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     if (!file) {
       throw new BadRequestException('File is required.');
     }
@@ -49,17 +57,26 @@ export class UploadsController {
     const maxSize = 5 * 1024 * 1024;
 
     if (file.size > maxSize) {
-      throw new BadRequestException('Maximum file size is 5 MB.');
+      throw new BadRequestException(
+        'Maximum file size is 5 MB.',
+      );
     }
+
+    const attachment =
+      await this.attachmentsService.create({
+        fileName: file.filename,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        fileSize: file.size,
+        fileUrl: `/uploads/temp/${file.filename}`,
+
+        // Temporary value
+        uploadedBy: 'REPLACE_WITH_VALID_USER_ID',
+      });
 
     return {
       success: true,
-      filename: file.filename,
-      originalName: file.originalname,
-      size: file.size,
-      mimetype: file.mimetype,
-      path: file.path,
-      url: `/uploads/temp/${file.filename}`,
+      data: attachment,
     };
   }
 }
