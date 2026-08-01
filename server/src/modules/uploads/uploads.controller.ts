@@ -13,9 +13,7 @@ import { AttachmentsService } from '../attachments/attachments.service';
 
 @Controller('uploads')
 export class UploadsController {
-  constructor(
-    private readonly attachmentsService: AttachmentsService,
-  ) {}
+  constructor(private readonly attachmentsService: AttachmentsService) {}
 
   @Post('single')
   @UseInterceptors(
@@ -34,9 +32,7 @@ export class UploadsController {
       }),
     }),
   )
-  async uploadSingle(
-    @UploadedFile() file: Express.Multer.File,
-  ) {
+  async uploadSingle(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('File is required.');
     }
@@ -57,22 +53,19 @@ export class UploadsController {
     const maxSize = 5 * 1024 * 1024;
 
     if (file.size > maxSize) {
-      throw new BadRequestException(
-        'Maximum file size is 5 MB.',
-      );
+      throw new BadRequestException('Maximum file size is 5 MB.');
     }
 
-    const attachment =
-      await this.attachmentsService.create({
-        fileName: file.filename,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        fileSize: file.size,
-        fileUrl: `/uploads/temp/${file.filename}`,
+    const attachment = await this.attachmentsService.create({
+      fileName: file.filename,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      fileSize: file.size,
+      fileUrl: `/uploads/temp/${file.filename}`,
 
-        // Temporary value
-        uploadedBy: 'REPLACE_WITH_VALID_USER_ID',
-      });
+      // Temporary value
+      uploadedBy: 'REPLACE_WITH_VALID_USER_ID',
+    });
 
     return {
       success: true,

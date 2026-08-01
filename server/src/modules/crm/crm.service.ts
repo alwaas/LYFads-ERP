@@ -85,30 +85,30 @@ export class CrmService {
       : undefined;
 
     const [data, total] = await this.prisma.$transaction([
-        this.prisma.lead.findMany({
+      this.prisma.lead.findMany({
         where,
         skip,
         take: limit,
         include: {
-            assignedTo: true,
-            followUps: true,
+          assignedTo: true,
+          followUps: true,
         },
         orderBy: {
-            createdAt: 'desc',
+          createdAt: 'desc',
         },
-        }),
+      }),
 
-        this.prisma.lead.count({
+      this.prisma.lead.count({
         where,
-        }),
+      }),
     ]);
 
     return {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      data,
     };
   }
 

@@ -3,19 +3,11 @@ import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
 export class ReportsService {
-  constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async dashboard() {
-    const [
-      employees,
-      clients,
-      projects,
-      tasks,
-      leads,
-      attendance,
-      leaves,] = await Promise.all([
+    const [employees, clients, projects, tasks, leads, attendance, leaves] =
+      await Promise.all([
         this.prisma.employee.count(),
         this.prisma.client.count(),
         this.prisma.project.count(),

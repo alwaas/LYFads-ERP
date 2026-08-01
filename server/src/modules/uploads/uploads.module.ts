@@ -8,10 +8,7 @@ import { UploadsService } from './uploads.service';
 import { AttachmentsModule } from '../attachments/attachments.module';
 
 @Module({
-  imports: [
-    PrismaModule,
-    AttachmentsModule,
-  ],
+  imports: [PrismaModule, AttachmentsModule],
   controllers: [UploadsController],
   providers: [UploadsService],
 })

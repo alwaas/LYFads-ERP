@@ -1,20 +1,11 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 
 import { AttachmentsService } from './attachments.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
 
 @Controller('attachments')
 export class AttachmentsController {
-  constructor(
-    private readonly attachmentsService: AttachmentsService,
-  ) {}
+  constructor(private readonly attachmentsService: AttachmentsService) {}
 
   @Post()
   create(@Body() dto: CreateAttachmentDto) {

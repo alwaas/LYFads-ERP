@@ -1,9 +1,4 @@
-import {
-  IsDateString,
-  IsDecimal,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsDecimal, IsOptional, IsString } from 'class-validator';
 
 export class CreateTimesheetDto {
   @IsString()

@@ -15,14 +15,10 @@ import { UpdatePaymentDto } from './dto/update-payment.dto';
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(
-    private readonly paymentsService: PaymentsService,
-  ) {}
+  constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post()
-  create(
-    @Body() dto: CreatePaymentDto,
-  ) {
+  create(@Body() dto: CreatePaymentDto) {
     return this.paymentsService.create(dto);
   }
 
@@ -32,27 +28,17 @@ export class PaymentsController {
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-  ) {
+  findOne(@Param('id') id: string) {
     return this.paymentsService.findOne(id);
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdatePaymentDto,
-  ) {
-    return this.paymentsService.update(
-      id,
-      dto,
-    );
+  update(@Param('id') id: string, @Body() dto: UpdatePaymentDto) {
+    return this.paymentsService.update(id, dto);
   }
 
   @Delete(':id')
-  remove(
-    @Param('id') id: string,
-  ) {
+  remove(@Param('id') id: string) {
     return this.paymentsService.remove(id);
   }
 }

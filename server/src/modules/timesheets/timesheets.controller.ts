@@ -14,9 +14,7 @@ import { UpdateTimesheetDto } from './dto/update-timesheet.dto';
 
 @Controller('timesheets')
 export class TimesheetsController {
-  constructor(
-    private readonly timesheetsService: TimesheetsService,
-  ) {}
+  constructor(private readonly timesheetsService: TimesheetsService) {}
 
   @Post()
   create(@Body() dto: CreateTimesheetDto) {
@@ -34,10 +32,7 @@ export class TimesheetsController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateTimesheetDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateTimesheetDto) {
     return this.timesheetsService.update(id, dto);
   }
 
@@ -47,16 +42,12 @@ export class TimesheetsController {
   }
 
   @Get('employee/:employeeId/summary')
-  employeeSummary(
-    @Param('employeeId') employeeId: string,
-  ) {
+  employeeSummary(@Param('employeeId') employeeId: string) {
     return this.timesheetsService.employeeSummary(employeeId);
   }
 
   @Get('project/:projectId/summary')
-  projectSummary(
-    @Param('projectId') projectId: string,
-  ) {
+  projectSummary(@Param('projectId') projectId: string) {
     return this.timesheetsService.projectSummary(projectId);
   }
 }

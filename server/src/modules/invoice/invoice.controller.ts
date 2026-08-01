@@ -15,9 +15,7 @@ import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 
 @Controller('invoice')
 export class InvoiceController {
-  constructor(
-    private readonly invoiceService: InvoiceService,
-  ) {}
+  constructor(private readonly invoiceService: InvoiceService) {}
 
   @Post()
   create(@Body() dto: CreateInvoiceDto) {
@@ -35,10 +33,7 @@ export class InvoiceController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateInvoiceDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateInvoiceDto) {
     return this.invoiceService.update(id, dto);
   }
 

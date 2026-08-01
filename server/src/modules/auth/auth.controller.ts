@@ -28,11 +28,11 @@ export class AuthController {
     return req.user;
   }
   @Roles(
-  UserRole.SUPER_ADMIN,
-  UserRole.ADMIN,
-  UserRole.MANAGER,
-  UserRole.EMPLOYEE,
-)
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.MANAGER,
+    UserRole.EMPLOYEE,
+  )
   @Get('admin')
   admin() {
     return {

@@ -15,9 +15,7 @@ import { UpdatePayrollDto } from './dto/update-payroll.dto';
 
 @Controller('payroll')
 export class PayrollController {
-  constructor(
-    private readonly payrollService: PayrollService,
-  ) {}
+  constructor(private readonly payrollService: PayrollService) {}
 
   @Post()
   create(@Body() dto: CreatePayrollDto) {
@@ -35,10 +33,7 @@ export class PayrollController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdatePayrollDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdatePayrollDto) {
     return this.payrollService.update(id, dto);
   }
 

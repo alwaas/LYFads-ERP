@@ -1,10 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
 
 import { KanbanService } from './kanban.service';
 import { MoveTaskDto } from './dto/move-task.dto';
@@ -19,10 +13,7 @@ export class KanbanController {
   }
 
   @Patch('task/:taskId/move')
-  moveTask(
-    @Param('taskId') taskId: string,
-    @Body() dto: MoveTaskDto,
-  ) {
+  moveTask(@Param('taskId') taskId: string, @Body() dto: MoveTaskDto) {
     return this.kanbanService.moveTask(taskId, dto);
   }
 

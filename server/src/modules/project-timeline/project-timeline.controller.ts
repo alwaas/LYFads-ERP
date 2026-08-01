@@ -3,14 +3,10 @@ import { ProjectTimelineService } from './project-timeline.service';
 
 @Controller('project-timeline')
 export class ProjectTimelineController {
-  constructor(
-    private readonly service: ProjectTimelineService,
-  ) {}
+  constructor(private readonly service: ProjectTimelineService) {}
 
   @Get(':projectId')
-  getTimeline(
-    @Param('projectId') projectId: string,
-  ) {
+  getTimeline(@Param('projectId') projectId: string) {
     return this.service.getTimeline(projectId);
   }
 
