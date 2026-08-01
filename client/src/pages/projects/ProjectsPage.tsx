@@ -1,3 +1,4 @@
+import { usePermission } from "../../hooks/usePermission";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -17,6 +18,7 @@ import type { Project } from "../../types/project";
 
 function ProjectsPage() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermission();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,14 +90,14 @@ function ProjectsPage() {
             Projects
           </h1>
 
-          <button
-            onClick={() =>
-              navigate("/projects/add")
-            }
-            className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700"
-          >
-            + Add Project
-          </button>
+          {hasPermission("projects", "create") && (
+            <button
+              onClick={() => navigate("/projects/add")}
+              className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700"
+            >
+              + Add Project
+            </button>
+          )}
 
         </div>
 

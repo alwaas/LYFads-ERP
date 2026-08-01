@@ -1,3 +1,4 @@
+import { usePermission } from "../../hooks/usePermission";
 import { Link } from "react-router-dom";
 import type { Project } from "../../types/project";
 
@@ -6,10 +7,12 @@ type Props = {
   onDelete: (id: string) => void;
 };
 
+
 function ProjectTable({
   projects,
   onDelete,
 }: Props) {
+  const { hasPermission } = usePermission();
   return (
     <div className="bg-white rounded-xl shadow overflow-hidden">
 
@@ -152,22 +155,25 @@ function ProjectTable({
 
                   <td className="px-6 py-4">
 
-                    <div className="flex justify-center gap-4">
+                  <div className="flex justify-center gap-4">
 
-                      <Link
-                        to={`/projects/view/${project.id}`}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        View
-                      </Link>
+                    <Link
+                      to={`/projects/view/${project.id}`}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      View
+                    </Link>
 
+                    {hasPermission("projects", "edit") && (
                       <Link
                         to={`/projects/edit/${project.id}`}
                         className="text-green-600 hover:text-green-800 font-medium"
                       >
                         Edit
                       </Link>
+                    )}
 
+                    {hasPermission("projects", "delete") && (
                       <button
                         onClick={() => {
                           if (
@@ -182,8 +188,9 @@ function ProjectTable({
                       >
                         Delete
                       </button>
+                    )}
 
-                    </div>
+                  </div>
 
                   </td>
 
