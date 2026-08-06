@@ -117,11 +117,13 @@ function LeadForm({
 
         <select
           name="source"
-          placeholder="Lead Source"
           value={form.source}
           onChange={handleChange}
-          className="border rounded-lg p-3"
+          className="border rounded-lg p-3 text-slate-700"
         >
+          <option value="" disabled>
+            Select Lead Source
+          </option>
           <option value="WEBSITE">Website</option>
           <option value="FACEBOOK">Facebook</option>
           <option value="INSTAGRAM">Instagram</option>

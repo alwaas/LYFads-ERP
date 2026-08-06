@@ -138,7 +138,7 @@ function LeadTable({
 
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    sourceColors[lead.source] ??
+                    sourceColors[lead.source ?? "OTHER"] ??
                     "bg-slate-100 text-slate-700"
                   }`}
                 >
@@ -151,7 +151,7 @@ function LeadTable({
 
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                    statusColors[lead.status] ??
+                    statusColors[lead.status ?? "OTHER"] ??
                     "bg-slate-100 text-slate-700"
                   }`}
                 >

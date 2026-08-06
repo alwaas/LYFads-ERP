@@ -168,10 +168,10 @@ function ViewLeadPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <span className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${statusColors[lead.status] ?? "bg-slate-100 text-slate-700"}`}>
+                <span className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${statusColors[lead.status ?? "OTHER"] ?? "bg-slate-100 text-slate-700"}`}>
                   {lead.status}
                 </span>
-                <span className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${sourceColors[lead.source] ?? "bg-slate-100 text-slate-700"}`}>
+                <span className={`px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide ${sourceColors[lead.source ?? "OTHER"] ?? "bg-slate-100 text-slate-700"}`}>
                   {lead.source || "N/A"}
                 </span>
               </div>
