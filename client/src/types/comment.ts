@@ -1,14 +1,16 @@
 export interface Comment {
   id: string;
-  content: string;
 
-  author: {
+  message: string;
+
+  user: {
     id: string;
     fullName: string;
+    email: string;
   };
 
-  projectId?: string;
-  taskId?: string;
+  projectId?: string | null;
+  taskId?: string | null;
 
   createdAt: string;
   updatedAt: string;

@@ -3,8 +3,14 @@ import { getRecentActivities } from "../../services/dashboard.service";
 
 type Activity = {
   id: string;
-  message: string;
+  action: string;
+  module: string;
+  description: string;
   createdAt: string;
+
+  user?: {
+    fullName: string;
+  };
 };
 
 function ActivityFeed() {
@@ -17,15 +23,13 @@ function ActivityFeed() {
 
   const loadActivity = async () => {
     try {
-      const response = await getRecentActivities();
+        const response = await getRecentActivities();
 
-      const list =
-        response.items ??
-        response.activities ??
-        response.data ??
-        response;
-
-      setActivities(Array.isArray(list) ? list : []);
+        setActivities(
+          Array.isArray(response)
+            ? response
+            : []
+        );
     } catch (error) {
       console.error(error);
     } finally {
@@ -53,7 +57,11 @@ function ActivityFeed() {
               className="border-l-4 border-blue-600 pl-4"
             >
               <p className="font-medium">
-                {activity.message}
+                {activity.description}
+              </p>
+
+              <p className="text-sm text-gray-500">
+                {activity.user?.fullName ?? "System"}
               </p>
 
               <p className="text-sm text-gray-500">

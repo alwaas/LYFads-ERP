@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { Plus, Search, RefreshCw } from "lucide-react";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
-
+import PageContainer from "../../components/layout/PageContainer";
 import LeadTable from "../../components/crm/LeadTable";
 import LeadStats from "../../components/crm/LeadStats";
 
@@ -19,7 +20,7 @@ function LeadsPage() {
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -28,38 +29,48 @@ function LeadsPage() {
 
   const loadLeads = async () => {
     try {
+      setLoading(true);
       const data = await getLeads();
-
       setLeads(data);
     } catch (error) {
       console.error(error);
-
       toast.error("Failed to load leads.");
     } finally {
       setLoading(false);
     }
   };
 
+  const refresh = async () => {
+    try {
+      setRefreshing(true);
+      const data = await getLeads();
+      setLeads(data);
+      toast.success("CRM refreshed successfully.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Refresh failed.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this lead?")) return;
+    if (!window.confirm("Are you sure you want to delete this lead?")) return;
 
     try {
       await deleteLead(id);
-
-      toast.success("Lead deleted.");
-
-      loadLeads();
+      setLeads((prev) => prev.filter((x) => x.id !== id));
+      toast.success("Lead deleted successfully.");
     } catch (error) {
       console.error(error);
-
       toast.error("Delete failed.");
     }
   };
 
   const filteredLeads = useMemo(() => {
-    return leads.filter((lead) => {
-      const keyword = search.toLowerCase();
+    const keyword = search.toLowerCase();
 
+    return leads.filter((lead) => {
       return (
         lead.companyName.toLowerCase().includes(keyword) ||
         lead.contactPerson.toLowerCase().includes(keyword) ||
@@ -70,42 +81,101 @@ function LeadsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <PageContainer>
+        <div className="w-full space-y-6">
 
-        <div className="flex justify-between items-center">
+          {/* Header Section */}
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-2xs p-5 sm:p-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              
+              <div className="space-y-1">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  CRM Leads Management
+                </h1>
+                <p className="text-sm text-slate-500 font-medium">
+                  Manage, track and convert your business leads seamlessly.
+                </p>
+              </div>
 
-          <h1 className="text-3xl font-bold">
-            CRM Leads
-          </h1>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <button
+                  onClick={refresh}
+                  disabled={refreshing}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition font-medium text-sm shadow-2xs disabled:opacity-50"
+                >
+                  <RefreshCw
+                    size={16}
+                    className={refreshing ? "animate-spin" : ""}
+                  />
+                  <span>Refresh</span>
+                </button>
 
-          <button
-            onClick={() => navigate("/crm/add")}
-            className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700"
-          >
-            + Add Lead
-          </button>
+                <button
+                  onClick={() => navigate("/crm/add")}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 transition font-medium text-sm shadow-sm"
+                >
+                  <Plus size={18} />
+                  <span>Add Lead</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Stats Section */}
+          <div className="w-full">
+            <LeadStats leads={leads} />
+          </div>
+
+          {/* Search Bar Section */}
+          <div className="relative w-full">
+            <Search
+              size={18}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by company, contact person or email..."
+              className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none shadow-2xs transition"
+            />
+          </div>
+
+          {/* Table & Content Section */}
+          {loading ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-2xs">
+              <p className="text-slate-500 text-base animate-pulse font-medium">Loading CRM Leads...</p>
+            </div>
+          ) : filteredLeads.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-12 sm:p-16 text-center shadow-2xs space-y-3">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-800">
+                No Leads Found
+              </h3>
+              <p className="text-slate-500 text-sm max-w-sm mx-auto">
+                {search ? "No leads match your search keyword." : "Start by adding your first business lead to the CRM."}
+              </p>
+              {!search && (
+                <button
+                  onClick={() => navigate("/crm/add")}
+                  className="mt-3 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 transition font-medium text-sm shadow-sm"
+                >
+                  <Plus size={16} /> Add Lead
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="w-full overflow-x-auto">
+                <LeadTable
+                  leads={filteredLeads}
+                  onDelete={handleDelete}
+                />
+              </div>
+            </div>
+          )}
 
         </div>
-
-        <LeadStats leads={leads} />
-
-        <input
-          className="w-full border rounded-lg px-4 py-3"
-          placeholder="Search Lead..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        {loading ? (
-          <div>Loading...</div>
-        ) : (
-          <LeadTable
-            leads={filteredLeads}
-            onDelete={handleDelete}
-          />
-        )}
-
-      </div>
+      </PageContainer>
     </DashboardLayout>
   );
 }

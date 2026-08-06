@@ -7,6 +7,8 @@ import EmployeeFilters from "../../components/employees/EmployeeFilters";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 
+import { usePermission } from "../../hooks/usePermission";
+
 import {
     getEmployees,
     deleteEmployee,
@@ -22,6 +24,7 @@ function EmployeesPage() {
   const [department, setDepartment] = useState("");
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("");
+  const { hasPermission } = usePermission();
 
   useEffect(() => {
     loadEmployees();
@@ -124,12 +127,14 @@ function EmployeesPage() {
             Employees
           </h1>
 
-          <Link
-            to="/employees/add"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-semibold"
-          >
-            + Add Employee
-          </Link>
+          {hasPermission("employees", "create") && (
+            <Link
+              to="/employees/add"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-semibold"
+            >
+              + Add Employee
+            </Link>
+          )}
 
         </div>
 

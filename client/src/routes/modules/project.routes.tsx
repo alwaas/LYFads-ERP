@@ -4,6 +4,7 @@ import ProjectsPage from "../../pages/projects/ProjectsPage";
 import AddProjectPage from "../../pages/projects/AddProjectPage";
 import EditProjectPage from "../../pages/projects/EditProjectPage";
 import ViewProjectPage from "../../pages/projects/ViewProjectPage";
+import KanbanPage from "../../pages/kanban/KanbanPage";
 
 import { PATHS } from "../config/paths";
 
@@ -28,6 +29,11 @@ export function ProjectRoutes() {
       <Route
         path={PATHS.VIEW_PROJECT}
         element={<ViewProjectPage />}
+      />
+
+      <Route
+        path={PATHS.KANBAN}
+        element={<KanbanPage />}
       />
     </>
   );

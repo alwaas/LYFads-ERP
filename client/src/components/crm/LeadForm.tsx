@@ -115,13 +115,21 @@ function LeadForm({
           <option value="LOST">LOST</option>
         </select>
 
-        <input
+        <select
           name="source"
           placeholder="Lead Source"
           value={form.source}
           onChange={handleChange}
           className="border rounded-lg p-3"
-        />
+        >
+          <option value="WEBSITE">Website</option>
+          <option value="FACEBOOK">Facebook</option>
+          <option value="INSTAGRAM">Instagram</option>
+          <option value="GOOGLE">Google</option>
+          <option value="REFERRAL">Referral</option>
+          <option value="WHATSAPP">WhatsApp</option>
+          <option value="OTHER">Other</option>
+        </select>
 
         <input
           type="number"

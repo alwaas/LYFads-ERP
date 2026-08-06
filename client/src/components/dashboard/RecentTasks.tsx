@@ -20,7 +20,7 @@ function RecentTasks() {
     try {
       const response = await getRecentTasks();
 
-      setTasks(response.data ?? []);
+      setTasks(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error(error);
     } finally {
@@ -63,36 +63,47 @@ function RecentTasks() {
             </thead>
 
             <tbody>
-
-              {tasks.map((task) => (
-
-                <tr
-                  key={task.id}
-                  className="border-b"
-                >
-
-                  <td className="py-3">
-                    {task.title}
+              {tasks.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="text-center py-10 text-gray-500"
+                  >
+                    No Recent Tasks
                   </td>
-
-                  <td className="py-3">
-
-                    <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm">
-
-                      {task.status}
-
-                    </span>
-
-                  </td>
-
-                  <td className="py-3">
-                    {task.priority}
-                  </td>
-
                 </tr>
+              ) : (
+                tasks.map((task) => (
+                  <tr
+                    key={task.id}
+                    className="border-b hover:bg-gray-50"
+                  >
+                    <td className="py-3">
+                      {task.title}
+                    </td>
 
-              ))}
+                    <td className="py-3">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          task.status === "COMPLETED"
+                            ? "bg-green-100 text-green-700"
+                            : task.status === "IN_PROGRESS"
+                            ? "bg-blue-100 text-blue-700"
+                            : task.status === "TODO"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {task.status}
+                      </span>
+                    </td>
 
+                    <td className="py-3">
+                      {task.priority}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
 
           </table>

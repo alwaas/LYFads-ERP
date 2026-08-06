@@ -5,6 +5,11 @@ import DashboardLayout from "../../layouts/DashboardLayout";
 import DashboardHeader from "../../components/dashboard/DashboardHeader";
 import DashboardStats from "../../components/dashboard/DashboardStats";
 import DashboardCharts from "../../components/dashboard/DashboardCharts";
+
+import EmployeeWorkload from "../../components/dashboard/analytics/EmployeeWorkload";
+import PriorityChart from "../../components/dashboard/analytics/PriorityChart";
+import UpcomingDeadlines from "../../components/dashboard/analytics/UpcomingDeadlines";
+
 import RecentProjects from "../../components/dashboard/RecentProjects";
 import RecentTasks from "../../components/dashboard/RecentTasks";
 import PendingTasks from "../../components/dashboard/PendingTasks";
@@ -25,7 +30,7 @@ function DashboardPage() {
   });
 
 
-  const dashboard = data?.data;
+  const dashboard = data;
 
 
   const stats = {
@@ -74,43 +79,42 @@ function DashboardPage() {
 
 
   return (
-    <DashboardLayout>
+  <DashboardLayout>
+    <div className="space-y-6">
 
-      <div className="space-y-6">
+      <h1 className="text-3xl font-bold">
+        Dashboard
+      </h1>
 
-        <h1 className="text-3xl font-bold">
-          Dashboard
-        </h1>
+      <DashboardHeader />
 
+      <DashboardStats
+        stats={stats}
+      />
 
-        <DashboardHeader />
+      <DashboardCharts />
 
-
-        <DashboardStats
-          stats={stats}
-        />
-
-
-        <DashboardCharts />
-
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-          <RecentProjects />
-
-          <RecentTasks />
-
-          <PendingTasks />
-
-        </div>
-
-
-        <ActivityFeed />
-
-
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <EmployeeWorkload />
+        <PriorityChart />
       </div>
 
-    </DashboardLayout>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <UpcomingDeadlines />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <RecentProjects />
+        <RecentTasks />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <PendingTasks />
+        <ActivityFeed />
+      </div>
+
+    </div>
+  </DashboardLayout>
   );
 }
 

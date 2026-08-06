@@ -19,6 +19,7 @@ export const PATHS = {
   ADD_PROJECT: "/projects/add",
   EDIT_PROJECT: "/projects/edit/:id",
   VIEW_PROJECT: "/projects/:id",
+  KANBAN: "/projects/:projectId/kanban",
 
   TASKS: "/tasks",
   ADD_TASK: "/tasks/add",

@@ -23,8 +23,8 @@ export default function PendingTasks() {
     try {
       const response = await getRecentTasks();
 
-      const tasks = Array.isArray(response.data)
-        ? response.data
+      const tasks = Array.isArray(response)
+        ? response
         : [];
 
 

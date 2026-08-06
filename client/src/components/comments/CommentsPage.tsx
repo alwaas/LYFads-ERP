@@ -18,11 +18,6 @@ export default function CommentsPage(){
 
     const response = await commentService.getComments();
 
-    console.log(
-    "COMMENTS API RESPONSE:",
-    response
-    );
-
     setComments(response.data);
 
     };

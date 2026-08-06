@@ -1,6 +1,7 @@
 import type { Employee } from "../../types/employee";
 import EmployeeAvatar from "./EmployeeAvatar";
 import { Link } from "react-router-dom";
+import { usePermission } from "../../hooks/usePermission";
 
 type Props = {
   employees: Employee[];
@@ -8,6 +9,7 @@ type Props = {
 };
 
 function EmployeeTable({ employees, onDelete }: Props) {
+  const { hasPermission } = usePermission();
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden">
       <div className="overflow-x-auto">
@@ -96,19 +98,23 @@ function EmployeeTable({ employees, onDelete }: Props) {
                       View
                     </Link>
 
-                    <Link
-                      to={`/employees/edit/${employee.id}`}
-                      className="text-green-600 hover:underline mr-3"
-                    >
-                      Edit
-                    </Link>
+                    {hasPermission("employees", "edit") && (
+                      <Link
+                        to={`/employees/edit/${employee.id}`}
+                        className="text-green-600 hover:underline mr-3"
+                      >
+                        Edit
+                      </Link>
+                    )}
 
-                    <button
-                      onClick={() => onDelete(employee.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    {hasPermission("employees", "delete") && (
+                      <button
+                        onClick={() => onDelete(employee.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

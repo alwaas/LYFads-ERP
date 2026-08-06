@@ -42,7 +42,7 @@ export default function RecentProjects() {
     try {
       const response = await getRecentProjects();
 
-      setProjects(response.data);
+      setProjects(Array.isArray(response) ? response : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -103,44 +103,49 @@ export default function RecentProjects() {
             </thead>
 
             <tbody>
-
-              {(Array.isArray(projects) ? projects : []).map((project) => (
-
-                <tr
-                  key={project.id}
-                  className="border-b hover:bg-gray-50"
-                >
-
-                  <td className="py-3">
-                    {project.name}
+              {projects.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="text-center py-10 text-gray-500"
+                  >
+                    No Recent Projects
                   </td>
-
-                  <td>
-                    {project.client?.companyName ?? "-"}
-                  </td>
-
-                  <td>
-
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor(
-                        project.status
-                      )}`}
-                    >
-                      {project.status}
-                    </span>
-
-                  </td>
-
-                  <td>
-                    {project.endDate
-                      ? new Date(project.endDate).toLocaleDateString()
-                      : "-"}
-                  </td>
-
                 </tr>
+              ) : (
+                projects.map((project) => (
+                  <tr
+                    key={project.id}
+                    className="border-b hover:bg-gray-50"
+                  >
+                    <td className="py-3">
+                      {project.name}
+                    </td>
 
-              ))}
+                    <td>
+                      {project.client?.companyName ?? "-"}
+                    </td>
 
+                    <td>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor(
+                          project.status
+                        )}`}
+                      >
+                        {project.status}
+                      </span>
+                    </td>
+
+                    <td>
+                      {project.endDate
+                        ? new Date(
+                            project.endDate
+                          ).toLocaleDateString()
+                        : "-"}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
 
           </table>

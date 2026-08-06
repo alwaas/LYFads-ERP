@@ -7,33 +7,6 @@ export type WorkStatus =
 export interface DailyWorkReport {
   id: string;
 
-  employeeId: string;
-
-  employee: {
-    id: string;
-    employeeCode: string;
-
-    user: {
-      id: string;
-      fullName: string;
-      email: string;
-    };
-  };
-
-  projectId?: string | null;
-
-  project?: {
-    id: string;
-    name: string;
-  } | null;
-
-  taskId?: string | null;
-
-  task?: {
-    id: string;
-    title: string;
-  } | null;
-
   reportDate: string;
 
   yesterdayWork?: string;
@@ -48,18 +21,39 @@ export interface DailyWorkReport {
 
   managerRemarks?: string;
 
-  createdAt: string;
-
-  updatedAt: string;
-}
-
-export interface CreateDailyWorkReportDto {
   employeeId: string;
 
   projectId?: string;
 
   taskId?: string;
 
+  createdAt: string;
+
+  updatedAt: string;
+
+  employee: {
+    id: string;
+    employeeCode: string;
+
+    user: {
+      id: string;
+      fullName: string;
+      email: string;
+    };
+  };
+
+  project?: {
+    id: string;
+    name: string;
+  } | null;
+
+  task?: {
+    id: string;
+    title: string;
+  } | null;
+}
+
+export interface CreateDailyWorkReportDto {
   reportDate: string;
 
   yesterdayWork?: string;
@@ -70,7 +64,16 @@ export interface CreateDailyWorkReportDto {
 
   hoursWorked: number;
 
-  status?: WorkStatus;
+  status: WorkStatus;
 
   managerRemarks?: string;
+
+  employeeId: string;
+
+  projectId?: string;
+
+  taskId?: string;
 }
+
+export interface UpdateDailyWorkReportDto
+  extends Partial<CreateDailyWorkReportDto> {}

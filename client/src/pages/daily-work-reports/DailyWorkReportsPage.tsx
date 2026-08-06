@@ -116,8 +116,7 @@ function DailyWorkReportsPage() {
     ]);
 
   const totalPages = Math.ceil(
-    filteredReports.length /
-      rowsPerPage
+    filteredReports.length / rowsPerPage
   );
 
   const paginatedReports =

@@ -1,35 +1,66 @@
 export interface DashboardStats {
-  users: number;
+  totalProjects: number;
+  totalTasks: number;
+  totalEmployees: number;
+  totalClients: number;
 
-  employees: {
-    total: number;
-    active: number;
-    inactive: number;
-  };
+  completedProjects: number;
+  activeProjects: number;
 
-  clients: number;
+  completedTasks: number;
+  pendingTasks: number;
 
-  projects: {
-    total: number;
-    active: number;
-    completed: number;
-  };
-
-  tasks: {
-    total: number;
-    completed: number;
-    pending: number;
-  };
+  totalRevenue: number;
 }
 
-export interface ChartData {
-  projectStatus: {
-    name: string;
-    value: number;
-  }[];
+export interface TaskStatusData {
+  status: string;
+  count: number;
+}
 
-  taskStatus: {
-    name: string;
-    value: number;
-  }[];
+export interface ProjectStatusData {
+  status: string;
+  count: number;
+}
+
+export interface PriorityData {
+  priority: string;
+  count: number;
+}
+
+export interface EmployeeWorkload {
+  employeeId: string;
+  employeeName: string;
+  totalTasks: number;
+}
+
+export interface UpcomingDeadline {
+  id: string;
+  title: string;
+  dueDate: string;
+  projectName: string;
+}
+
+export interface RecentActivity {
+  id: string;
+  action: string;
+  module: string;
+  description: string;
+  createdAt: string;
+}
+
+export interface DashboardData {
+  stats: DashboardStats;
+
+  taskStatus: TaskStatusData[];
+
+  projectStatus: ProjectStatusData[];
+
+  priorities: PriorityData[];
+
+  workload: EmployeeWorkload[];
+
+  deadlines: UpcomingDeadline[];
+
+  recentActivities: RecentActivity[];
 }
