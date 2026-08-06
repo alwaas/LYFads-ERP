@@ -1,9 +1,18 @@
 import { Module } from '@nestjs/common';
-import { LeavesService } from './leaves.service';
+
+import { PrismaModule } from '../../database/prisma.module';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+
 import { LeavesController } from './leaves.controller';
+import { LeavesService } from './leaves.service';
 
 @Module({
-  providers: [LeavesService],
+  imports: [
+    PrismaModule,
+    ActivityLogsModule,
+  ],
   controllers: [LeavesController],
+  providers: [LeavesService],
+  exports: [LeavesService],
 })
 export class LeavesModule {}

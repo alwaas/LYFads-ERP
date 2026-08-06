@@ -327,4 +327,194 @@ export class DashboardService {
       },
     });
   }
+
+  async getEmployeeWorkload() {
+    const employees = await this.prisma.employee.findMany({
+      include: {
+        user: {
+          select: {
+            fullName: true,
+          },
+        },
+        Task: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    return employees.map((employee) => ({
+      name: employee.user.fullName,
+      tasks: employee.Task.length,
+    }));
+  }
+
+  async getPriorityChart() {
+    const [low, medium, high, urgent] =
+      await this.prisma.$transaction([
+        this.prisma.task.count({
+          where: {
+            priority: "LOW",
+          },
+        }),
+
+        this.prisma.task.count({
+          where: {
+            priority: "MEDIUM",
+          },
+        }),
+
+        this.prisma.task.count({
+          where: {
+            priority: "HIGH",
+          },
+        }),
+
+        this.prisma.task.count({
+          where: {
+            priority: "URGENT",
+          },
+        }),
+      ]);
+
+    return [
+      {
+        name: "Low",
+        value: low,
+      },
+      {
+        name: "Medium",
+        value: medium,
+      },
+      {
+        name: "High",
+        value: high,
+      },
+      {
+        name: "Urgent",
+        value: urgent,
+      },
+    ];
+  }
+
+  async getProjectStatusChart() {
+    const [
+      active,
+      completed,
+      pending,
+    ] = await this.prisma.$transaction([
+      this.prisma.project.count({
+        where: {
+          status: "ACTIVE",
+        },
+      }),
+
+      this.prisma.project.count({
+        where: {
+          status: "COMPLETED",
+        },
+      }),
+
+      this.prisma.project.count({
+        where: {
+          status: "PLANNING",
+        },
+      }),
+    ]);
+
+    return [
+      {
+        name: "Active",
+        value: active,
+      },
+      {
+        name: "Completed",
+        value: completed,
+      },
+      {
+        name: "Pending",
+        value: pending,
+      },
+    ];
+  }
+
+  async getTaskStatusChart() {
+    const [
+      todo,
+      progress,
+      completed,
+    ] = await this.prisma.$transaction([
+      this.prisma.task.count({
+        where: {
+          status: "TODO",
+        },
+      }),
+
+      this.prisma.task.count({
+        where: {
+          status: "IN_PROGRESS",
+        },
+      }),
+
+      this.prisma.task.count({
+        where: {
+          status: "COMPLETED",
+        },
+      }),
+    ]);
+
+    return [
+      {
+        name: "Todo",
+        value: todo,
+      },
+      {
+        name: "In Progress",
+        value: progress,
+      },
+      {
+        name: "Completed",
+        value: completed,
+      },
+    ];
+  }
+
+  async getUpcomingDeadlines() {
+    return this.prisma.task.findMany({
+      where: {
+        dueDate: {
+          gte: new Date(),
+        },
+        NOT: {
+          status: "COMPLETED",
+        },
+      },
+
+      orderBy: {
+        dueDate: "asc",
+      },
+
+      take: 10,
+
+      include: {
+        employee: {
+          include: {
+            user: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
+
+        project: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
 }

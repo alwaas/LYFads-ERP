@@ -199,17 +199,13 @@ export class TasksService {
   }
 
   async update(id: string, dto: UpdateTaskDto) {
-    const task = await this.prisma.task.findUnique({
-      where: { id },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Task not found.');
-    }
+    await this.findOne(id);
 
     if (dto.projectId) {
       const project = await this.prisma.project.findUnique({
-        where: { id: dto.projectId },
+        where: {
+          id: dto.projectId,
+        },
       });
 
       if (!project) {
@@ -219,7 +215,9 @@ export class TasksService {
 
     if (dto.employeeId) {
       const employee = await this.prisma.employee.findUnique({
-        where: { id: dto.employeeId },
+        where: {
+          id: dto.employeeId,
+        },
       });
 
       if (!employee) {
@@ -227,17 +225,32 @@ export class TasksService {
       }
     }
 
-    const updatedTask = await this.prisma.task.update({
-      where: { id },
+    const task = await this.prisma.task.update({
+      where: {
+        id,
+      },
       data: {
         ...dto,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
       },
       include: {
-        project: true,
+        project: {
+          select: {
+            id: true,
+            projectCode: true,
+            name: true,
+          },
+        },
         employee: {
           include: {
-            user: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                role: true,
+              },
+            },
           },
         },
       },
@@ -246,31 +259,27 @@ export class TasksService {
     await this.activityLogsService.log({
       action: 'UPDATE',
       module: 'TASK',
-      description: `Task "${updatedTask.title}" updated successfully.`,
-      userId: updatedTask.employee?.user?.id ?? undefined,
+      description: `Task "${task.title}" updated successfully.`,
+      userId: task.employee?.user?.id ?? undefined,
     });
 
-    return updatedTask;
+    return task;
   }
 
   async remove(id: string) {
-    const task = await this.prisma.task.findUnique({
-      where: { id },
-    });
-
-    if (!task) {
-      throw new NotFoundException('Task not found.');
-    }
+    const task = await this.findOne(id);
 
     await this.prisma.task.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     await this.activityLogsService.log({
       action: 'DELETE',
       module: 'TASK',
       description: `Task "${task.title}" deleted successfully.`,
-      userId: task.employeeId ?? undefined,
+      userId: task.employee?.user?.id ?? undefined,
     });
 
     return {

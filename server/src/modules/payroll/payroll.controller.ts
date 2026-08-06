@@ -6,12 +6,16 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { PayrollService } from './payroll.service';
 
 import { CreatePayrollDto } from './dto/create-payroll.dto';
 import { UpdatePayrollDto } from './dto/update-payroll.dto';
+
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('payroll')
 export class PayrollController {
@@ -23,8 +27,11 @@ export class PayrollController {
   }
 
   @Get()
-  findAll() {
-    return this.payrollService.findAll();
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+  ) {
+    return this.payrollService.findAll(pagination, search);
   }
 
   @Get(':id')
@@ -33,7 +40,10 @@ export class PayrollController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdatePayrollDto) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePayrollDto,
+  ) {
     return this.payrollService.update(id, dto);
   }
 

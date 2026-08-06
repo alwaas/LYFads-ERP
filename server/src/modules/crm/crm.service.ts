@@ -3,8 +3,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+
+import { Prisma, PrismaClient } from '@prisma/client';
+
 import { PrismaService } from '../../database/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { GetLeadsDto } from './dto/get-leads.dto';
@@ -17,16 +21,28 @@ export class CrmService {
   ) {}
 
   async create(dto: CreateLeadDto) {
-    const existingLead = dto.email
-      ? await this.prisma.lead.findFirst({
-          where: {
-            email: dto.email.toLowerCase(),
-          },
-        })
-      : null;
+    if (dto.email) {
+      const existingLead = await this.prisma.lead.findFirst({
+        where: {
+          email: dto.email.toLowerCase(),
+        },
+      });
 
-    if (existingLead) {
-      throw new ConflictException('Lead already exists.');
+      if (existingLead) {
+        throw new ConflictException('Lead already exists.');
+      }
+    }
+
+    if (dto.assignedToId) {
+      const employee = await this.prisma.employee.findUnique({
+        where: {
+          id: dto.assignedToId,
+        },
+      });
+
+      if (!employee) {
+        throw new NotFoundException('Assigned employee not found.');
+      }
     }
 
     const lead = await this.prisma.lead.create({
@@ -50,7 +66,7 @@ export class CrmService {
     await this.activityLogsService.log({
       action: 'CREATE',
       module: 'CRM',
-      description: `Lead ${lead.companyName} created.`,
+      description: `Lead "${lead.companyName}" created successfully.`,
       userId: lead.assignedToId ?? undefined,
     });
 
@@ -58,31 +74,34 @@ export class CrmService {
   }
 
   async findAll(query: GetLeadsDto) {
-    const { page, limit, search } = query;
-
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    const where = search
+    const where: Prisma.LeadWhereInput = query.search
       ? {
           OR: [
             {
               companyName: {
-                contains: search,
+                contains: query.search,
+                mode: Prisma.QueryMode.insensitive,
               },
             },
             {
               contactPerson: {
-                contains: search,
+                contains: query.search,
+                mode: Prisma.QueryMode.insensitive,
               },
             },
             {
               email: {
-                contains: search,
+                contains: query.search,
+                mode: Prisma.QueryMode.insensitive,
               },
             },
           ],
         }
-      : undefined;
+      : {};
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.lead.findMany({
@@ -97,7 +116,6 @@ export class CrmService {
           createdAt: 'desc',
         },
       }),
-
       this.prisma.lead.count({
         where,
       }),
@@ -114,7 +132,9 @@ export class CrmService {
 
   async findOne(id: string) {
     const lead = await this.prisma.lead.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
       include: {
         assignedTo: true,
         followUps: true,
@@ -131,8 +151,22 @@ export class CrmService {
   async update(id: string, dto: UpdateLeadDto) {
     await this.findOne(id);
 
+    if (dto.assignedToId) {
+      const employee = await this.prisma.employee.findUnique({
+        where: {
+          id: dto.assignedToId,
+        },
+      });
+
+      if (!employee) {
+        throw new NotFoundException('Assigned employee not found.');
+      }
+    }
+
     const lead = await this.prisma.lead.update({
-      where: { id },
+      where: {
+        id,
+      },
       data: {
         companyName: dto.companyName,
         contactPerson: dto.contactPerson,
@@ -153,7 +187,7 @@ export class CrmService {
     await this.activityLogsService.log({
       action: 'UPDATE',
       module: 'CRM',
-      description: `Lead ${lead.companyName} updated.`,
+      description: `Lead "${lead.companyName}" updated successfully.`,
       userId: lead.assignedToId ?? undefined,
     });
 
@@ -164,13 +198,15 @@ export class CrmService {
     const lead = await this.findOne(id);
 
     await this.prisma.lead.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     await this.activityLogsService.log({
       action: 'DELETE',
       module: 'CRM',
-      description: `Lead ${lead.companyName} deleted.`,
+      description: `Lead "${lead.companyName}" deleted successfully.`,
       userId: lead.assignedToId ?? undefined,
     });
 

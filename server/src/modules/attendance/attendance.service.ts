@@ -13,7 +13,11 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AttendanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Future:
+    // private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
   async checkIn(dto: CreateAttendanceDto) {
     const employee = await this.prisma.employee.findUnique({
@@ -85,7 +89,7 @@ export class AttendanceService {
       throw new ConflictException('Already checked out today.');
     }
 
-    return this.prisma.attendance.update({
+    const attendanceRecord = await this.prisma.attendance.update({
       where: {
         id: attendance.id,
       },
@@ -105,6 +109,18 @@ export class AttendanceService {
         },
       },
     });
+
+    // Future Activity Log
+    /*
+    await this.activityLogsService.log({
+      action: 'CHECK_OUT',
+      module: 'ATTENDANCE',
+      description: 'Employee checked out.',
+      userId: attendanceRecord.employee.user.id,
+    });
+    */
+
+    return attendanceRecord;
   }
 
   async todayAttendance() {
@@ -171,6 +187,11 @@ export class AttendanceService {
           },
         },
         orderBy: {
+          // TODO:
+          // Add Date Range Filter
+          // Add Employee Filter
+          // Add Department Filter
+          // Add Export CSV/PDF
           date: 'desc',
         },
       }),

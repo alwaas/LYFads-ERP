@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 
@@ -10,14 +11,25 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
   imports: [
+    ConfigModule,
+
     PrismaModule,
+
     PassportModule,
+
     ActivityLogsModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'lyfads-super-secret-key-2026',
-      signOptions: {
-        expiresIn: '1d',
-      },
+
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('JWT_SECRET'),
+
+        signOptions: {
+          expiresIn: '1d',
+        },
+      }),
     }),
   ],
   controllers: [AuthController],

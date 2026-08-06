@@ -99,6 +99,8 @@ export class ProjectsService {
       data,
     };
   }
+  // TODO:
+  // Add search, status, manager and client filters.
 
   async findOne(id: string) {
     const project = await this.prisma.project.findUnique({

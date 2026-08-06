@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
 import { PrismaService } from '../../database/prisma.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
 
@@ -6,9 +10,40 @@ import { CreateAttachmentDto } from './dto/create-attachment.dto';
 export class AttachmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(dto: CreateAttachmentDto) {
+  async create(dto: CreateAttachmentDto) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: dto.uploadedBy,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
     return this.prisma.attachment.create({
-      data: dto,
+      data: {
+        fileName: dto.fileName,
+        originalName: dto.originalName,
+        mimeType: dto.mimeType,
+        fileSize: dto.fileSize,
+        fileUrl: dto.fileUrl,
+
+        uploadedBy: dto.uploadedBy,
+
+        projectId: dto.projectId,
+        taskId: dto.taskId,
+        milestoneId: dto.milestoneId,
+        commentId: dto.commentId,
+      },
+
+      include: {
+        user: true,
+        project: true,
+        task: true,
+        milestone: true,
+        comment: true,
+      },
     });
   }
 
@@ -27,9 +62,11 @@ export class AttachmentsService {
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.attachment.findUnique({
-      where: { id },
+  async findOne(id: string) {
+    const attachment = await this.prisma.attachment.findUnique({
+      where: {
+        id,
+      },
       include: {
         user: true,
         project: true,
@@ -38,11 +75,34 @@ export class AttachmentsService {
         comment: true,
       },
     });
+
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found.');
+    }
+
+    return attachment;
   }
 
-  remove(id: string) {
-    return this.prisma.attachment.delete({
-      where: { id },
+  async remove(id: string) {
+    const attachment = await this.prisma.attachment.findUnique({
+      where: {
+        id,
+      },
     });
+
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found.');
+    }
+
+    await this.prisma.attachment.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Attachment deleted successfully.',
+    };
   }
 }

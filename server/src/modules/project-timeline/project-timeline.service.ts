@@ -1,9 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
 import { PrismaService } from '../../database/prisma.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class ProjectTimelineService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
   async getTimeline(projectId: string) {
     const project = await this.prisma.project.findUnique({
@@ -11,24 +19,52 @@ export class ProjectTimelineService {
         id: projectId,
       },
       include: {
+        client: true,
+
+        manager: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+
         milestones: {
           orderBy: {
             startDate: 'asc',
           },
         },
+
         tasks: {
           orderBy: {
             dueDate: 'asc',
+          },
+          include: {
+            employee: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
     });
 
+    if (!project) {
+      throw new NotFoundException('Project not found.');
+    }
+
     return project;
   }
 
   async getUpcomingDeadlines() {
-    return this.prisma.milestone.findMany({
+    const milestones = await this.prisma.milestone.findMany({
       where: {
         completedAt: null,
       },
@@ -40,5 +76,13 @@ export class ProjectTimelineService {
         project: true,
       },
     });
+
+    await this.activityLogsService.log({
+      action: 'VIEW',
+      module: 'PROJECT_TIMELINE',
+      description: 'Viewed upcoming project deadlines.',
+    });
+
+    return milestones;
   }
 }

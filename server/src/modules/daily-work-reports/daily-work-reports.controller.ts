@@ -22,37 +22,68 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('daily-work-reports')
-@Roles(
-  UserRole.SUPER_ADMIN,
-  UserRole.ADMIN,
-  UserRole.MANAGER,
-  UserRole.EMPLOYEE,
-)
 export class DailyWorkReportsController {
   constructor(
     private readonly dailyWorkReportsService: DailyWorkReportsService,
   ) {}
 
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.MANAGER,
+    UserRole.EMPLOYEE,
+  )
   @Post()
   create(@Body() dto: CreateDailyWorkReportDto) {
     return this.dailyWorkReportsService.create(dto);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateDailyWorkReportDto) {
-    return this.dailyWorkReportsService.update(id, dto);
-  }
-
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.MANAGER,
+    UserRole.EMPLOYEE,
+  )
   @Get()
-  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
-    return this.dailyWorkReportsService.findAll(pagination, search);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+  ) {
+    return this.dailyWorkReportsService.findAll(
+      pagination,
+      search,
+    );
   }
 
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.MANAGER,
+    UserRole.EMPLOYEE,
+  )
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.dailyWorkReportsService.findOne(id);
   }
 
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.MANAGER,
+    UserRole.EMPLOYEE,
+  )
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateDailyWorkReportDto,
+  ) {
+    return this.dailyWorkReportsService.update(id, dto);
+  }
+
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+  )
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.dailyWorkReportsService.delete(id);

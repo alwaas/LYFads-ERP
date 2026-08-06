@@ -7,10 +7,12 @@ import {
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../../database';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class EmployeesService {
@@ -20,78 +22,68 @@ export class EmployeesService {
   ) {}
 
   async create(dto: CreateEmployeeDto) {
-    try {
-      const existingUser = await this.prisma.user.findUnique({
-        where: {
+    const existingUser = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email.toLowerCase(),
+      },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('Email already exists.');
+    }
+
+    const existingEmployee = await this.prisma.employee.findUnique({
+      where: {
+        employeeCode: dto.employeeCode,
+      },
+    });
+
+    if (existingEmployee) {
+      throw new ConflictException('Employee code already exists.');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 12);
+
+    const employee = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          fullName: dto.fullName,
           email: dto.email.toLowerCase(),
+          password: hashedPassword,
+          role: dto.role,
         },
       });
 
-      if (existingUser) {
-        throw new ConflictException('Email already exists.');
-      }
-
-      const existingEmployee = await this.prisma.employee.findUnique({
-        where: {
+      return tx.employee.create({
+        data: {
           employeeCode: dto.employeeCode,
+          phone: dto.phone,
+          designation: dto.designation,
+          department: dto.department,
+          userId: user.id,
         },
-      });
-
-      if (existingEmployee) {
-        throw new ConflictException('Employee code already exists.');
-      }
-
-      const hashedPassword = await bcrypt.hash(dto.password, 12);
-
-      const employee = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            fullName: dto.fullName,
-            email: dto.email.toLowerCase(),
-            password: hashedPassword,
-            role: dto.role,
-          },
-        });
-
-        return await tx.employee.create({
-          data: {
-            employeeCode: dto.employeeCode,
-            phone: dto.phone,
-            designation: dto.designation,
-            department: dto.department,
-            userId: user.id,
-          },
-          include: {
-            user: {
-              select: {
-                id: true,
-                fullName: true,
-                email: true,
-                role: true,
-                isActive: true,
-              },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+              isActive: true,
             },
           },
-        });
+        },
       });
+    });
 
-      // Temporarily disable activity log to verify create works.
-      // Uncomment after fixing ActivityLogsService.
-      /*
-      await this.activityLogsService.log({
-        action: "CREATE",
-        module: "EMPLOYEE",
-        description: `Employee ${employee.employeeCode} created successfully.`,
-        userId: employee.userId,
-      });
-      */
+    await this.activityLogsService.log({
+      action: 'CREATE',
+      module: 'EMPLOYEE',
+      description: `Employee ${employee.employeeCode} created successfully.`,
+      userId: employee.user.id,
+    });
 
-      return employee;
-    } catch (error) {
-      console.error('========== CREATE EMPLOYEE ERROR ==========');
-      console.error(error);
-      throw error;
-    }
+    return employee;
   }
 
   async findAll(pagination: PaginationDto) {
@@ -131,7 +123,9 @@ export class EmployeesService {
 
   async findOne(id: string) {
     const employee = await this.prisma.employee.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
       include: {
         user: {
           select: {
@@ -182,7 +176,7 @@ export class EmployeesService {
       action: 'UPDATE',
       module: 'EMPLOYEE',
       description: `Employee ${employee.employeeCode} updated successfully.`,
-      userId: employee.userId,
+      userId: employee.user.id,
     });
 
     return employee;

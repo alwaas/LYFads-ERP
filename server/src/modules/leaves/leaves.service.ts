@@ -5,16 +5,23 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '../../database';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+
 import { CreateLeaveDto } from './dto/create-leave.dto';
 import { UpdateLeaveDto } from './dto/update-leave.dto';
 import { UpdateLeaveStatusDto } from './dto/update-leave-status.dto';
+
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
+
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class LeavesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
   async create(dto: CreateLeaveDto) {
     const employee = await this.prisma.employee.findUnique({
@@ -25,6 +32,12 @@ export class LeavesService {
 
     if (!employee) {
       throw new NotFoundException('Employee not found.');
+    }
+
+    if (new Date(dto.endDate) < new Date(dto.startDate)) {
+      throw new ConflictException(
+        'End date cannot be earlier than start date.',
+      );
     }
 
     const overlap = await this.prisma.leave.findFirst({
@@ -52,7 +65,7 @@ export class LeavesService {
       );
     }
 
-    return this.prisma.leave.create({
+    const leave = await this.prisma.leave.create({
       data: {
         employeeId: dto.employeeId,
         leaveType: dto.leaveType,
@@ -75,6 +88,15 @@ export class LeavesService {
         },
       },
     });
+
+    await this.activityLogsService.log({
+      action: 'CREATE',
+      module: 'LEAVE',
+      description: 'Leave request created.',
+      userId: leave.employee.user.id,
+    });
+
+    return leave;
   }
 
   async update(id: string, dto: UpdateLeaveDto) {
@@ -98,7 +120,7 @@ export class LeavesService {
       );
     }
 
-    return this.prisma.leave.update({
+    const updatedLeave = await this.prisma.leave.update({
       where: {
         id,
       },
@@ -106,19 +128,15 @@ export class LeavesService {
         ...(dto.leaveType && {
           leaveType: dto.leaveType,
         }),
-
         ...(dto.startDate && {
           startDate: new Date(dto.startDate),
         }),
-
         ...(dto.endDate && {
           endDate: new Date(dto.endDate),
         }),
-
         ...(dto.reason !== undefined && {
           reason: dto.reason,
         }),
-
         ...(dto.remarks !== undefined && {
           remarks: dto.remarks,
         }),
@@ -137,6 +155,15 @@ export class LeavesService {
         },
       },
     });
+
+    await this.activityLogsService.log({
+      action: 'UPDATE',
+      module: 'LEAVE',
+      description: 'Leave request updated.',
+      userId: updatedLeave.employee.user.id,
+    });
+
+    return updatedLeave;
   }
 
   async updateStatus(id: string, dto: UpdateLeaveStatusDto) {
@@ -144,13 +171,20 @@ export class LeavesService {
       where: {
         id,
       },
+      include: {
+        employee: {
+          include: {
+            user: true,
+          },
+        },
+      },
     });
 
     if (!leave) {
       throw new NotFoundException('Leave request not found.');
     }
 
-    return this.prisma.leave.update({
+    const updatedLeave = await this.prisma.leave.update({
       where: {
         id,
       },
@@ -172,6 +206,15 @@ export class LeavesService {
         },
       },
     });
+
+    await this.activityLogsService.log({
+      action: 'STATUS_UPDATE',
+      module: 'LEAVE',
+      description: `Leave ${dto.status}.`,
+      userId: updatedLeave.employee.user.id,
+    });
+
+    return updatedLeave;
   }
 
   async findAll(pagination: PaginationDto, search: SearchDto) {

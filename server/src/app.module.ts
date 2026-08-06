@@ -11,8 +11,8 @@ import { UsersModule } from './modules/users/users.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { ProjectsModule } from './modules/projects/projects.module';
-import { TasksService } from './modules/tasks/tasks.service';
-import { TasksController } from './modules/tasks/tasks.controller';
+// import { TasksService } from './modules/tasks/tasks.service';
+// import { TasksController } from './modules/tasks/tasks.controller';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
@@ -88,8 +88,6 @@ import { PaymentsModule } from './modules/payments/payments.module';
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
     },
-    TasksService,
   ],
-  controllers: [TasksController],
 })
 export class AppModule {}

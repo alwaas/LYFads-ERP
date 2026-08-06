@@ -1,17 +1,25 @@
-import { IsOptional, IsString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateCommentDto {
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
   message: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   projectId?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   taskId?: string;
 
-  @IsString()
+  @IsUUID()
   userId: string;
 }

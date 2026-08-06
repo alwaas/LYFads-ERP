@@ -39,6 +39,31 @@ export class DashboardController {
     return this.dashboardService.getCharts();
   }
 
+  @Get('employee-workload')
+  getEmployeeWorkload() {
+    return this.dashboardService.getEmployeeWorkload();
+  }
+
+  @Get('priority-chart')
+  getPriorityChart() {
+    return this.dashboardService.getPriorityChart();
+  }
+
+  @Get('project-status-chart')
+  getProjectStatusChart() {
+    return this.dashboardService.getProjectStatusChart();
+  }
+
+  @Get('task-status-chart')
+  getTaskStatusChart() {
+    return this.dashboardService.getTaskStatusChart();
+  }
+
+  @Get('upcoming-deadlines')
+  getUpcomingDeadlines() {
+    return this.dashboardService.getUpcomingDeadlines();
+  }
+
   @Get('recent-activities')
   getRecentActivities() {
     return this.dashboardService.getRecentActivities();

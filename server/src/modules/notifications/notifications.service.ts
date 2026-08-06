@@ -1,14 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import { Prisma, UserRole } from '@prisma/client';
 
 import { PrismaService } from '../../database';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
   async create(dto: CreateNotificationDto) {
     const user = await this.prisma.user.findUnique({
@@ -21,13 +30,32 @@ export class NotificationsService {
       throw new NotFoundException('User not found.');
     }
 
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId: dto.userId,
         title: dto.title,
         message: dto.message,
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
     });
+
+    await this.activityLogsService.log({
+      action: 'CREATE',
+      module: 'NOTIFICATION',
+      description: `Notification "${notification.title}" created.`,
+      userId: notification.userId,
+    });
+
+    return notification;
   }
 
   async markAsRead(id: string) {
@@ -41,7 +69,7 @@ export class NotificationsService {
       throw new NotFoundException('Notification not found.');
     }
 
-    return this.prisma.notification.update({
+    const updated = await this.prisma.notification.update({
       where: {
         id,
       },
@@ -49,9 +77,21 @@ export class NotificationsService {
         isRead: true,
       },
     });
+
+    await this.activityLogsService.log({
+      action: 'UPDATE',
+      module: 'NOTIFICATION',
+      description: `Notification marked as read.`,
+      userId: updated.userId,
+    });
+
+    return updated;
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+  ) {
     const { skip, limit } = pagination;
 
     const where: Prisma.NotificationWhereInput = search.search
@@ -78,6 +118,16 @@ export class NotificationsService {
         where,
         skip,
         take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
         orderBy: {
           createdAt: 'desc',
         },
@@ -97,7 +147,17 @@ export class NotificationsService {
   }
 
   async unreadCount(userId: string) {
-    const count = await this.prisma.notification.count({
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    const unread = await this.prisma.notification.count({
       where: {
         userId,
         isRead: false,
@@ -105,7 +165,7 @@ export class NotificationsService {
     });
 
     return {
-      unread: count,
+      unread,
     };
   }
 }
