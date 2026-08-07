@@ -20,157 +20,153 @@ type Props = {
   defaultValues?: ClientFormData;
 };
 
-function ClientForm({ loading, onSubmit, defaultValues, }: Props) {
+function ClientForm({ loading, onSubmit, defaultValues }: Props) {
   const {
     register,
     handleSubmit,
-  } = useForm<ClientFormData>({defaultValues,});
+  } = useForm<ClientFormData>({ defaultValues });
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-white rounded-xl shadow-md p-6 space-y-5"
+      className="bg-white rounded-xl shadow-xs p-6 space-y-5 w-full"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
         <div>
-          <label className="block mb-1 font-medium">
-            Company Name
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
+            Company Name *
           </label>
-
           <input
-            {...register("companyName", {
-              required: true,
-            })}
-            className="w-full border rounded-lg px-4 py-2"
+            {...register("companyName", { required: true })}
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter company name"
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">
-            Contact Person
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
+            Contact Person *
           </label>
-
           <input
-            {...register("contactPerson", {
-              required: true,
-            })}
-            className="w-full border rounded-lg px-4 py-2"
+            {...register("contactPerson", { required: true })}
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter contact person name"
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">
-            Email
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
+            Email *
           </label>
-
           <input
             type="email"
-            {...register("email", {
-              required: true,
-            })}
-            className="w-full border rounded-lg px-4 py-2"
+            {...register("email", { required: true })}
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter email address"
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
             Phone
           </label>
-
           <input
             {...register("phone")}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter phone number"
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
             Website
           </label>
-
           <input
             {...register("website")}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="https://example.com"
           />
         </div>
 
         <div>
-            <label className="block mb-1 font-medium">
-                GST Number
-            </label>
-
-            <input
-                {...register("gstNumber")}
-                className="w-full border rounded-lg px-4 py-2"
-            />
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
+            GST Number
+          </label>
+          <input
+            {...register("gstNumber")}
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter GST number"
+          />
         </div>
 
         <div className="md:col-span-2">
-          <label className="block mb-1 font-medium">
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
             Address
           </label>
-
           <textarea
             {...register("address")}
             rows={3}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter full address"
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
             City
           </label>
-
           <input
             {...register("city")}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter city"
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
             State
           </label>
-
           <input
             {...register("state")}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter state"
           />
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
             Country
           </label>
-
-          <div>
-            <label className="block mb-1 font-medium">
-              Pincode
-            </label>
-
-            <input
-              {...register("pincode")}
-              className="w-full border rounded-lg px-4 py-2"
-            />
-          </div>
-
           <input
             {...register("country")}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter country"
+          />
+        </div>
+
+        <div>
+          <label className="block mb-1 text-sm font-semibold text-slate-700">
+            Pincode
+          </label>
+          <input
+            {...register("pincode")}
+            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
+            placeholder="Enter pincode"
           />
         </div>
 
       </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-      >
-        {loading ? "Saving..." : "Save Client"}
-      </button>
+      <div className="pt-4 flex justify-end">
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 transition shadow-sm"
+        >
+          {loading ? "Saving..." : "Save Client"}
+        </button>
+      </div>
     </form>
   );
 }

@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { lazy, Suspense } from "react";
 
 import LoginPage from "../pages/auth/LoginPage";
+import ViewClientPage from "../pages/clients/ViewClientPage";
 // import DashboardPage from "../pages/dashboard/DashboardPage";
 
 // import EmployeesPage from "../pages/employees/EmployeesPage";
@@ -302,6 +303,17 @@ const router = createBrowserRouter([
         <Suspense fallback={<PageLoader />}>
           <ClientsPage />
         </Suspense> 
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/clients/view/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewClientPage />
+        </Suspense>
       </ProtectedRoute>
     ),
   },

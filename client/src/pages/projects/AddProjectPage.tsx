@@ -1,65 +1,35 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { ArrowLeft } from "lucide-react";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
-
-import ProjectForm, {
-  type ProjectFormData,
-} from "../../components/projects/ProjectForm";
-
+import PageContainer from "../../components/layout/PageContainer";
+import ProjectForm, { type ProjectFormData } from "../../components/projects/ProjectForm";
 import { createProject } from "../../services/project.service";
 import { getClients } from "../../services/client.service";
 import { getEmployees } from "../../services/employee.service";
 
 function AddProjectPage() {
   const navigate = useNavigate();
-
   const [loading, setLoading] = useState(false);
-
   const [clients, setClients] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
 
   useEffect(() => {
-    loadData();
+    getClients().then(setClients).catch(() => {});
+    getEmployees().then(setEmployees).catch(() => {});
   }, []);
 
-  const loadData = async () => {
-    try {
-      const [clientsData, employeesData] =
-        await Promise.all([
-          getClients(),
-          getEmployees(),
-        ]);
-
-      setClients(clientsData);
-      setEmployees(employeesData);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load data.");
-    }
-  };
-
-  const handleSubmit = async (
-    data: ProjectFormData
-  ) => {
+  const handleSubmit = async (values: ProjectFormData) => {
     try {
       setLoading(true);
-
-      const response = await createProject(data);
-
-      console.log(response);
-
+      await createProject(values);
       toast.success("Project created successfully.");
-
       navigate("/projects");
-    } catch (err: any) {
-      console.error(err);
-
-      toast.error(
-        err?.response?.data?.message ||
-          "Failed to create project."
-      );
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.response?.data?.message ?? "Failed to create project.");
     } finally {
       setLoading(false);
     }
@@ -67,20 +37,36 @@ function AddProjectPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <PageContainer>
+        <div className="w-full space-y-6">
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-2xs p-5 sm:p-8 flex items-center gap-4">
+            <button
+              onClick={() => navigate("/projects")}
+              className="p-2.5 border border-slate-200 bg-white rounded-xl hover:bg-slate-50 transition text-slate-600 shadow-2xs shrink-0"
+              title="Back"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Add New Project
+              </h1>
+              <p className="text-sm text-slate-500 font-medium">
+                Create a new project workspace.
+              </p>
+            </div>
+          </div>
 
-        <h1 className="text-3xl font-bold">
-          Add Project
-        </h1>
-
-        <ProjectForm
-          loading={loading}
-          onSubmit={handleSubmit}
-          clients={clients}
-          employees={employees}
-        />
-
-      </div>
+          <div className="w-full">
+            <ProjectForm
+              loading={loading}
+              onSubmit={handleSubmit}
+              clients={clients}
+              employees={employees}
+            />
+          </div>
+        </div>
+      </PageContainer>
     </DashboardLayout>
   );
 }

@@ -1,17 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { Plus, Search, RefreshCw } from "lucide-react";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
-
+import PageContainer from "../../components/layout/PageContainer";
 import TaskTable from "../../components/tasks/TaskTable";
 import TaskStats from "../../components/tasks/TaskStats";
 
-import {
-  getTasks,
-  deleteTask,
-} from "../../services/task.service";
-
+import { getTasks, deleteTask } from "../../services/task.service";
 import type { Task } from "../../types/task";
 
 function TasksPage() {
@@ -19,242 +16,149 @@ function TasksPage() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-
-  const [statusFilter, setStatusFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
-  const [projectFilter, setProjectFilter] = useState("");
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage] = useState(10);
 
   useEffect(() => {
     loadTasks();
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    search,
-    statusFilter,
-    priorityFilter,
-    projectFilter,
-  ]);
-
   const loadTasks = async () => {
     try {
-      const response = await getTasks();
-      setTasks(Array.isArray(response.data) ? response.data : []);
+      setLoading(true);
+      const data = await getTasks();
+      // Ensure data is always an array
+      setTasks(Array.isArray(data) ? data : data?.tasks || []);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load tasks.");
+      setTasks([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this task?")) {
-      return;
-    }
-
+  const refresh = async () => {
     try {
-      await deleteTask(id);
-
-      toast.success("Task deleted successfully.");
-
-      loadTasks();
-    } catch (err: any) {
-      console.error(err);
-
-      toast.error(
-        err?.response?.data?.message ??
-          "Failed to delete task."
-      );
+      setRefreshing(true);
+      const data = await getTasks();
+      setTasks(Array.isArray(data) ? data : data?.tasks || []);
+      toast.success("Tasks refreshed successfully.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Refresh failed.");
+    } finally {
+      setRefreshing(false);
     }
   };
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      const matchesSearch =
-        task.title
-          .toLowerCase()
-          .includes(search.toLowerCase()) ||
-        task.taskCode
-          .toLowerCase()
-          .includes(search.toLowerCase());
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
 
-      const matchesStatus =
-        statusFilter === "" ||
-        task.status === statusFilter;
+    try {
+      await deleteTask(id);
+      setTasks((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []));
+      toast.success("Task deleted successfully.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Delete failed.");
+    }
+  };
 
-      const matchesPriority =
-        priorityFilter === "" ||
-        task.priority === priorityFilter;
-
-      const matchesProject =
-        projectFilter === "" ||
-        task.project.id === projectFilter;
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesPriority &&
-        matchesProject
-      );
-    });
-  }, [
-    tasks,
-    search,
-    statusFilter,
-    priorityFilter,
-    projectFilter,
-  ]);
-
-  const totalPages = Math.ceil(
-    filteredTasks.length / rowsPerPage
-  );
-
-  const paginatedTasks = filteredTasks.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
-
-  const projects = Array.from(
-    new Map(
-      tasks.map((task) => [
-        task.project.id,
-        task.project,
-      ])
-    ).values()
-  );
+  // Safe filtering even if tasks is not a valid array initially
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  const filteredTasks = safeTasks.filter((task) => {
+    const keyword = search.toLowerCase();
+    return (
+      (task.title ?? "").toLowerCase().includes(keyword) ||
+      (task.description ?? "").toLowerCase().includes(keyword)
+    );
+  });
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <PageContainer>
+        <div className="w-full space-y-6">
 
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">
-            Tasks
-          </h1>
+          {/* Header Section with Refresh & Add Button */}
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-2xs p-5 sm:p-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="space-y-1">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  Tasks Management
+                </h1>
+                <p className="text-sm text-slate-500 font-medium">
+                  Track, assign and manage your daily tasks efficiently.
+                </p>
+              </div>
 
-          <button
-            onClick={() => navigate("/tasks/add")}
-            className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700"
-          >
-            + Add Task
-          </button>
-        </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <button
+                  onClick={refresh}
+                  disabled={refreshing}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-700 hover:bg-slate-50 transition font-medium text-sm shadow-2xs disabled:opacity-50"
+                >
+                  <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+                  <span>Refresh</span>
+                </button>
 
-        <TaskStats tasks={tasks} />
-
-        <input
-          type="text"
-          placeholder="Search Tasks..."
-          value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
-          className="w-full border rounded-lg px-4 py-3"
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-          <select
-            value={statusFilter}
-            onChange={(e) =>
-              setStatusFilter(e.target.value)
-            }
-            className="border rounded-lg px-4 py-2"
-          >
-            <option value="">All Status</option>
-            <option value="TODO">TODO</option>
-            <option value="IN_PROGRESS">IN PROGRESS</option>
-            <option value="REVIEW">REVIEW</option>
-            <option value="COMPLETED">COMPLETED</option>
-            <option value="CANCELLED">CANCELLED</option>
-          </select>
-
-          <select
-            value={priorityFilter}
-            onChange={(e) =>
-              setPriorityFilter(e.target.value)
-            }
-            className="border rounded-lg px-4 py-2"
-          >
-            <option value="">All Priority</option>
-            <option value="LOW">LOW</option>
-            <option value="MEDIUM">MEDIUM</option>
-            <option value="HIGH">HIGH</option>
-            <option value="URGENT">URGENT</option>
-          </select>
-
-          <select
-            value={projectFilter}
-            onChange={(e) =>
-              setProjectFilter(e.target.value)
-            }
-            className="border rounded-lg px-4 py-2"
-          >
-            <option value="">
-              All Projects
-            </option>
-
-            {projects.map((project) => (
-              <option
-                key={project.id}
-                value={project.id}
-              >
-                {project.name}
-              </option>
-            ))}
-          </select>
-
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center items-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+                <button
+                  onClick={() => navigate("/tasks/add")}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 transition font-medium text-sm shadow-sm"
+                >
+                  <Plus size={18} />
+                  <span>Add Task</span>
+                </button>
+              </div>
+            </div>
           </div>
-        ) : (
-          <TaskTable
-            tasks={paginatedTasks}
-            onDelete={handleDelete}
-          />
-        )}
 
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-6">
-
-            <button
-              disabled={currentPage === 1}
-              onClick={() =>
-                setCurrentPage((page) => page - 1)
-              }
-              className="px-4 py-2 border rounded-lg disabled:opacity-50"
-            >
-              Previous
-            </button>
-
-            <span className="font-medium">
-              Page {currentPage} of {totalPages}
-            </span>
-
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() =>
-                setCurrentPage((page) => page + 1)
-              }
-              className="px-4 py-2 border rounded-lg disabled:opacity-50"
-            >
-              Next
-            </button>
-
+          {/* Stats Section */}
+          <div className="w-full">
+            <TaskStats tasks={safeTasks} />
           </div>
-        )}
 
-      </div>
+          {/* Search Bar */}
+          <div className="relative w-full">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by task title or description..."
+              className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none shadow-2xs transition"
+            />
+          </div>
+
+          {/* Table Content */}
+          {loading ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-2xs">
+              <p className="text-slate-500 text-base animate-pulse font-medium">Loading Tasks...</p>
+            </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-12 sm:p-16 text-center shadow-2xs space-y-3">
+              <h3 className="text-lg sm:text-xl font-bold text-slate-800">No Tasks Found</h3>
+              <p className="text-slate-500 text-sm max-w-sm mx-auto">
+                {search ? "No tasks match your search criteria." : "Start by adding your first task."}
+              </p>
+              {!search && (
+                <button
+                  onClick={() => navigate("/tasks/add")}
+                  className="mt-3 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 transition font-medium text-sm shadow-sm"
+                >
+                  <Plus size={16} /> Add Task
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="w-full overflow-x-auto">
+                <TaskTable tasks={filteredTasks} onDelete={handleDelete} />
+              </div>
+            </div>
+          )}
+
+        </div>
+      </PageContainer>
     </DashboardLayout>
   );
 }
