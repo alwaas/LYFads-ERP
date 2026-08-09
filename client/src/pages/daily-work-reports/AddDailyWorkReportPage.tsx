@@ -27,10 +27,6 @@ function AddDailyWorkReportPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const loadData = async () => {
     try {
       setLoading(true);
@@ -56,6 +52,10 @@ function AddDailyWorkReportPage() {
     }
   };
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const handleSubmit = async (
     values: CreateDailyWorkReportDto
   ) => {
@@ -77,14 +77,16 @@ function AddDailyWorkReportPage() {
 
       const payload: CreateDailyWorkReportDto = {
         employeeId: values.employeeId,
-
+        
         projectId:
-          values.projectId || undefined,
-
+        values.projectId || undefined,
+        
         taskId:
-          values.taskId || undefined,
-
+        values.taskId || undefined,
+        
         reportDate: values.reportDate,
+        
+        hoursWorked: values.hoursWorked,
 
         yesterdayWork:
           values.yesterdayWork || undefined,
@@ -94,7 +96,6 @@ function AddDailyWorkReportPage() {
         tomorrowPlan:
           values.tomorrowPlan || undefined,
 
-        hoursWorked: hours,
 
         status: values.status,
 
@@ -114,11 +115,16 @@ function AddDailyWorkReportPage() {
       );
 
       navigate("/daily-work-reports");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
 
       const message =
-        error?.response?.data?.message;
+        typeof error === "object" && error !== null &&
+        "response" in error &&
+        typeof (error as any).response === "object" &&
+        (error as any).response !== null
+          ? (error as any).response.data?.message
+          : undefined;
 
       toast.error(
         Array.isArray(message)

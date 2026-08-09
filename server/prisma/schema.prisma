@@ -391,7 +391,7 @@ model DailyWorkReport {
 
   tomorrowPlan String?
 
-  hoursWorked Decimal @db.Decimal(4, 2)
+  
 
   status WorkStatus @default(COMPLETED)
 
