@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+
 import {
   IsDateString,
   IsEnum,
@@ -6,8 +7,6 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  Max,
-  Min,
 } from 'class-validator';
 
 import { WorkStatus } from '@prisma/client';
@@ -39,9 +38,15 @@ export class CreateDailyWorkReportDto {
   tomorrowPlan?: string;
 
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  @Max(24)
+  @IsNumber(
+    {
+      allowNaN: false,
+      allowInfinity: false,
+    },
+    {
+      message: 'hoursWorked must be a valid number.',
+    },
+  )
   hoursWorked: number;
 
   @IsOptional()
