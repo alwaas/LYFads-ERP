@@ -6,22 +6,25 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
+  IsNotEmpty,
 } from 'class-validator';
 
 import { WorkStatus } from '@prisma/client';
 
 export class UpdateDailyWorkReportDto {
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   employeeId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   projectId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   taskId?: string;
 
   @IsOptional()

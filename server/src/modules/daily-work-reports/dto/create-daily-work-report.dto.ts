@@ -3,24 +3,27 @@ import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
 } from 'class-validator';
 
 import { WorkStatus } from '@prisma/client';
 
 export class CreateDailyWorkReportDto {
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   employeeId: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   projectId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   taskId?: string;
 
   @IsDateString()
@@ -31,6 +34,7 @@ export class CreateDailyWorkReportDto {
   yesterdayWork?: string;
 
   @IsString()
+  @IsNotEmpty()
   todayWork: string;
 
   @IsOptional()
