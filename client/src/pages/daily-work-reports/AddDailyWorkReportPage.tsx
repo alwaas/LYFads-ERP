@@ -10,6 +10,7 @@ import { createDailyWorkReport } from "../../services/daily-work-report.service"
 import { getEmployees } from "../../services/employee.service";
 import { getProjects } from "../../services/project.service";
 import { getTasks } from "../../services/task.service";
+
 import type { Employee } from "../../types/employee";
 import type { Project } from "../../types/project";
 import type { Task } from "../../types/task";
@@ -23,7 +24,8 @@ function AddDailyWorkReportPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -31,12 +33,17 @@ function AddDailyWorkReportPage() {
 
   const loadData = async () => {
     try {
-      const [employeeData, projectData, taskData] =
-        await Promise.all([
-          getEmployees(),
-          getProjects(),
-          getTasks(),
-        ]);
+      setLoading(true);
+
+      const [
+        employeeData,
+        projectData,
+        taskData,
+      ] = await Promise.all([
+        getEmployees(),
+        getProjects(),
+        getTasks(),
+      ]);
 
       setEmployees(employeeData);
       setProjects(projectData);
@@ -44,31 +51,83 @@ function AddDailyWorkReportPage() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to load form data.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubmit = async (
-    data: CreateDailyWorkReportDto
+    values: CreateDailyWorkReportDto
   ) => {
     try {
-      setLoading(true);
+      setSubmitting(true);
 
-      await createDailyWorkReport(data);
+      const hours = Number(values.hoursWorked);
+
+      if (
+        !Number.isFinite(hours) ||
+        hours < 0 ||
+        hours > 24
+      ) {
+        toast.error(
+          "Hours Worked must be between 0 and 24."
+        );
+        return;
+      }
+
+      const payload: CreateDailyWorkReportDto = {
+        employeeId: values.employeeId,
+
+        projectId:
+          values.projectId || undefined,
+
+        taskId:
+          values.taskId || undefined,
+
+        reportDate: values.reportDate,
+
+        yesterdayWork:
+          values.yesterdayWork || undefined,
+
+        todayWork: values.todayWork,
+
+        tomorrowPlan:
+          values.tomorrowPlan || undefined,
+
+        hoursWorked: hours,
+
+        status: values.status,
+
+        managerRemarks:
+          values.managerRemarks || undefined,
+      };
+
+      console.log(
+        "Daily Work Report Payload:",
+        payload
+      );
+
+      await createDailyWorkReport(payload);
 
       toast.success(
-        "Daily Work Report created successfully."
+        "Daily work report added successfully."
       );
 
       navigate("/daily-work-reports");
     } catch (error: any) {
       console.error(error);
 
+      const message =
+        error?.response?.data?.message;
+
       toast.error(
-        error?.response?.data?.message ??
-          "Failed to create report."
+        Array.isArray(message)
+          ? message[0]
+          : message ??
+              "Failed to create daily work report."
       );
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -76,17 +135,31 @@ function AddDailyWorkReportPage() {
     <DashboardLayout>
       <div className="space-y-6">
 
-        <h1 className="text-3xl font-bold">
-          Add Daily Work Report
-        </h1>
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">
+            Add Daily Work Report
+          </h1>
 
-        <DailyWorkReportForm
-          employees={employees}
-          projects={projects}
-          tasks={tasks}
-          loading={loading}
-          onSubmit={handleSubmit}
-        />
+          <p className="mt-1 text-sm text-slate-500">
+            Submit your daily work progress and hours.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+            <p className="text-slate-500 animate-pulse">
+              Loading form data...
+            </p>
+          </div>
+        ) : (
+          <DailyWorkReportForm
+            employees={employees}
+            projects={projects}
+            tasks={tasks}
+            loading={submitting}
+            onSubmit={handleSubmit}
+          />
+        )}
 
       </div>
     </DashboardLayout>

@@ -32,25 +32,25 @@ function EditTaskPage() {
 
       const data = await getTask(taskId);
 
-      console.log("TASK API RESPONSE:", data);
-
-      setTask({
-        taskCode: data.taskCode || "",
-        title: data.title || "",
-        description: data.description || "",
-        projectId: data.projectId || data.project?.id || "",
-        employeeId: data.employeeId || data.employee?.id || "",
-        status: data.status || "TODO",
-        priority: data.priority || "MEDIUM",
-        dueDate: data.dueDate
-          ? String(data.dueDate).substring(0, 10)
+      const taskData: TaskFormData = {
+        taskCode: data?.taskCode || "",
+        title: data?.title || "",
+        description: data?.description || "",
+        projectId: data?.projectId || "",
+        employeeId: data?.employeeId || "",
+        status: data?.status || "TODO",
+        priority: data?.priority || "MEDIUM",
+        dueDate: data?.dueDate
+          ? data.dueDate.substring(0, 10)
           : "",
         estimatedHours:
-          data.estimatedHours !== null &&
-          data.estimatedHours !== undefined
+          data?.estimatedHours !== undefined &&
+          data?.estimatedHours !== null
             ? Number(data.estimatedHours)
             : undefined,
-      });
+      };
+
+      setTask(taskData);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load task details.");
@@ -65,25 +65,9 @@ function EditTaskPage() {
     try {
       setSubmitting(true);
 
-      const payload = {
-        taskCode: values.taskCode,
-        title: values.title,
-        description: values.description || "",
-        projectId: values.projectId,
-        employeeId: values.employeeId || undefined,
-        status: values.status,
-        priority: values.priority,
-        dueDate: values.dueDate || undefined,
-        estimatedHours:
-          values.estimatedHours !== undefined &&
-          !Number.isNaN(values.estimatedHours)
-            ? Number(values.estimatedHours)
-            : undefined,
-      };
+      console.log("UPDATE TASK PAYLOAD:", values);
 
-      console.log("UPDATE TASK PAYLOAD:", payload);
-
-      await updateTask(id, payload);
+      await updateTask(id, values);
 
       toast.success("Task updated successfully.");
       navigate("/tasks");

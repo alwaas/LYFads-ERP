@@ -11,7 +11,6 @@ export type TaskFormData = {
   priority: string;
   dueDate?: string;
   estimatedHours?: number;
-  // actualHours?: number;
 };
 
 type Props = {
@@ -58,22 +57,49 @@ function TaskForm({
       employeeId: initialData.employeeId || "",
       status: initialData.status || "TODO",
       priority: initialData.priority || "MEDIUM",
-      dueDate: initialData.dueDate || "",
-      estimatedHours: initialData.estimatedHours,
+      dueDate: initialData.dueDate
+        ? initialData.dueDate.substring(0, 10)
+        : "",
+      estimatedHours:
+        initialData.estimatedHours !== undefined
+          ? Number(initialData.estimatedHours)
+          : undefined,
     });
   }, [initialData, reset]);
 
+  const submitForm = (data: TaskFormData) => {
+    const payload: TaskFormData = {
+      taskCode: data.taskCode,
+      title: data.title,
+      description: data.description || "",
+      projectId: data.projectId,
+      employeeId: data.employeeId || undefined,
+      status: data.status,
+      priority: data.priority,
+      dueDate: data.dueDate || undefined,
+      estimatedHours:
+        data.estimatedHours !== undefined &&
+        !Number.isNaN(data.estimatedHours)
+          ? Number(data.estimatedHours)
+          : undefined,
+    };
+
+    onSubmit(payload);
+  };
+
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(submitForm)}
       className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 sm:p-8 space-y-6 w-full"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
         {/* Task Code */}
         <div>
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Task Code *
           </label>
+
           <input
             {...register("taskCode", { required: true })}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
@@ -86,6 +112,7 @@ function TaskForm({
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Task Title *
           </label>
+
           <input
             {...register("title", { required: true })}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
@@ -98,6 +125,7 @@ function TaskForm({
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Description
           </label>
+
           <textarea
             rows={3}
             {...register("description")}
@@ -111,11 +139,13 @@ function TaskForm({
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Project *
           </label>
+
           <select
             {...register("projectId", { required: true })}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition bg-white"
           >
             <option value="">Select Project</option>
+
             {(projects ?? []).map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}
@@ -129,11 +159,13 @@ function TaskForm({
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Assigned Employee
           </label>
+
           <select
             {...register("employeeId")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition bg-white"
           >
             <option value="">Select Employee</option>
+
             {(employees ?? []).map((employee) => (
               <option key={employee.id} value={employee.id}>
                 {employee.user?.fullName || employee.fullName}
@@ -147,6 +179,7 @@ function TaskForm({
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Status
           </label>
+
           <select
             {...register("status")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition bg-white"
@@ -164,6 +197,7 @@ function TaskForm({
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Priority
           </label>
+
           <select
             {...register("priority")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition bg-white"
@@ -180,6 +214,7 @@ function TaskForm({
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Due Date
           </label>
+
           <input
             type="date"
             {...register("dueDate")}
@@ -192,10 +227,13 @@ function TaskForm({
           <label className="block mb-1 text-sm font-semibold text-slate-700">
             Estimated Hours
           </label>
+
           <input
             type="number"
             step="0.5"
-            {...register("estimatedHours", { valueAsNumber: true })}
+            {...register("estimatedHours", {
+              valueAsNumber: true,
+            })}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="e.g. 8"
           />

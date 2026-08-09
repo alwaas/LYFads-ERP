@@ -33,22 +33,27 @@ export interface DailyWorkReport {
 
   employee: {
     id: string;
+
     employeeCode: string;
 
     user: {
       id: string;
+
       fullName: string;
+
       email: string;
     };
   };
 
   project?: {
     id: string;
+
     name: string;
   } | null;
 
   task?: {
     id: string;
+
     title: string;
   } | null;
 }
@@ -75,5 +80,24 @@ export interface CreateDailyWorkReportDto {
   taskId?: string;
 }
 
-export interface UpdateDailyWorkReportDto
-  extends Partial<CreateDailyWorkReportDto> {}
+export interface UpdateDailyWorkReportDto {
+  reportDate?: string;
+
+  yesterdayWork?: string;
+
+  todayWork?: string;
+
+  tomorrowPlan?: string;
+
+  hoursWorked?: number;
+
+  status?: WorkStatus;
+
+  managerRemarks?: string;
+
+  employeeId?: string;
+
+  projectId?: string;
+
+  taskId?: string;
+}

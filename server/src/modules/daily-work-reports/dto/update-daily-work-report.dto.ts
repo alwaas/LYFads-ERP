@@ -1,24 +1,28 @@
+import { Type } from 'class-transformer';
 import {
   IsDateString,
-  IsDecimal,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
+  Max,
+  Min,
 } from 'class-validator';
 
 import { WorkStatus } from '@prisma/client';
 
 export class UpdateDailyWorkReportDto {
   @IsOptional()
-  @IsString()
+  @IsUUID()
   employeeId?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   projectId?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   taskId?: string;
 
   @IsOptional()
@@ -38,8 +42,11 @@ export class UpdateDailyWorkReportDto {
   tomorrowPlan?: string;
 
   @IsOptional()
-  @IsDecimal()
-  hoursWorked?: string;
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(24)
+  hoursWorked?: number;
 
   @IsOptional()
   @IsEnum(WorkStatus)
