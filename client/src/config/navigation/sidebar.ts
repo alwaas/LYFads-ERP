@@ -4,6 +4,7 @@ import {
   Briefcase,
   FolderKanban,
   CheckSquare,
+  Flag,
   CalendarCheck,
   ClipboardList,
   FileText,
@@ -74,6 +75,18 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Tasks",
     path: "/tasks",
     icon: CheckSquare,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
+    ],
+  },
+
+  {
+    title: "Milestones",
+    path: "/milestones",
+    icon: Flag,
     roles: [
       "SUPER_ADMIN",
       "ADMIN",

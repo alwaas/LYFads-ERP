@@ -1,6 +1,5 @@
 export const PATHS = {
   HOME: "/",
-
   LOGIN: "/login",
 
   DASHBOARD: "/dashboard",
@@ -48,6 +47,12 @@ export const PATHS = {
   ADD_LEAD: "/crm/add",
   EDIT_LEAD: "/crm/edit/:id",
   VIEW_LEAD: "/crm/:id",
+
+  REPORTS: "/reports",
+
+  COMMENTS: "/comments",
+  ADD_COMMENT: "/comments/add",
+  EDIT_COMMENT: "/comments/edit/:id",
 
   MILESTONES: "/milestones",
   ADD_MILESTONE: "/milestones/add",
