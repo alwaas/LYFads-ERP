@@ -1,19 +1,33 @@
-import { IsOptional, IsString } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateAttachmentDto {
   @IsString()
-  fileName: string;
+  @IsNotEmpty()
+  fileName!: string;
 
   @IsString()
-  originalName: string;
+  @IsNotEmpty()
+  originalName!: string;
 
   @IsString()
-  mimeType: string;
+  @IsNotEmpty()
+  mimeType!: string;
 
-  fileSize: number;
+  @IsInt()
+  fileSize!: number;
 
   @IsString()
-  fileUrl: string;
+  @IsNotEmpty()
+  fileUrl!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  uploadedBy!: string;
 
   @IsOptional()
   @IsString()
@@ -30,7 +44,42 @@ export class CreateAttachmentDto {
   @IsOptional()
   @IsString()
   commentId?: string;
-
-  @IsString()
-  uploadedBy: string;
 }
+
+
+// import { IsOptional, IsString } from 'class-validator';
+
+// export class CreateAttachmentDto {
+//   @IsString()
+//   fileName: string;
+
+//   @IsString()
+//   originalName: string;
+
+//   @IsString()
+//   mimeType: string;
+
+//   fileSize: number;
+
+//   @IsString()
+//   fileUrl: string;
+
+//   @IsOptional()
+//   @IsString()
+//   projectId?: string;
+
+//   @IsOptional()
+//   @IsString()
+//   taskId?: string;
+
+//   @IsOptional()
+//   @IsString()
+//   milestoneId?: string;
+
+//   @IsOptional()
+//   @IsString()
+//   commentId?: string;
+
+//   @IsString()
+//   uploadedBy: string;
+// }
