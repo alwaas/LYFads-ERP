@@ -3,6 +3,7 @@ import { Route } from "react-router-dom";
 import AttendancePage from "../../pages/attendance/AttendancePage";
 import AttendanceHistoryPage from "../../pages/attendance/AttendanceHistoryPage";
 import CheckInPage from "../../pages/attendance/CheckInPage";
+import AddAttendancePage from "../../pages/attendance/AddAttendancePage";
 
 import { PATHS } from "../config/paths";
 
@@ -12,6 +13,11 @@ export function AttendanceRoutes() {
       <Route
         path={PATHS.ATTENDANCE}
         element={<AttendancePage />}
+      />
+
+      <Route
+        path="/attendance/add"
+        element={<AddAttendancePage />}
       />
 
       <Route

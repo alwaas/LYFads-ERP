@@ -1,14 +1,10 @@
-import api from "./api";
+﻿import api from "./api";
 
 import type {
   Attachment,
-  AttachmentListResponse,
   AttachmentResponse,
+  AttachmentListResponse,
 } from "../types/attachment";
-
-/* ===========================
-   Upload Attachment
-=========================== */
 
 export const uploadAttachment = async (
   file: File,
@@ -47,10 +43,6 @@ export const uploadAttachment = async (
   return response.data.data;
 };
 
-/* ===========================
-   Get All Attachments
-=========================== */
-
 export const getAttachments = async (): Promise<Attachment[]> => {
   const response = await api.get<AttachmentListResponse>(
     "/attachments",
@@ -59,30 +51,19 @@ export const getAttachments = async (): Promise<Attachment[]> => {
   return response.data.data;
 };
 
-/* ===========================
-   Get Attachment By ID
-=========================== */
-
 export const getAttachmentById = async (
   id: string,
 ): Promise<Attachment> => {
-  const response = await api.get<AttachmentResponse>(
-    `/attachments/${id}`,
-  );
+  const response = await api.get<{
+    success: boolean;
+    data: Attachment;
+  }>(`/attachments/${id}`);
 
   return response.data.data;
 };
 
-/* ===========================
-   Delete Attachment
-=========================== */
-
 export const deleteAttachment = async (
   id: string,
-) => {
-  const response = await api.delete(
-    `/attachments/${id}`,
-  );
-
-  return response.data;
+): Promise<void> => {
+  await api.delete(`/attachments/${id}`);
 };

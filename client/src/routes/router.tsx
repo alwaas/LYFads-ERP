@@ -125,6 +125,10 @@ const CheckInPage = lazy(
   () => import("../pages/attendance/CheckInPage")
 );
 
+const AddAttendancePage = lazy(
+  () => import("../pages/attendance/AddAttendancePage")
+);
+
 const AttendancePage = lazy(
   () => import("../pages/attendance/AttendancePage")
 );
@@ -426,7 +430,17 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/attendance/checkin",
+    path: "/attendance/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddAttendancePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/attendance/check-in",
     element: (
       <ProtectedRoute>
         <Suspense fallback={<PageLoader />}>
