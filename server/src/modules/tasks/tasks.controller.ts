@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from '@nestjs/common';
 
 import { UserRole } from '@prisma/client';
@@ -26,8 +27,11 @@ export class TasksController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Post()
-  create(@Body() dto: CreateTaskDto) {
-    return this.tasksService.create(dto);
+  create(
+    @Body() dto: CreateTaskDto,
+    @Req() req: any,
+  ) {
+    return this.tasksService.create(dto, req.user);
   }
 
   @Roles(
@@ -61,13 +65,20 @@ export class TasksController {
     UserRole.MANAGER,
   )
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateTaskDto) {
-    return this.tasksService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTaskDto,
+    @Req() req: any,
+  ) {
+    return this.tasksService.update(id, dto, req.user);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.tasksService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Req() req: any,
+  ) {
+    return this.tasksService.remove(id, req.user);
   }
 }
