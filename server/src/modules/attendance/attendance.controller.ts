@@ -46,6 +46,7 @@ export class AttendanceController {
     UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
     UserRole.MANAGER,
+    UserRole.EMPLOYEE,
   )
   @Get('today')
   todayAttendance() {

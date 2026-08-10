@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
@@ -38,7 +35,15 @@ export class AttachmentsService {
       },
 
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            isActive: true,
+          },
+        },
         project: true,
         task: true,
         milestone: true,
@@ -47,10 +52,18 @@ export class AttachmentsService {
     });
   }
 
-  findAll() {
+  async findAll() {
     return this.prisma.attachment.findMany({
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            isActive: true,
+          },
+        },
         project: true,
         task: true,
         milestone: true,
@@ -68,7 +81,15 @@ export class AttachmentsService {
         id,
       },
       include: {
-        user: true,
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            isActive: true,
+          },
+        },
         project: true,
         task: true,
         milestone: true,
