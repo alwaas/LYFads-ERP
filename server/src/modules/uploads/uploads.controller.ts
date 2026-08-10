@@ -7,40 +7,48 @@
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
 
-import { AttachmentsService } from '../attachments/attachments.service';
-import { CreateAttachmentDto } from '../attachments/dto/create-attachment.dto';
+import {
+  FileInterceptor,
+} from '@nestjs/platform-express';
+
+import {
+  memoryStorage,
+} from 'multer';
+
+import {
+  AttachmentsService,
+} from '../attachments/attachments.service';
+
+import {
+  CreateAttachmentDto,
+} from '../attachments/dto/create-attachment.dto';
+
+import {
+  UploadsService,
+} from './uploads.service';
 
 @Controller('uploads')
 export class UploadsController {
   constructor(
+    private readonly uploadsService: UploadsService,
     private readonly attachmentsService: AttachmentsService,
   ) {}
 
   @Post('single')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/temp',
-
-        filename: (req, file, cb) => {
-          const uniqueName =
-            `${Date.now()}-` +
-            `${Math.round(Math.random() * 1e9)}` +
-            extname(file.originalname);
-
-          cb(null, uniqueName);
-        },
-      }),
+      storage: memoryStorage(),
 
       limits: {
         fileSize: 5 * 1024 * 1024,
       },
 
-      fileFilter: (req, file, cb) => {
+      fileFilter: (
+        req,
+        file,
+        callback,
+      ) => {
         const allowedTypes = [
           'image/jpeg',
           'image/png',
@@ -48,8 +56,12 @@ export class UploadsController {
           'application/pdf',
         ];
 
-        if (!allowedTypes.includes(file.mimetype)) {
-          return cb(
+        if (
+          !allowedTypes.includes(
+            file.mimetype,
+          )
+        ) {
+          return callback(
             new BadRequestException(
               `Invalid file type received: ${file.mimetype}`,
             ),
@@ -57,12 +69,14 @@ export class UploadsController {
           );
         }
 
-        cb(null, true);
+        callback(null, true);
       },
     }),
   )
   async uploadSingle(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile()
+    file: Express.Multer.File,
+
     @Body()
     body: {
       projectId?: string;
@@ -70,25 +84,18 @@ export class UploadsController {
       milestoneId?: string;
       commentId?: string;
     },
+
     @Req() req: any,
   ) {
     if (!file) {
-      throw new BadRequestException('File is required.');
-    }
-
-    const maxSize = 5 * 1024 * 1024;
-
-    if (file.size > maxSize) {
       throw new BadRequestException(
-        'Maximum file size is 5 MB.',
+        'File is required.',
       );
     }
 
-    /*
-     * JWT payload can commonly expose the user ID
-     * as either "sub" or "id".
-     */
-    const uploadedBy = req.user?.sub ?? req.user?.id;
+    const uploadedBy =
+      req.user?.sub ??
+      req.user?.id;
 
     if (!uploadedBy) {
       throw new BadRequestException(
@@ -96,19 +103,42 @@ export class UploadsController {
       );
     }
 
-    const createAttachmentDto: CreateAttachmentDto = {
-      fileName: file.filename,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      fileSize: file.size,
-      fileUrl: `/uploads/temp/${file.filename}`,
+    const uploadedFile =
+      await this.uploadsService.uploadFile(
+        file,
+        'attachments',
+      );
+
+    const createAttachmentDto:
+      CreateAttachmentDto = {
+      fileName:
+        uploadedFile.fileName,
+
+      originalName:
+        uploadedFile.originalName,
+
+      mimeType:
+        uploadedFile.mimeType,
+
+      fileSize:
+        uploadedFile.fileSize,
+
+      fileUrl:
+        uploadedFile.fileUrl,
 
       uploadedBy,
 
-      projectId: body.projectId || undefined,
-      taskId: body.taskId || undefined,
-      milestoneId: body.milestoneId || undefined,
-      commentId: body.commentId || undefined,
+      projectId:
+        body.projectId || undefined,
+
+      taskId:
+        body.taskId || undefined,
+
+      milestoneId:
+        body.milestoneId || undefined,
+
+      commentId:
+        body.commentId || undefined,
     };
 
     const attachment =
@@ -118,7 +148,13 @@ export class UploadsController {
 
     return {
       success: true,
-      data: attachment,
+
+      data: {
+        ...attachment,
+
+        filePath:
+          uploadedFile.filePath,
+      },
     };
   }
 }
