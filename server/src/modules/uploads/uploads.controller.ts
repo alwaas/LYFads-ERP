@@ -71,7 +71,8 @@ export class UploadsController {
       );
     }
 
-    const uploadedBy = 'cms51nl140000gn1vmg736xmk';
+    const uploadedBy =
+      'cms51nl140000gn1vmg736xmk';
 
     const attachment =
       await this.attachmentsService.create({
