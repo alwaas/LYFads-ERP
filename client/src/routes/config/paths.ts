@@ -48,4 +48,9 @@ export const PATHS = {
   ADD_LEAD: "/crm/add",
   EDIT_LEAD: "/crm/edit/:id",
   VIEW_LEAD: "/crm/:id",
+
+  MILESTONES: "/milestones",
+  ADD_MILESTONE: "/milestones/add",
+  EDIT_MILESTONE: "/milestones/:id/edit",
+  VIEW_MILESTONE: "/milestones/:id",
 } as const;

@@ -93,6 +93,22 @@ const EditProjectPage = lazy(
   () => import("../pages/projects/EditProjectPage")
 );
 
+const MilestonesPage = lazy(
+  () => import("../pages/milestones/MilestonesPage")
+);
+
+const AddMilestonePage = lazy(
+  () => import("../pages/milestones/AddMilestonePage")
+);
+
+const EditMilestonePage = lazy(
+  () => import("../pages/milestones/EditMilestonePage")
+);
+
+const ViewMilestonePage = lazy(
+  () => import("../pages/milestones/ViewMilestonePage")
+);
+
 const TasksPage = lazy(
   () => import("../pages/tasks/TasksPage")
 );
@@ -370,6 +386,50 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <Suspense fallback={<PageLoader />}>
           <EditProjectPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  
+  {
+    path: "/milestones",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <MilestonesPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/milestones/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddMilestonePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/milestones/view/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewMilestonePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/milestones/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EditMilestonePage />
         </Suspense>
       </ProtectedRoute>
     ),
