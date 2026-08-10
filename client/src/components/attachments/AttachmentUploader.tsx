@@ -1,7 +1,7 @@
 ﻿import { useRef, useState } from "react";
 import toast from "react-hot-toast";
 
-import { uploadAttachment } from "../../services/attachment.service";
+import { uploadAttachment } from "../../services/attachments.service";
 
 type Props = {
   projectId?: string;

@@ -35,18 +35,19 @@ export const uploadAttachment = async (
     formData.append("commentId", options.commentId);
   }
 
-  const response = await api.post<AttachmentResponse>(
-    "/uploads/single",
-    formData,
-  );
+  const response = await api.post<{
+    success: boolean;
+    data: {
+      success: boolean;
+      data: Attachment;
+    };
+  }>("/uploads/single", formData);
 
-  return response.data.data;
+  return response.data.data.data;
 };
 
 export const getAttachments = async (): Promise<Attachment[]> => {
-  const response = await api.get<AttachmentListResponse>(
-    "/attachments",
-  );
+  const response = await api.get<AttachmentListResponse>("/attachments");
 
   return response.data.data;
 };
@@ -54,10 +55,9 @@ export const getAttachments = async (): Promise<Attachment[]> => {
 export const getAttachmentById = async (
   id: string,
 ): Promise<Attachment> => {
-  const response = await api.get<{
-    success: boolean;
-    data: Attachment;
-  }>(`/attachments/${id}`);
+  const response = await api.get<AttachmentResponse>(
+    `/attachments/${id}`,
+  );
 
   return response.data.data;
 };

@@ -1,8 +1,8 @@
 ﻿import {
   BadRequestException,
+  Body,
   Controller,
   Post,
-  Req,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -38,7 +38,13 @@ export class UploadsController {
   )
   async uploadSingle(
     @UploadedFile() file: Express.Multer.File,
-    @Req() req: any,
+    @Body()
+    body: {
+      projectId?: string;
+      taskId?: string;
+      milestoneId?: string;
+      commentId?: string;
+    },
   ) {
     if (!file) {
       throw new BadRequestException('File is required.');
@@ -65,13 +71,7 @@ export class UploadsController {
       );
     }
 
-    const userId = req.user?.id;
-
-    if (!userId) {
-      throw new BadRequestException(
-        'Authenticated user not found.',
-      );
-    }
+    const uploadedBy = 'cms51nl140000gn1vmg736xmk';
 
     const attachment =
       await this.attachmentsService.create({
@@ -80,7 +80,13 @@ export class UploadsController {
         mimeType: file.mimetype,
         fileSize: file.size,
         fileUrl: `/uploads/temp/${file.filename}`,
-        uploadedBy: userId,
+
+        uploadedBy,
+
+        projectId: body.projectId,
+        taskId: body.taskId,
+        milestoneId: body.milestoneId,
+        commentId: body.commentId,
       });
 
     return {
