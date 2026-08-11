@@ -237,6 +237,26 @@ const ProtectedRoute = lazy(
   () => import("./ProtectedRoute")
 );
 
+const TimelinePage = lazy(
+  () => import("../pages/timeline/TimelinePage")
+);
+
+const TimesheetsPage = lazy(
+  () => import("../pages/timesheets/TimesheetsPage")
+);
+
+const AddTimesheetPage = lazy(
+  () => import("../pages/timesheets/AddTimesheetPage")
+);
+
+const EditTimesheetPage = lazy(
+  () => import("../pages/timesheets/EditTimesheetPage")
+);
+
+const ViewTimesheetPage = lazy(
+  () => import("../pages/timesheets/ViewTimesheetPage")
+);
+
 
 
 const router = createBrowserRouter([
@@ -403,6 +423,15 @@ const router = createBrowserRouter([
   },
 
   {
+    path: "/timeline",
+    element: (
+      <ProtectedRoute>
+        <TimelinePage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
     path: "/milestones/add",
     element: (
       <ProtectedRoute>
@@ -475,6 +504,42 @@ const router = createBrowserRouter([
         <Suspense fallback={<PageLoader />}>
           <EditTaskPage />
         </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/timesheets",
+    element: (
+      <ProtectedRoute>
+        <TimesheetsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/timesheets/add",
+    element: (
+      <ProtectedRoute>
+        <AddTimesheetPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/timesheets/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <EditTimesheetPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/timesheets/:id",
+    element: (
+      <ProtectedRoute>
+        <ViewTimesheetPage />
       </ProtectedRoute>
     ),
   },
@@ -725,6 +790,8 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  
 
   {
     path: "*",

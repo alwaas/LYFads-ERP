@@ -53,9 +53,18 @@ export const PATHS = {
   COMMENTS: "/comments",
   ADD_COMMENT: "/comments/add",
   EDIT_COMMENT: "/comments/edit/:id",
+  
+  TIMELINE: "/timeline",
 
+  TIMESHEETS: "/timesheets",
+  ADD_TIMESHEET: "/timesheets/add",
+  EDIT_TIMESHEET: "/timesheets/edit/:id",
+  VIEW_TIMESHEET: "/timesheets/:id",
+  
   MILESTONES: "/milestones",
   ADD_MILESTONE: "/milestones/add",
   EDIT_MILESTONE: "/milestones/:id/edit",
   VIEW_MILESTONE: "/milestones/:id",
+
+
 } as const;

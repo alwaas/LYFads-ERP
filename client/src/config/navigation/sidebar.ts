@@ -14,6 +14,9 @@ import {
   UserRoundCheck,
   BarChart3,
   MessageSquare,
+  TimerReset,
+  Clock3,
+
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -182,6 +185,31 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
       "MANAGER",
       "EMPLOYEE",
       "CLIENT",
+    ],
+  },
+
+  {
+    title: "Timeline",
+    path: "/timeline",
+    icon: Clock3,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
+      "CLIENT",
+    ],
+  },
+
+  {
+    title: "Timesheets",
+    path: "/timesheets",
+    icon: TimerReset,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
     ],
   },
 
