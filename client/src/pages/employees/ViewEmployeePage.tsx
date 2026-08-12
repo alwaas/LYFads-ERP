@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { ArrowLeft, User, Mail, Phone, Briefcase, Building, Shield, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, User, Mail, Phone, Briefcase, Building, Shield, Pencil, Trash2, Calendar } from "lucide-react";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
@@ -175,9 +175,66 @@ function ViewEmployeePage() {
                   <p className="text-slate-900 font-semibold text-base mt-0.5">{role}</p>
                 </div>
               </div>
-              {/* Employee Code */}
-              
-              
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-indigo-600 rounded-lg shadow-2xs mt-0.5"><Calendar size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Joining Date</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">
+                    {employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-emerald-600 rounded-lg shadow-2xs mt-0.5"><Shield size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Salary</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">
+                    {employee.salary ? `$${Number(employee.salary).toFixed(2)}` : "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><Building size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Address</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.address || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><Building size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">City</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.city || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><Building size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">State</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.state || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><Building size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Country</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.country || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><Building size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Pincode</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.pincode || "-"}</p>
+                </div>
+              </div>
             </div>
           </div>
 

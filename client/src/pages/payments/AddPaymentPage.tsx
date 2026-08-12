@@ -11,7 +11,7 @@ const AddPaymentPage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<CreatePaymentDto>({
     invoiceId: "",
-    amount: 0,
+    amount: "0",
     paymentDate: new Date().toISOString().split("T")[0],
     method: "BANK_TRANSFER",
     referenceNo: "",
@@ -38,7 +38,7 @@ const AddPaymentPage = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "amount" ? Number(value) : value,
+      [name]: value,
     }));
   };
 

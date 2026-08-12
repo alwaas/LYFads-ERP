@@ -11,7 +11,7 @@ const EditPaymentPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [formData, setFormData] = useState<UpdatePaymentDto>({
-    amount: 0,
+    amount: "0",
     paymentDate: "",
     method: "BANK_TRANSFER",
     referenceNo: "",
@@ -27,7 +27,7 @@ const EditPaymentPage = () => {
   useEffect(() => {
     if (payment) {
       setFormData({
-        amount: Number(payment.amount),
+        amount: String(payment.amount),
         paymentDate: payment.paymentDate.split("T")[0],
         method: payment.method,
         referenceNo: payment.referenceNo || "",
@@ -59,7 +59,7 @@ const EditPaymentPage = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "amount" ? Number(value) : value,
+      [name]: value,
     }));
   };
 

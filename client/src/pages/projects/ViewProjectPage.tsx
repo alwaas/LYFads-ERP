@@ -222,6 +222,125 @@ function ViewProjectPage() {
             {/* Project Metadata */}
             <div className="grid grid-cols-1 gap-6 pt-2 md:grid-cols-2 lg:grid-cols-3">
 
+              {/* Project Code */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="mt-0.5 rounded-lg bg-white p-2.5 text-blue-600 shadow-sm">
+                  <FileText size={18} />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    Project Code
+                  </p>
+
+                  <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
+                    {project.projectCode || "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="mt-0.5 rounded-lg bg-white p-2.5 text-emerald-600 shadow-sm">
+                  <FolderKanban size={18} />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    Status
+                  </p>
+
+                  <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
+                    {project.status || "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Priority */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="mt-0.5 rounded-lg bg-white p-2.5 text-amber-600 shadow-sm">
+                  <FolderKanban size={18} />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    Priority
+                  </p>
+
+                  <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
+                    {project.priority || "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Start Date */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="mt-0.5 rounded-lg bg-white p-2.5 text-purple-600 shadow-sm">
+                  <Calendar size={18} />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    Start Date
+                  </p>
+
+                  <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
+                    {project.startDate ? new Date(project.startDate).toLocaleDateString() : "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* End Date */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="mt-0.5 rounded-lg bg-white p-2.5 text-purple-600 shadow-sm">
+                  <Calendar size={18} />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    End Date
+                  </p>
+
+                  <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
+                    {project.endDate ? new Date(project.endDate).toLocaleDateString() : "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Budget */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="mt-0.5 rounded-lg bg-white p-2.5 text-emerald-600 shadow-sm">
+                  <FileText size={18} />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    Budget
+                  </p>
+
+                  <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
+                    {project.budget ? `$${Number(project.budget).toFixed(2)}` : "-"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress */}
+              <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="mt-0.5 rounded-lg bg-white p-2.5 text-blue-600 shadow-sm">
+                  <FolderKanban size={18} />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    Progress
+                  </p>
+
+                  <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
+                    {project.progress ?? 0}%
+                  </p>
+                </div>
+              </div>
+
               {/* Created At */}
               <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                 <div className="mt-0.5 rounded-lg bg-white p-2.5 text-purple-600 shadow-sm">
@@ -234,52 +353,10 @@ function ViewProjectPage() {
                   </p>
 
                   <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
-                    {new Date(
-                      project.createdAt,
-                    ).toLocaleString()}
+                    {new Date(project.createdAt).toLocaleString()}
                   </p>
                 </div>
               </div>
-
-              {/* Project Code */}
-              {"projectCode" in project &&
-                project.projectCode && (
-                  <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                    <div className="mt-0.5 rounded-lg bg-white p-2.5 text-blue-600 shadow-sm">
-                      <FileText size={18} />
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-500">
-                        Project Code
-                      </p>
-
-                      <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
-                        {project.projectCode}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-              {/* Status */}
-              {"status" in project &&
-                project.status && (
-                  <div className="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                    <div className="mt-0.5 rounded-lg bg-white p-2.5 text-emerald-600 shadow-sm">
-                      <FolderKanban size={18} />
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-500">
-                        Status
-                      </p>
-
-                      <p className="mt-0.5 break-words text-sm font-semibold text-slate-900 sm:text-base">
-                        {project.status}
-                      </p>
-                    </div>
-                  </div>
-                )}
             </div>
 
             {/* Description */}

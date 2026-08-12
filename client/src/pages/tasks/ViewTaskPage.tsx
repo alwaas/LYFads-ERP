@@ -133,6 +133,52 @@ function ViewTaskPage() {
                   </p>
                 </div>
               </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><CheckSquare size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Status</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{task.status || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-amber-600 rounded-lg shadow-2xs mt-0.5"><CheckSquare size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Priority</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{task.priority || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-purple-600 rounded-lg shadow-2xs mt-0.5"><Calendar size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Due Date</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">
+                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-emerald-600 rounded-lg shadow-2xs mt-0.5"><FileText size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Estimated Hours</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">
+                    {task.estimatedHours ? Number(task.estimatedHours).toFixed(2) : "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><FileText size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Actual Hours</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">
+                    {task.actualHours ? Number(task.actualHours).toFixed(2) : "-"}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="pt-2">

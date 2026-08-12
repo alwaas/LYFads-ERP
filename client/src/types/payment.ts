@@ -22,7 +22,7 @@ export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "UPI" | "CARD" | "CHEQUE"
 
 export interface CreatePaymentDto {
   invoiceId: string;
-  amount: number;
+  amount: string;
   paymentDate: string;
   method: PaymentMethod;
   referenceNo?: string;
@@ -30,7 +30,7 @@ export interface CreatePaymentDto {
 }
 
 export interface UpdatePaymentDto {
-  amount?: number;
+  amount?: string;
   paymentDate?: string;
   method?: PaymentMethod;
   referenceNo?: string;

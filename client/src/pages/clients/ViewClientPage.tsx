@@ -143,13 +143,13 @@ function ViewClientPage() {
               </div>
 
               <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
-                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><User size={18} /></div>
+                <div className="p-2.5 bg-white text-purple-600 rounded-lg shadow-2xs mt-0.5"><User size={18} /></div>
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">Company</p>
-                  <p className="text-slate-900 font-semibold text-base mt-0.5">{client.companyName || "-"}</p>
+                  <p className="text-xs text-slate-500 font-medium">Contact Person</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{client.contactPerson || "-"}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                 <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><User size={18} /></div>
                 <div>
@@ -205,7 +205,6 @@ function ViewClientPage() {
                   <p className="text-slate-900 font-semibold text-base mt-0.5">{client.pincode || "-"}</p>
                 </div>
               </div>
-              
             </div>
           </div>
 
