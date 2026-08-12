@@ -257,7 +257,29 @@ const ViewTimesheetPage = lazy(
   () => import("../pages/timesheets/ViewTimesheetPage")
 );
 
+const ProjectTimelinePage = lazy(
+  () => import("../pages/project-timeline/ProjectTimelinePage")
+);
 
+const PaymentsPage = lazy(
+  () => import("../pages/payments/PaymentsPage")
+);
+
+const AddPaymentPage = lazy(
+  () => import("../pages/payments/AddPaymentPage")
+);
+
+const EditPaymentPage = lazy(
+  () => import("../pages/payments/EditPaymentPage")
+);
+
+const ViewPaymentPage = lazy(
+  () => import("../pages/payments/ViewPaymentPage")
+);
+
+const AttachmentsPage = lazy(
+  () => import("../pages/attachments/AttachmentsPage")
+);
 
 const router = createBrowserRouter([
   {
@@ -540,6 +562,72 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <ViewTimesheetPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/project-timeline",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ProjectTimelinePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/payments",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <PaymentsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/payments/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddPaymentPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/payments/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EditPaymentPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/payments/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewPaymentPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/attachments",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AttachmentsPage />
+        </Suspense>
       </ProtectedRoute>
     ),
   },

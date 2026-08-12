@@ -30,3 +30,11 @@ export const deleteProject = async (id: string) => {
   const response = await api.delete(`/projects/${id}`);
   return response.data;
 };
+
+export const projectService = {
+  getAllProjects: getProjects,
+  getProject,
+  createProject,
+  updateProject,
+  deleteProject,
+};

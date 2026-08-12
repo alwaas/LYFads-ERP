@@ -16,7 +16,9 @@ import {
   MessageSquare,
   TimerReset,
   Clock3,
-
+  CreditCard,
+  Paperclip,
+  GitBranch,
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -205,6 +207,41 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Timesheets",
     path: "/timesheets",
     icon: TimerReset,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
+    ],
+  },
+
+  {
+    title: "Project Timeline",
+    path: "/project-timeline",
+    icon: GitBranch,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
+    ],
+  },
+
+  {
+    title: "Payments",
+    path: "/payments",
+    icon: CreditCard,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Attachments",
+    path: "/attachments",
+    icon: Paperclip,
     roles: [
       "SUPER_ADMIN",
       "ADMIN",
