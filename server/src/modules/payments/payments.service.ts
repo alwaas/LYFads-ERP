@@ -6,6 +6,7 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 
 import { InvoiceStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -15,7 +16,7 @@ export class PaymentsService {
     const payment = await this.prisma.payment.create({
       data: {
         invoiceId: dto.invoiceId,
-        amount: dto.amount,
+        amount: new Prisma.Decimal(dto.amount),
         paymentDate: new Date(dto.paymentDate),
         method: dto.method,
         referenceNo: dto.referenceNo,
@@ -66,7 +67,7 @@ export class PaymentsService {
     const payment = await this.prisma.payment.update({
       where: { id },
       data: {
-        amount: dto.amount,
+        amount: dto.amount ? new Prisma.Decimal(dto.amount) : undefined,
         paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : undefined,
         method: dto.method,
         referenceNo: dto.referenceNo,

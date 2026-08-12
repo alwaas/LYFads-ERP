@@ -32,7 +32,10 @@ const ActivityLogsPage = () => {
     queryKey: ["activity-logs"],
     queryFn: async () => {
       const response = await api.get("/activity-logs");
-      return response.data.data || response.data;
+      // Backend returns paginated response: { data: [...], total, page, limit, totalPages }
+      const logsData = response.data.data || response.data;
+      // If response is paginated object, extract the data array
+      return Array.isArray(logsData) ? logsData : (logsData.data || []);
     },
   });
 
