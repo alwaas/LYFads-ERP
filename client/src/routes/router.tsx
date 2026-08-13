@@ -281,6 +281,22 @@ const AttachmentsPage = lazy(
   () => import("../pages/attachments/AttachmentsPage")
 );
 
+const InvoicesPage = lazy(
+  () => import("../pages/invoices/InvoicesPage")
+);
+
+const AddInvoicePage = lazy(
+  () => import("../pages/invoices/AddInvoicePage")
+);
+
+const EditInvoicePage = lazy(
+  () => import("../pages/invoices/EditInvoicePage")
+);
+
+const ViewInvoicePage = lazy(
+  () => import("../pages/invoices/ViewInvoicePage")
+);
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -572,6 +588,50 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <Suspense fallback={<PageLoader />}>
           <ProjectTimelinePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/invoices",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <InvoicesPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/invoices/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddInvoicePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/invoices/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EditInvoicePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/invoices/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewInvoicePage />
         </Suspense>
       </ProtectedRoute>
     ),

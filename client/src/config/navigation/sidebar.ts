@@ -19,6 +19,7 @@ import {
   CreditCard,
   Paperclip,
   GitBranch,
+  Receipt,
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -149,6 +150,17 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Reports",
     path: "/reports",
     icon: BarChart3,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Invoices",
+    path: "/invoices",
+    icon: Receipt,
     roles: [
       "SUPER_ADMIN",
       "ADMIN",
