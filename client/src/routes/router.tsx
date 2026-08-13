@@ -2,60 +2,9 @@ import PageLoader from "../components/common/PageLoader";
 import { createBrowserRouter } from "react-router-dom";
 import { lazy, Suspense } from "react";
 
-import LoginPage from "../pages/auth/LoginPage";
-import ViewClientPage from "../pages/clients/ViewClientPage";
-// import DashboardPage from "../pages/dashboard/DashboardPage";
-
-// import EmployeesPage from "../pages/employees/EmployeesPage";
-// import AddEmployeePage from "../pages/employees/AddEmployeePage";
-// import EditEmployeePage from "../pages/employees/EditEmployeePage";
-// import ViewEmployeePage from "../pages/employees/ViewEmployeePage";
-
-// import ClientsPage from "../pages/clients/ClientsPage";
-// import AddClientPage from "../pages/clients/AddClientPage";
-// import EditClientPage from "../pages/clients/EditClientPage";
-
-// import ProjectsPage from "../pages/projects/ProjectsPage";
-// import AddProjectPage from "../pages/projects/AddProjectPage";
-// import ViewProjectPage from "../pages/projects/ViewProjectPage";
-// import EditProjectPage from "../pages/projects/EditProjectPage";
-
-// import TasksPage from "../pages/tasks/TasksPage";
-// import AddTaskPage from "../pages/tasks/AddTaskPage";
-// import ViewTaskPage from "../pages/tasks/ViewTaskPage";
-// import EditTaskPage from "../pages/tasks/EditTaskPage";
-
-// import AttendancePage from "../pages/attendance/AttendancePage";
-// import CheckInPage from "../pages/attendance/CheckInPage";
-// import AttendanceHistoryPage from "../pages/attendance/AttendanceHistoryPage";
-
-// import LeavesPage from "../pages/leaves/LeavesPage";
-// import AddLeavePage from "../pages/leaves/AddLeavePage";
-// import EditLeavePage from "../pages/leaves/EditLeavePage";
-// import ViewLeavePage from "../pages/leaves/ViewLeavePage";
-// import ReportsPage from "../pages/reports/ReportsPage";
-
-// import LeadsPage from "../pages/crm/LeadsPage";
-// import AddLeadPage from "../pages/crm/AddLeadPage";
-// import EditLeadPage from "../pages/crm/EditLeadPage";
-// import ViewLeadPage from "../pages/crm/ViewLeadPage";
-
-// import CommentsPage from "../components/comments/CommentsPage";
-// import AddCommentPage from "../pages/comments/AddCommentPage";
-// import EditCommentPage from "../pages/comments/EditCommentPage";
-
-// import DailyWorkReportsPage from "../pages/daily-work-reports/DailyWorkReportsPage";
-// import AddDailyWorkReportPage from "../pages/daily-work-reports/AddDailyWorkReportPage";
-// import EditDailyWorkReportPage from "../pages/daily-work-reports/EditDailyWorkReportPage";
-// import ViewDailyWorkReportPage from "../pages/daily-work-reports/ViewDailyWorkReportPage";
-
-// import NotificationsPage from "../pages/notifications/NotificationsPage";
-// import ActivityLogsPage from "../pages/activity-logs/ActivityLogsPage";
-// import SettingsPage from "../pages/settings/SettingsPage";
-// import NotFoundPage from "../pages/NotFoundPage";
-
-// import ProtectedRoute from "./ProtectedRoute";
-// import EditCommentPage from "../pages/comments/EditCommentPage";
+const LoginPage = lazy(
+  () => import("../pages/auth/LoginPage")
+);
 
 const DashboardPage = lazy(
   () => import("../pages/dashboard/DashboardPage")
@@ -135,6 +84,10 @@ const AddClientPage = lazy(
 
 const EditClientPage = lazy(
   () => import("../pages/clients/EditClientPage")
+);
+
+const ViewClientPage = lazy(
+  () => import("../pages/clients/ViewClientPage")
 );
 
 const CheckInPage = lazy(
