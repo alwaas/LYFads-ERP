@@ -103,11 +103,6 @@ function AddDailyWorkReportPage() {
           values.managerRemarks || undefined,
       };
 
-      console.log(
-        "Daily Work Report Payload:",
-        payload
-      );
-
       await createDailyWorkReport(payload);
 
       toast.success(

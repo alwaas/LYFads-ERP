@@ -33,14 +33,10 @@ function LoginPage() {
 
       const response = await login(data);
 
-        // console.log("Access Token:", response.data.accessToken);
-        // console.log("User:", response.data.user);
-        // console.log("Full Response:", JSON.stringify(response, null, 2));
-
-        auth.login(
+      auth.login(
         response.data.accessToken,
         response.data.user
-        );
+      );
 
         navigate("/dashboard");
 

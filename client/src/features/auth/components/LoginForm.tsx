@@ -21,8 +21,8 @@ function LoginForm() {
 
     const password = useToggle();
 
-  function onSubmit(data: LoginFormData) {
-    console.log(data);
+  function onSubmit(_data: LoginFormData) {
+    // TODO: Integrate with auth service
   }
 
   return (

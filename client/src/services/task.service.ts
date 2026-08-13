@@ -48,8 +48,6 @@ export const updateTask = async (
         : undefined,
   };
 
-  console.log("PATCH /tasks PAYLOAD:", payload);
-
   const response = await api.patch(
     `/tasks/${id}`,
     payload

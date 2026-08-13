@@ -50,10 +50,5 @@ export const getAttendanceHistory = async (
     }
   );
 
-  console.log(
-    "Attendance History:",
-    response.data
-  );
-
   return response.data.data.data;
 };

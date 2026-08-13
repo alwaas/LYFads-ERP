@@ -54,8 +54,6 @@ function EditClientPage() {
         pincode: values.pincode,
       };
 
-      console.log("Client Update Payload:", payload);
-
       await updateClient(id, payload);
 
       toast.success("Client updated successfully.");

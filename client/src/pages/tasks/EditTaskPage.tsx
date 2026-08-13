@@ -65,8 +65,6 @@ function EditTaskPage() {
     try {
       setSubmitting(true);
 
-      console.log("UPDATE TASK PAYLOAD:", values);
-
       await updateTask(id, values);
 
       toast.success("Task updated successfully.");
