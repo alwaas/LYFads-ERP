@@ -13,20 +13,34 @@ export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreatePaymentDto) {
-    const payment = await this.prisma.payment.create({
-      data: {
-        invoiceId: dto.invoiceId,
-        amount: new Prisma.Decimal(dto.amount),
-        paymentDate: new Date(dto.paymentDate),
-        method: dto.method,
-        referenceNo: dto.referenceNo,
-        remarks: dto.remarks,
-      },
+    // Verify invoice exists before creating payment
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: dto.invoiceId },
     });
 
-    await this.refreshInvoice(dto.invoiceId);
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
 
-    return payment;
+    // Use transaction to ensure atomicity
+    const newPayment = await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.create({
+        data: {
+          invoiceId: dto.invoiceId,
+          amount: new Prisma.Decimal(dto.amount),
+          paymentDate: new Date(dto.paymentDate),
+          method: dto.method,
+          referenceNo: dto.referenceNo,
+          remarks: dto.remarks,
+        },
+      });
+
+      await this.refreshInvoice(dto.invoiceId, tx);
+
+      return payment;
+    });
+
+    return newPayment;
   }
 
   findAll() {
@@ -64,20 +78,24 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    const payment = await this.prisma.payment.update({
-      where: { id },
-      data: {
-        amount: dto.amount ? new Prisma.Decimal(dto.amount) : undefined,
-        paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : undefined,
-        method: dto.method,
-        referenceNo: dto.referenceNo,
-        remarks: dto.remarks,
-      },
+    const updatedPayment = await this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.update({
+        where: { id },
+        data: {
+          amount: dto.amount ? new Prisma.Decimal(dto.amount) : undefined,
+          paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : undefined,
+          method: dto.method,
+          referenceNo: dto.referenceNo,
+          remarks: dto.remarks,
+        },
+      });
+
+      await this.refreshInvoice(oldPayment.invoiceId, tx);
+
+      return payment;
     });
 
-    await this.refreshInvoice(oldPayment.invoiceId);
-
-    return payment;
+    return updatedPayment;
   }
 
   async remove(id: string) {
@@ -89,11 +107,13 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
-    await this.prisma.payment.delete({
-      where: { id },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.delete({
+        where: { id },
+      });
 
-    await this.refreshInvoice(payment.invoiceId);
+      await this.refreshInvoice(payment.invoiceId, tx);
+    });
 
     return {
       success: true,
@@ -101,8 +121,10 @@ export class PaymentsService {
     };
   }
 
-  private async refreshInvoice(invoiceId: string) {
-    const invoice = await this.prisma.invoice.findUnique({
+  private async refreshInvoice(invoiceId: string, tx?: Prisma.TransactionClient) {
+    const prismaClient = tx || this.prisma;
+
+    const invoice = await prismaClient.invoice.findUnique({
       where: {
         id: invoiceId,
       },
@@ -132,13 +154,13 @@ export class PaymentsService {
       status = InvoiceStatus.PARTIALLY_PAID;
     }
 
-    await this.prisma.invoice.update({
+    await prismaClient.invoice.update({
       where: {
         id: invoiceId,
       },
       data: {
-        paidAmount,
-        balanceAmount: balance,
+        paidAmount: new Prisma.Decimal(paidAmount),
+        balanceAmount: new Prisma.Decimal(balance),
         status,
       },
     });
