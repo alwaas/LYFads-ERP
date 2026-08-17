@@ -2,17 +2,15 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../../database';
 
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
-
-import { PaginationDto } from '../../common/dto/pagination.dto';
-
-import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class ProjectsService {
@@ -21,10 +19,22 @@ export class ProjectsService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
+  /**
+   * Create a project inside the authenticated tenant.
+   */
   async create(dto: CreateProjectDto, userTenantId: string) {
+    const projectCode = dto.projectCode.trim();
+
+    this.validateProjectDates(dto.startDate, dto.endDate);
+
+    // Validate project code.
     const existingProject = await this.prisma.project.findUnique({
       where: {
-        projectCode: dto.projectCode,
+        projectCode,
+      },
+      select: {
+        id: true,
+        tenantId: true,
       },
     });
 
@@ -32,34 +42,42 @@ export class ProjectsService {
       throw new ConflictException('Project code already exists.');
     }
 
-    const client = await this.prisma.client.findUnique({
-      where: { id: dto.clientId },
-      select: { id: true, tenantId: true },
+    // Client must belong to the authenticated tenant.
+    const client = await this.prisma.client.findFirst({
+      where: {
+        id: dto.clientId,
+        tenantId: userTenantId,
+      },
+      select: {
+        id: true,
+        tenantId: true,
+      },
     });
 
     if (!client) {
-      throw new NotFoundException('Client not found.');
+      throw new ForbiddenException(
+        'Client does not belong to the current tenant.',
+      );
     }
 
-    // Validate client belongs to the same tenant
-    if (client.tenantId !== userTenantId) {
-      throw new ForbiddenException(
-        'Cannot create project for client from different tenant',
-      );
+    // Manager is optional, but if supplied it must belong
+    // to the authenticated tenant.
+    if (dto.managerId) {
+      await this.validateManagerTenant(dto.managerId, userTenantId);
     }
 
     const project = await this.prisma.project.create({
       data: {
-        projectCode: dto.projectCode,
-        name: dto.name,
-        description: dto.description,
+        projectCode,
+        name: dto.name.trim(),
+        description: dto.description?.trim() || null,
         status: dto.status,
         priority: dto.priority,
         startDate: dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
         budget: dto.budget,
-        clientId: dto.clientId,
-        managerId: dto.managerId,
+        clientId: client.id,
+        managerId: dto.managerId ?? null,
         tenantId: userTenantId,
       },
       include: {
@@ -77,14 +95,17 @@ export class ProjectsService {
     await this.activityLogsService.log({
       action: 'CREATE',
       module: 'PROJECT',
-      description: `Project ${project.projectCode} created successfully.`,
-      userId: project.managerId ?? undefined,
+      description: `Project "${project.projectCode}" created successfully.`,
+      userId: undefined,
       tenantId: userTenantId,
     });
 
     return project;
   }
 
+  /**
+   * Return only projects belonging to the authenticated tenant.
+   */
   async findAll(pagination: PaginationDto, userTenantId: string) {
     const { skip, limit } = pagination;
 
@@ -121,17 +142,19 @@ export class ProjectsService {
       total,
       page: pagination.page,
       limit: pagination.limit,
-      totalPages: Math.ceil(total / pagination.limit),
+      totalPages: limit > 0 ? Math.ceil(total / limit) : 0,
       data,
     };
   }
-  // TODO:
-  // Add search, status, manager and client filters.
 
+  /**
+   * Return one project only if it belongs to the tenant.
+   */
   async findOne(id: string, userTenantId: string) {
-    const project = await this.prisma.project.findUnique({
+    const project = await this.prisma.project.findFirst({
       where: {
         id,
+        tenantId: userTenantId,
       },
       include: {
         client: true,
@@ -146,81 +169,190 @@ export class ProjectsService {
     });
 
     if (!project) {
-      throw new NotFoundException('Project not found.');
-    }
-
-    // Verify tenant ownership
-    if (project.tenantId !== userTenantId) {
-      throw new ForbiddenException('Access denied to this project');
+      throw new ForbiddenException('Access denied to this project.');
     }
 
     return project;
   }
 
+  /**
+   * Update a project without allowing tenant reassignment.
+   */
   async update(id: string, dto: UpdateProjectDto, userTenantId: string) {
-    await this.findOne(id, userTenantId);
+    const existingProject = await this.prisma.project.findFirst({
+      where: {
+        id,
+        tenantId: userTenantId,
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        projectCode: true,
+        startDate: true,
+        endDate: true,
+      },
+    });
 
-    // If clientId is being changed, validate the new client belongs to the same tenant
+    if (!existingProject) {
+      throw new ForbiddenException('Access denied to this project.');
+    }
+
+    const projectCode = dto.projectCode?.trim();
+
+    if (projectCode) {
+      const duplicate = await this.prisma.project.findFirst({
+        where: {
+          projectCode,
+          id: {
+            not: id,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (duplicate) {
+        throw new ConflictException('Project code already exists.');
+      }
+    }
+
+    // Validate new client.
     if (dto.clientId) {
-      const client = await this.prisma.client.findUnique({
-        where: { id: dto.clientId },
-        select: { id: true, tenantId: true },
+      const client = await this.prisma.client.findFirst({
+        where: {
+          id: dto.clientId,
+          tenantId: userTenantId,
+        },
+        select: {
+          id: true,
+        },
       });
 
       if (!client) {
-        throw new NotFoundException('Client not found.');
-      }
-
-      if (client.tenantId !== userTenantId) {
         throw new ForbiddenException(
-          'Cannot assign project to client from different tenant',
+          'Client does not belong to the current tenant.',
         );
       }
     }
+
+    // Validate new manager.
+    if (dto.managerId) {
+      await this.validateManagerTenant(dto.managerId, userTenantId);
+    }
+
+    const startDate = dto.startDate
+      ? new Date(dto.startDate)
+      : existingProject.startDate;
+
+    const endDate = dto.endDate
+      ? new Date(dto.endDate)
+      : existingProject.endDate;
+
+    this.validateProjectDates(startDate?.toISOString(), endDate?.toISOString());
 
     const updatedProject = await this.prisma.project.update({
       where: {
         id,
       },
       data: {
-        projectCode: dto.projectCode,
-        name: dto.name,
-        description: dto.description,
-        status: dto.status,
-        priority: dto.priority,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-        budget: dto.budget,
-        clientId: dto.clientId,
-        managerId: dto.managerId,
+        ...(projectCode !== undefined && {
+          projectCode,
+        }),
+
+        ...(dto.name !== undefined && {
+          name: dto.name.trim(),
+        }),
+
+        ...(dto.description !== undefined && {
+          description: dto.description?.trim() || null,
+        }),
+
+        ...(dto.status !== undefined && {
+          status: dto.status,
+        }),
+
+        ...(dto.priority !== undefined && {
+          priority: dto.priority,
+        }),
+
+        ...(dto.startDate !== undefined && {
+          startDate,
+        }),
+
+        ...(dto.endDate !== undefined && {
+          endDate,
+        }),
+
+        ...(dto.budget !== undefined && {
+          budget: dto.budget,
+        }),
+
+        ...(dto.clientId !== undefined && {
+          clientId: dto.clientId,
+        }),
+
+        ...(dto.managerId !== undefined && {
+          managerId: dto.managerId || null,
+        }),
+
+        // IMPORTANT:
+        // tenantId is deliberately never taken from DTO.
+        // It remains unchanged.
+      },
+      include: {
+        client: true,
+        manager: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
       },
     });
 
     await this.activityLogsService.log({
       action: 'UPDATE',
       module: 'PROJECT',
-      description: `Project ${updatedProject.projectCode} updated successfully.`,
-      userId: updatedProject.managerId ?? undefined,
+      description: `Project "${updatedProject.projectCode}" updated successfully.`,
+      userId: undefined,
       tenantId: userTenantId,
     });
 
     return updatedProject;
   }
 
+  /**
+   * Delete only a project belonging to the authenticated tenant.
+   */
   async remove(id: string, userTenantId: string) {
-    const project = await this.findOne(id, userTenantId);
+    const project = await this.prisma.project.findFirst({
+      where: {
+        id,
+        tenantId: userTenantId,
+      },
+      select: {
+        id: true,
+        projectCode: true,
+      },
+    });
+
+    if (!project) {
+      throw new ForbiddenException('Access denied to this project.');
+    }
 
     await this.prisma.project.delete({
       where: {
-        id,
+        id: project.id,
       },
     });
 
     await this.activityLogsService.log({
       action: 'DELETE',
       module: 'PROJECT',
-      description: `Project ${project.projectCode} deleted successfully.`,
-      userId: project.managerId ?? undefined,
+      description: `Project "${project.projectCode}" deleted successfully.`,
+      userId: undefined,
       tenantId: userTenantId,
     });
 
@@ -228,5 +360,56 @@ export class ProjectsService {
       success: true,
       message: 'Project deleted successfully.',
     };
+  }
+
+  /**
+   * Validate that a manager/user belongs to the same tenant.
+   */
+  private async validateManagerTenant(
+    managerId: string,
+    userTenantId: string,
+  ): Promise<void> {
+    const manager = await this.prisma.user.findFirst({
+      where: {
+        id: managerId,
+        tenantId: userTenantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        tenantId: true,
+      },
+    });
+
+    if (!manager) {
+      throw new ForbiddenException(
+        'Manager does not belong to the current tenant.',
+      );
+    }
+  }
+
+  /**
+   * Validate project date consistency.
+   */
+  private validateProjectDates(
+    startDate?: string | null,
+    endDate?: string | null,
+  ): void {
+    if (!startDate || !endDate) {
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return;
+    }
+
+    if (end < start) {
+      throw new ConflictException(
+        'Project end date cannot be before start date.',
+      );
+    }
   }
 }
