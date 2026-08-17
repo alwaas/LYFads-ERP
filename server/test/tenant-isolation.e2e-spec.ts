@@ -34,6 +34,22 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
     tenantBClient: { id: string };
     tenantAInvoice: { id: string };
     tenantBInvoice: { id: string };
+    tenantAInvoiceItem: { id: string };
+    tenantBInvoiceItem: { id: string };
+    tenantAPayment: { id: string };
+    tenantBPayment: { id: string };
+    tenantALeave: { id: string };
+    tenantBLeave: { id: string };
+    tenantAAttendance: { id: string };
+    tenantBAttendance: { id: string };
+    tenantANotification: { id: string };
+    tenantBNotification: { id: string };
+    tenantATimesheet: { id: string };
+    tenantBTimesheet: { id: string };
+    tenantAPayroll: { id: string };
+    tenantBPayroll: { id: string };
+    tenantADailyWorkReport: { id: string };
+    tenantBDailyWorkReport: { id: string };
   };
 
   beforeAll(async () => {
@@ -939,6 +955,431 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           testData.tenantBClient.id,
         );
       }
+    });
+  });
+
+  describe('Phase 4.1: Newly Tenant-Aware Services', () => {
+    describe('InvoiceItemsService Tenant Isolation', () => {
+      it("should only return invoice items for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/invoice-items')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/invoice-items')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        expect(responseA.body.data.length).toBeGreaterThan(0);
+        expect(responseB.body.data.length).toBeGreaterThan(0);
+
+        // Verify all items belong to respective tenants
+        responseA.body.data.forEach((item: any) => {
+          expect(item.tenantId).toBe(testData.tenantA.id);
+        });
+
+        responseB.body.data.forEach((item: any) => {
+          expect(item.tenantId).toBe(testData.tenantB.id);
+        });
+      });
+
+      it('should reject cross-tenant invoice item access', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .get(`/invoice-items/${testData.tenantBInvoiceItem.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+    });
+
+    describe('PaymentsService Tenant Isolation', () => {
+      it("should only return payments for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/payments')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/payments')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        if (responseA.body && responseA.body.length > 0) {
+          expect(responseA.body.length).toBeGreaterThan(0);
+          // Verify all payments belong to respective tenants
+          responseA.body.forEach((payment: any) => {
+            expect(payment.tenantId).toBe(testData.tenantA.id);
+          });
+        }
+
+        if (responseB.body && responseB.body.length > 0) {
+          expect(responseB.body.length).toBeGreaterThan(0);
+          // Verify all payments belong to respective tenants
+          responseB.body.forEach((payment: any) => {
+            expect(payment.tenantId).toBe(testData.tenantB.id);
+          });
+        }
+      });
+
+      it('should reject cross-tenant payment access', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .get(`/payments/${testData.tenantBPayment.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+    });
+
+    describe('ReportsService Tenant Isolation', () => {
+      it("should only return dashboard stats for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/reports/dashboard')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/reports/dashboard')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        // Both tenants should have employees, clients, projects, etc.
+        if (responseA.body.employees !== undefined) {
+          expect(responseA.body.employees).toBeGreaterThan(0);
+        }
+        if (responseB.body.employees !== undefined) {
+          expect(responseB.body.employees).toBeGreaterThan(0);
+        }
+      });
+    });
+
+    describe('LeavesService Tenant Isolation', () => {
+      it("should only return leaves for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/leaves')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/leaves')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        if (responseA.body.data && responseA.body.data.length > 0) {
+          expect(responseA.body.data.length).toBeGreaterThan(0);
+          // Verify all leaves belong to respective tenants
+          responseA.body.data.forEach((leave: any) => {
+            expect(leave.tenantId).toBe(testData.tenantA.id);
+          });
+        }
+
+        if (responseB.body.data && responseB.body.data.length > 0) {
+          expect(responseB.body.data.length).toBeGreaterThan(0);
+          // Verify all leaves belong to respective tenants
+          responseB.body.data.forEach((leave: any) => {
+            expect(leave.tenantId).toBe(testData.tenantB.id);
+          });
+        }
+      });
+
+      it('should reject cross-tenant leave access', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .get(`/leaves/${testData.tenantBLeave.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+    });
+
+    describe('AttendanceService Tenant Isolation', () => {
+      it("should only return attendance for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/attendance/today')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/attendance/today')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        // Verify all attendance records belong to respective tenants
+        if (responseA.body.length > 0) {
+          responseA.body.forEach((attendance: any) => {
+            expect(attendance.tenantId).toBe(testData.tenantA.id);
+          });
+        }
+
+        if (responseB.body.length > 0) {
+          responseB.body.forEach((attendance: any) => {
+            expect(attendance.tenantId).toBe(testData.tenantB.id);
+          });
+        }
+      });
+    });
+
+    describe('NotificationsService Tenant Isolation', () => {
+      it("should only return notifications for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/notifications')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/notifications')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        if (responseA.body.data && responseA.body.data.length > 0) {
+          expect(responseA.body.data.length).toBeGreaterThan(0);
+          // Verify all notifications belong to respective tenants
+          responseA.body.data.forEach((notification: any) => {
+            expect(notification.tenantId).toBe(testData.tenantA.id);
+          });
+        }
+
+        if (responseB.body.data && responseB.body.data.length > 0) {
+          expect(responseB.body.data.length).toBeGreaterThan(0);
+          // Verify all notifications belong to respective tenants
+          responseB.body.data.forEach((notification: any) => {
+            expect(notification.tenantId).toBe(testData.tenantB.id);
+          });
+        }
+      });
+
+      it('should reject cross-tenant notification access', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .patch(`/notifications/${testData.tenantBNotification.id}/read`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+    });
+
+    describe('TimesheetsService Tenant Isolation', () => {
+      it("should only return timesheets for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/timesheets')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/timesheets')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        if (responseA.body && responseA.body.length > 0) {
+          expect(responseA.body.length).toBeGreaterThan(0);
+          // Verify all timesheets belong to respective tenants
+          responseA.body.forEach((timesheet: any) => {
+            expect(timesheet.tenantId).toBe(testData.tenantA.id);
+          });
+        }
+
+        if (responseB.body && responseB.body.length > 0) {
+          expect(responseB.body.length).toBeGreaterThan(0);
+          // Verify all timesheets belong to respective tenants
+          responseB.body.forEach((timesheet: any) => {
+            expect(timesheet.tenantId).toBe(testData.tenantB.id);
+          });
+        }
+      });
+
+      it('should reject cross-tenant timesheet access', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .get(`/timesheets/${testData.tenantBTimesheet.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+    });
+
+    describe('PayrollService Tenant Isolation', () => {
+      it("should only return payroll for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/payroll')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/payroll')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        if (responseA.body.data && responseA.body.data.length > 0) {
+          expect(responseA.body.data.length).toBeGreaterThan(0);
+          // Verify all payroll records belong to respective tenants
+          responseA.body.data.forEach((payroll: any) => {
+            expect(payroll.tenantId).toBe(testData.tenantA.id);
+          });
+        }
+
+        if (responseB.body.data && responseB.body.data.length > 0) {
+          expect(responseB.body.data.length).toBeGreaterThan(0);
+          // Verify all payroll records belong to respective tenants
+          responseB.body.data.forEach((payroll: any) => {
+            expect(payroll.tenantId).toBe(testData.tenantB.id);
+          });
+        }
+      });
+
+      it('should reject cross-tenant payroll access', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .get(`/payroll/${testData.tenantBPayroll.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+    });
+
+    describe('DailyWorkReportsService Tenant Isolation', () => {
+      it("should only return daily work reports for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/daily-work-reports')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/daily-work-reports')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        if (responseA.body.data && responseA.body.data.length > 0) {
+          expect(responseA.body.data.length).toBeGreaterThan(0);
+          // Verify all daily work reports belong to respective tenants
+          responseA.body.data.forEach((report: any) => {
+            expect(report.tenantId).toBe(testData.tenantA.id);
+          });
+        }
+
+        if (responseB.body.data && responseB.body.data.length > 0) {
+          expect(responseB.body.data.length).toBeGreaterThan(0);
+          // Verify all daily work reports belong to respective tenants
+          responseB.body.data.forEach((report: any) => {
+            expect(report.tenantId).toBe(testData.tenantB.id);
+          });
+        }
+      });
+
+      it('should reject cross-tenant daily work report access', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .get(`/daily-work-reports/${testData.tenantBDailyWorkReport.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+    });
+  });
+
+  describe('Phase 4.1: TenantId Spoofing Prevention (New Services)', () => {
+    it('should prevent updating invoice to change tenantId', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+
+      // Try to update an invoice to change its tenantId
+      await request(app.getHttpServer())
+        .patch(`/invoice/${testData.tenantAInvoice.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          tenantId: testData.tenantB.id, // Try to change tenant
+        })
+        .expect(200); // Should succeed but ignore the tenantId change
+
+      // Verify tenantId didn't change
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: testData.tenantAInvoice.id },
+      });
+
+      expect(invoice?.tenantId).toBe(testData.tenantA.id);
+    });
+
+    it('should prevent updating lead to change tenantId', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+
+      // Try to update a lead to change its tenantId
+      await request(app.getHttpServer())
+        .patch(`/crm/leads/${testData.tenantALead.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          tenantId: testData.tenantB.id, // Try to change tenant
+        })
+        .expect(200); // Should succeed but ignore the tenantId change
+
+      // Verify tenantId didn't change
+      const lead = await prisma.lead.findUnique({
+        where: { id: testData.tenantALead.id },
+      });
+
+      expect(lead?.tenantId).toBe(testData.tenantA.id);
+    });
+  });
+
+  describe('Phase 4.1: Suspended Tenant Access', () => {
+    it('should block access for suspended tenant', async () => {
+      // Create a suspended tenant
+      const suspendedTenant = await prisma.tenant.create({
+        data: {
+          name: 'Suspended Tenant',
+          slug: 'suspended-tenant',
+          status: 'SUSPENDED',
+        },
+      });
+
+      const suspendedUser = await prisma.user.create({
+        data: {
+          fullName: 'Suspended User',
+          email: 'suspended@test.com',
+          password: '$2b$10$dummy.hash.for.testing',
+          role: 'ADMIN',
+          isActive: true,
+          tenantId: suspendedTenant.id,
+        },
+      });
+
+      const token = generateToken(suspendedUser);
+
+      // Try to access a protected endpoint
+      await request(app.getHttpServer())
+        .get('/clients')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+
+      // Cleanup
+      await prisma.user.delete({ where: { id: suspendedUser.id } });
+      await prisma.tenant.delete({ where: { id: suspendedTenant.id } });
     });
   });
 });

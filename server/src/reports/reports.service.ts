@@ -5,16 +5,30 @@ import { PrismaService } from '../database/prisma.service';
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async dashboard() {
+  async dashboard(userTenantId: string) {
     const [employees, clients, projects, tasks, leads, attendance, leaves] =
       await Promise.all([
-        this.prisma.employee.count(),
-        this.prisma.client.count(),
-        this.prisma.project.count(),
-        this.prisma.task.count(),
-        this.prisma.lead.count(),
-        this.prisma.attendance.count(),
-        this.prisma.leave.count(),
+        this.prisma.employee.count({
+          where: { tenantId: userTenantId },
+        }),
+        this.prisma.client.count({
+          where: { tenantId: userTenantId },
+        }),
+        this.prisma.project.count({
+          where: { tenantId: userTenantId },
+        }),
+        this.prisma.task.count({
+          where: { tenantId: userTenantId },
+        }),
+        this.prisma.lead.count({
+          where: { tenantId: userTenantId },
+        }),
+        this.prisma.attendance.count({
+          where: { tenantId: userTenantId },
+        }),
+        this.prisma.leave.count({
+          where: { tenantId: userTenantId },
+        }),
       ]);
 
     return {

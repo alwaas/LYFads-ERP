@@ -11,6 +11,8 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { TimesheetsService } from './timesheets.service';
 import { CreateTimesheetDto } from './dto/create-timesheet.dto';
@@ -27,14 +29,14 @@ export class TimesheetsController {
     UserRole.EMPLOYEE,
   )
   @Post()
-  create(@Body() dto: CreateTimesheetDto) {
-    return this.timesheetsService.create(dto);
+  create(@Body() dto: CreateTimesheetDto, @GetUser() user: AuthenticatedUser) {
+    return this.timesheetsService.create(dto, user.tenantId);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Get()
-  findAll() {
-    return this.timesheetsService.findAll();
+  findAll(@GetUser() user: AuthenticatedUser) {
+    return this.timesheetsService.findAll(user.tenantId);
   }
 
   @Roles(
@@ -44,29 +46,39 @@ export class TimesheetsController {
     UserRole.EMPLOYEE,
   )
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.timesheetsService.findOne(id);
+  findOne(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.timesheetsService.findOne(id, user.tenantId);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateTimesheetDto) {
-    return this.timesheetsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTimesheetDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.timesheetsService.update(id, dto, user.tenantId);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.timesheetsService.remove(id);
+  remove(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.timesheetsService.remove(id, user.tenantId);
   }
 
   @Get('employee/:employeeId/summary')
-  employeeSummary(@Param('employeeId') employeeId: string) {
-    return this.timesheetsService.employeeSummary(employeeId);
+  employeeSummary(
+    @Param('employeeId') employeeId: string,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.timesheetsService.employeeSummary(employeeId, user.tenantId);
   }
 
   @Get('project/:projectId/summary')
-  projectSummary(@Param('projectId') projectId: string) {
-    return this.timesheetsService.projectSummary(projectId);
+  projectSummary(
+    @Param('projectId') projectId: string,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.timesheetsService.projectSummary(projectId, user.tenantId);
   }
 }

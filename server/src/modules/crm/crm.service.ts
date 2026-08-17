@@ -179,10 +179,14 @@ export class CrmService {
   async update(id: string, dto: UpdateLeadDto, userTenantId: string) {
     await this.findOne(id, userTenantId);
 
-    if (dto.assignedToId) {
+    // Prevent tenantId spoofing - ignore any tenantId in the update DTO
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { tenantId, ...updateData } = dto;
+
+    if (updateData.assignedToId) {
       const employee = await this.prisma.employee.findUnique({
         where: {
-          id: dto.assignedToId,
+          id: updateData.assignedToId,
         },
         select: {
           id: true,
@@ -207,15 +211,15 @@ export class CrmService {
         id,
       },
       data: {
-        companyName: dto.companyName,
-        contactPerson: dto.contactPerson,
-        email: dto.email?.toLowerCase(),
-        phone: dto.phone,
-        status: dto.status,
-        source: dto.source,
-        estimatedValue: dto.estimatedValue,
-        remarks: dto.remarks,
-        assignedToId: dto.assignedToId,
+        companyName: updateData.companyName,
+        contactPerson: updateData.contactPerson,
+        email: updateData.email?.toLowerCase(),
+        phone: updateData.phone,
+        status: updateData.status,
+        source: updateData.source,
+        estimatedValue: updateData.estimatedValue,
+        remarks: updateData.remarks,
+        assignedToId: updateData.assignedToId,
       },
       include: {
         assignedTo: true,

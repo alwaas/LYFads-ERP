@@ -86,22 +86,31 @@ export class InvoiceService {
   async update(id: string, dto: UpdateInvoiceDto, userTenantId: string) {
     await this.findOne(id, userTenantId);
 
+    // Prevent tenantId spoofing - ignore any tenantId in the update DTO
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { tenantId, ...updateData } = dto;
+
     const data: Prisma.InvoiceUpdateInput = {};
 
-    if (dto.invoiceNumber) data.invoiceNumber = dto.invoiceNumber;
-    if (dto.clientId) data.client = { connect: { id: dto.clientId } };
-    if (dto.projectId) data.project = { connect: { id: dto.projectId } };
-    if (dto.issueDate) data.issueDate = new Date(dto.issueDate);
-    if (dto.dueDate) data.dueDate = new Date(dto.dueDate);
-    if (dto.subtotal) data.subtotal = new Prisma.Decimal(dto.subtotal);
-    if (dto.tax) data.tax = new Prisma.Decimal(dto.tax);
-    if (dto.discount) data.discount = new Prisma.Decimal(dto.discount);
-    if (dto.total) data.total = new Prisma.Decimal(dto.total);
-    if (dto.paidAmount) data.paidAmount = new Prisma.Decimal(dto.paidAmount);
-    if (dto.balanceAmount)
-      data.balanceAmount = new Prisma.Decimal(dto.balanceAmount);
-    if (dto.status) data.status = dto.status;
-    if (dto.notes) data.notes = dto.notes;
+    if (updateData.invoiceNumber) data.invoiceNumber = updateData.invoiceNumber;
+    if (updateData.clientId)
+      data.client = { connect: { id: updateData.clientId } };
+    if (updateData.projectId)
+      data.project = { connect: { id: updateData.projectId } };
+    if (updateData.issueDate) data.issueDate = new Date(updateData.issueDate);
+    if (updateData.dueDate) data.dueDate = new Date(updateData.dueDate);
+    if (updateData.subtotal)
+      data.subtotal = new Prisma.Decimal(updateData.subtotal);
+    if (updateData.tax) data.tax = new Prisma.Decimal(updateData.tax);
+    if (updateData.discount)
+      data.discount = new Prisma.Decimal(updateData.discount);
+    if (updateData.total) data.total = new Prisma.Decimal(updateData.total);
+    if (updateData.paidAmount)
+      data.paidAmount = new Prisma.Decimal(updateData.paidAmount);
+    if (updateData.balanceAmount)
+      data.balanceAmount = new Prisma.Decimal(updateData.balanceAmount);
+    if (updateData.status) data.status = updateData.status;
+    if (updateData.notes) data.notes = updateData.notes;
 
     return this.prisma.invoice.update({
       where: { id },

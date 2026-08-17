@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { Prisma } from '@prisma/client';
@@ -22,7 +23,7 @@ export class PayrollService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreatePayrollDto) {
+  async create(dto: CreatePayrollDto, userTenantId: string) {
     const employee = await this.prisma.employee.findUnique({
       where: {
         id: dto.employeeId,
@@ -34,11 +35,17 @@ export class PayrollService {
       throw new NotFoundException('Employee not found.');
     }
 
+    // Verify employee belongs to the same tenant
+    if (employee.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this employee');
+    }
+
     const existing = await this.prisma.payroll.findFirst({
       where: {
         employeeId: dto.employeeId,
         month: dto.month,
         year: dto.year,
+        tenantId: userTenantId,
       },
     });
 
@@ -58,7 +65,7 @@ export class PayrollService {
         bonus: dto.bonus ?? 0,
         netSalary: dto.netSalary,
         status: dto.status ?? 'PENDING',
-        tenantId: employee.user.tenantId,
+        tenantId: userTenantId,
       },
       include: {
         employee: {
@@ -74,16 +81,22 @@ export class PayrollService {
       module: 'PAYROLL',
       description: 'Payroll generated successfully.',
       userId: employee.userId,
+      tenantId: userTenantId,
     });
 
     return payroll;
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    userTenantId: string,
+  ) {
     const { skip, limit } = pagination;
 
     const where: Prisma.PayrollWhereInput = search.search
       ? {
+          tenantId: userTenantId,
           employee: {
             user: {
               fullName: {
@@ -93,7 +106,9 @@ export class PayrollService {
             },
           },
         }
-      : {};
+      : {
+          tenantId: userTenantId,
+        };
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.payroll.findMany({
@@ -111,7 +126,6 @@ export class PayrollService {
           createdAt: 'desc',
         },
       }),
-
       this.prisma.payroll.count({
         where,
       }),
@@ -126,11 +140,9 @@ export class PayrollService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const payroll = await this.prisma.payroll.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       include: {
         employee: {
           include: {
@@ -141,14 +153,19 @@ export class PayrollService {
     });
 
     if (!payroll) {
-      throw new NotFoundException('Payroll not found.');
+      throw new NotFoundException('Payroll not found');
+    }
+
+    // Verify tenant ownership
+    if (payroll.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this payroll');
     }
 
     return payroll;
   }
 
-  async update(id: string, dto: UpdatePayrollDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdatePayrollDto, userTenantId: string) {
+    await this.findOne(id, userTenantId);
 
     const payroll = await this.prisma.payroll.update({
       where: {
@@ -169,13 +186,14 @@ export class PayrollService {
       module: 'PAYROLL',
       description: 'Payroll updated successfully.',
       userId: payroll.employee.userId,
+      tenantId: userTenantId,
     });
 
     return payroll;
   }
 
-  async remove(id: string) {
-    const payroll = await this.findOne(id);
+  async remove(id: string, userTenantId: string) {
+    const payroll = await this.findOne(id, userTenantId);
 
     await this.prisma.payroll.delete({
       where: {
@@ -188,11 +206,12 @@ export class PayrollService {
       module: 'PAYROLL',
       description: 'Payroll deleted successfully.',
       userId: payroll.employee.userId,
+      tenantId: userTenantId,
     });
 
     return {
       success: true,
-      message: 'Payroll deleted successfully.',
+      message: 'Payroll deleted successfully',
     };
   }
 }

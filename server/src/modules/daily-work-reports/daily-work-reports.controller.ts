@@ -12,11 +12,14 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { DailyWorkReportsService } from './daily-work-reports.service';
 
 import { CreateDailyWorkReportDto } from './dto/create-daily-work-report.dto';
 import { UpdateDailyWorkReportDto } from './dto/update-daily-work-report.dto';
+import { UpdateDailyWorkReportStatusDto } from './dto/update-daily-work-report-status.dto';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
@@ -34,8 +37,11 @@ export class DailyWorkReportsController {
     UserRole.EMPLOYEE,
   )
   @Post()
-  create(@Body() dto: CreateDailyWorkReportDto) {
-    return this.dailyWorkReportsService.create(dto);
+  create(
+    @Body() dto: CreateDailyWorkReportDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.dailyWorkReportsService.create(dto, user.tenantId);
   }
 
   @Roles(
@@ -45,8 +51,16 @@ export class DailyWorkReportsController {
     UserRole.EMPLOYEE,
   )
   @Get()
-  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
-    return this.dailyWorkReportsService.findAll(pagination, search);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.dailyWorkReportsService.findAll(
+      pagination,
+      search,
+      user.tenantId,
+    );
   }
 
   @Roles(
@@ -56,8 +70,8 @@ export class DailyWorkReportsController {
     UserRole.EMPLOYEE,
   )
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.dailyWorkReportsService.findOne(id);
+  findOne(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.dailyWorkReportsService.findOne(id, user.tenantId);
   }
 
   @Roles(
@@ -67,13 +81,27 @@ export class DailyWorkReportsController {
     UserRole.EMPLOYEE,
   )
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateDailyWorkReportDto) {
-    return this.dailyWorkReportsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateDailyWorkReportDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.dailyWorkReportsService.update(id, dto, user.tenantId);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateDailyWorkReportStatusDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.dailyWorkReportsService.updateStatus(id, dto, user.tenantId);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.dailyWorkReportsService.delete(id);
+  remove(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.dailyWorkReportsService.remove(id, user.tenantId);
   }
 }

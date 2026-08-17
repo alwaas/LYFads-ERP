@@ -348,6 +348,202 @@ export async function setupTestDatabase() {
     },
   });
 
+  // Create invoice items for Tenant A
+  const tenantAInvoiceItem = await prisma.invoiceItem.create({
+    data: {
+      description: 'Tenant A Invoice Item',
+      quantity: 10,
+      unitPrice: 500,
+      amount: 5000,
+      invoiceId: tenantAInvoice.id,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create invoice items for Tenant B
+  const tenantBInvoiceItem = await prisma.invoiceItem.create({
+    data: {
+      description: 'Tenant B Invoice Item',
+      quantity: 10,
+      unitPrice: 500,
+      amount: 5000,
+      invoiceId: tenantBInvoice.id,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create payments for Tenant A
+  const tenantAPayment = await prisma.payment.create({
+    data: {
+      amount: 2500,
+      paymentDate: new Date('2024-01-20'),
+      method: 'BANK_TRANSFER',
+      invoiceId: tenantAInvoice.id,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create payments for Tenant B
+  const tenantBPayment = await prisma.payment.create({
+    data: {
+      amount: 2500,
+      paymentDate: new Date('2024-01-20'),
+      method: 'BANK_TRANSFER',
+      invoiceId: tenantBInvoice.id,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create leaves for Tenant A
+  const tenantALeave = await prisma.leave.create({
+    data: {
+      employeeId: tenantAEmployeeRecord.id,
+      leaveType: 'SICK',
+      startDate: new Date('2024-02-01'),
+      endDate: new Date('2024-02-02'),
+      reason: 'Not feeling well',
+      status: 'PENDING',
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create leaves for Tenant B
+  const tenantBLeave = await prisma.leave.create({
+    data: {
+      employeeId: tenantBEmployeeRecord.id,
+      leaveType: 'SICK',
+      startDate: new Date('2024-02-01'),
+      endDate: new Date('2024-02-02'),
+      reason: 'Not feeling well',
+      status: 'PENDING',
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create attendance for Tenant A
+  const tenantAAttendance = await prisma.attendance.create({
+    data: {
+      employeeId: tenantAEmployeeRecord.id,
+      date: new Date('2024-01-20'),
+      checkIn: new Date('2024-01-20T09:00:00'),
+      checkOut: new Date('2024-01-20T18:00:00'),
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create attendance for Tenant B
+  const tenantBAttendance = await prisma.attendance.create({
+    data: {
+      employeeId: tenantBEmployeeRecord.id,
+      date: new Date('2024-01-20'),
+      checkIn: new Date('2024-01-20T09:00:00'),
+      checkOut: new Date('2024-01-20T18:00:00'),
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create notifications for Tenant A
+  const tenantANotification = await prisma.notification.create({
+    data: {
+      userId: tenantAEmployee.id,
+      title: 'Tenant A Notification',
+      message: 'Test notification for Tenant A',
+      isRead: false,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create notifications for Tenant B
+  const tenantBNotification = await prisma.notification.create({
+    data: {
+      userId: tenantBEmployee.id,
+      title: 'Tenant B Notification',
+      message: 'Test notification for Tenant B',
+      isRead: false,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create timesheets for Tenant A
+  const tenantATimesheet = await prisma.timesheet.create({
+    data: {
+      employeeId: tenantAEmployeeRecord.id,
+      projectId: tenantAProject.id,
+      taskId: tenantATask.id,
+      workDate: new Date('2024-01-20'),
+      hours: 8,
+      description: 'Worked on Tenant A project',
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create timesheets for Tenant B
+  const tenantBTimesheet = await prisma.timesheet.create({
+    data: {
+      employeeId: tenantBEmployeeRecord.id,
+      projectId: tenantBProject.id,
+      taskId: tenantBTask.id,
+      workDate: new Date('2024-01-20'),
+      hours: 8,
+      description: 'Worked on Tenant B project',
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create payroll for Tenant A
+  const tenantAPayroll = await prisma.payroll.create({
+    data: {
+      employeeId: tenantAEmployeeRecord.id,
+      month: 1,
+      year: 2024,
+      basicSalary: 75000,
+      netSalary: 75000,
+      status: 'PENDING',
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create payroll for Tenant B
+  const tenantBPayroll = await prisma.payroll.create({
+    data: {
+      employeeId: tenantBEmployeeRecord.id,
+      month: 1,
+      year: 2024,
+      basicSalary: 75000,
+      netSalary: 75000,
+      status: 'PENDING',
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create daily work reports for Tenant A
+  const tenantADailyWorkReport = await prisma.dailyWorkReport.create({
+    data: {
+      employeeId: tenantAEmployeeRecord.id,
+      projectId: tenantAProject.id,
+      taskId: tenantATask.id,
+      reportDate: new Date('2024-01-20'),
+      todayWork: 'Worked on feature implementation',
+      hoursWorked: 8,
+      status: 'COMPLETED',
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create daily work reports for Tenant B
+  const tenantBDailyWorkReport = await prisma.dailyWorkReport.create({
+    data: {
+      employeeId: tenantBEmployeeRecord.id,
+      projectId: tenantBProject.id,
+      taskId: tenantBTask.id,
+      reportDate: new Date('2024-01-20'),
+      todayWork: 'Worked on feature implementation',
+      hoursWorked: 8,
+      status: 'COMPLETED',
+      tenantId: tenantB.id,
+    },
+  });
+
   return {
     tenantA,
     tenantB,
@@ -360,6 +556,14 @@ export async function setupTestDatabase() {
     tenantATask,
     tenantALead,
     tenantAInvoice,
+    tenantAInvoiceItem,
+    tenantAPayment,
+    tenantALeave,
+    tenantAAttendance,
+    tenantANotification,
+    tenantATimesheet,
+    tenantAPayroll,
+    tenantADailyWorkReport,
     tenantBAdmin,
     tenantBManager,
     tenantBEmployee,
@@ -369,6 +573,14 @@ export async function setupTestDatabase() {
     tenantBTask,
     tenantBLead,
     tenantBInvoice,
+    tenantBInvoiceItem,
+    tenantBPayment,
+    tenantBLeave,
+    tenantBAttendance,
+    tenantBNotification,
+    tenantBTimesheet,
+    tenantBPayroll,
+    tenantBDailyWorkReport,
   };
 }
 

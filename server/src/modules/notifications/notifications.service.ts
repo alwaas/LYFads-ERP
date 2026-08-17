@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 import { Prisma } from '@prisma/client';
 
@@ -16,7 +20,7 @@ export class NotificationsService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreateNotificationDto) {
+  async create(dto: CreateNotificationDto, userTenantId: string) {
     const user = await this.prisma.user.findUnique({
       where: {
         id: dto.userId,
@@ -27,12 +31,17 @@ export class NotificationsService {
       throw new NotFoundException('User not found.');
     }
 
+    // Verify user belongs to the same tenant
+    if (user.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this user');
+    }
+
     const notification = await this.prisma.notification.create({
       data: {
         userId: dto.userId,
         title: dto.title,
         message: dto.message,
-        tenantId: user.tenantId,
+        tenantId: userTenantId,
       },
       include: {
         user: {
@@ -51,12 +60,13 @@ export class NotificationsService {
       module: 'NOTIFICATION',
       description: `Notification "${notification.title}" created.`,
       userId: notification.userId,
+      tenantId: userTenantId,
     });
 
     return notification;
   }
 
-  async markAsRead(id: string) {
+  async markAsRead(id: string, userTenantId: string) {
     const notification = await this.prisma.notification.findUnique({
       where: {
         id,
@@ -65,6 +75,11 @@ export class NotificationsService {
 
     if (!notification) {
       throw new NotFoundException('Notification not found.');
+    }
+
+    // Verify tenant ownership
+    if (notification.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this notification');
     }
 
     const updated = await this.prisma.notification.update({
@@ -81,16 +96,22 @@ export class NotificationsService {
       module: 'NOTIFICATION',
       description: `Notification marked as read.`,
       userId: updated.userId,
+      tenantId: userTenantId,
     });
 
     return updated;
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    userTenantId: string,
+  ) {
     const { skip, limit } = pagination;
 
     const where: Prisma.NotificationWhereInput = search.search
       ? {
+          tenantId: userTenantId,
           OR: [
             {
               title: {
@@ -106,7 +127,9 @@ export class NotificationsService {
             },
           ],
         }
-      : {};
+      : {
+          tenantId: userTenantId,
+        };
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.notification.findMany({
@@ -141,7 +164,7 @@ export class NotificationsService {
     };
   }
 
-  async unreadCount(userId: string) {
+  async unreadCount(userId: string, userTenantId: string) {
     const user = await this.prisma.user.findUnique({
       where: {
         id: userId,
@@ -152,9 +175,15 @@ export class NotificationsService {
       throw new NotFoundException('User not found.');
     }
 
+    // Verify user belongs to the same tenant
+    if (user.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this user');
+    }
+
     const unread = await this.prisma.notification.count({
       where: {
         userId,
+        tenantId: userTenantId,
         isRead: false,
       },
     });

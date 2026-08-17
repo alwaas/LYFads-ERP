@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { Prisma, WorkStatus } from '@prisma/client';
@@ -10,6 +11,7 @@ import { PrismaService } from '../../database';
 
 import { CreateDailyWorkReportDto } from './dto/create-daily-work-report.dto';
 import { UpdateDailyWorkReportDto } from './dto/update-daily-work-report.dto';
+import { UpdateDailyWorkReportStatusDto } from './dto/update-daily-work-report-status.dto';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
@@ -23,10 +25,7 @@ export class DailyWorkReportsService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  // =========================
-  // CREATE
-  // =========================
-  async create(dto: CreateDailyWorkReportDto) {
+  async create(dto: CreateDailyWorkReportDto, userTenantId: string) {
     const employee = await this.prisma.employee.findUnique({
       where: {
         id: dto.employeeId,
@@ -40,6 +39,11 @@ export class DailyWorkReportsService {
       throw new NotFoundException('Employee not found.');
     }
 
+    // Verify employee belongs to the same tenant
+    if (employee.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this employee');
+    }
+
     const reportDate = new Date(dto.reportDate);
 
     if (Number.isNaN(reportDate.getTime())) {
@@ -51,6 +55,7 @@ export class DailyWorkReportsService {
     const existingReport = await this.prisma.dailyWorkReport.findFirst({
       where: {
         employeeId: dto.employeeId,
+        tenantId: userTenantId,
         reportDate,
       },
     });
@@ -73,7 +78,7 @@ export class DailyWorkReportsService {
         hoursWorked: new Prisma.Decimal(dto.hoursWorked),
         status: dto.status ?? WorkStatus.COMPLETED,
         managerRemarks: dto.managerRemarks || null,
-        tenantId: employee.tenantId,
+        tenantId: userTenantId,
       },
 
       include: {
@@ -92,16 +97,17 @@ export class DailyWorkReportsService {
       module: 'DAILY_WORK_REPORT',
       description: `Daily Work Report created.`,
       userId: employee.userId,
-      tenantId: employee.tenantId,
+      tenantId: userTenantId,
     });
 
     return report;
   }
 
-  // =========================
-  // UPDATE
-  // =========================
-  async update(id: string, dto: UpdateDailyWorkReportDto) {
+  async update(
+    id: string,
+    dto: UpdateDailyWorkReportDto,
+    userTenantId: string,
+  ) {
     const existingReport = await this.prisma.dailyWorkReport.findUnique({
       where: {
         id,
@@ -117,6 +123,11 @@ export class DailyWorkReportsService {
 
     if (!existingReport) {
       throw new NotFoundException('Daily Work Report not found.');
+    }
+
+    // Verify tenant ownership
+    if (existingReport.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this daily work report');
     }
 
     let reportDate: Date | undefined;
@@ -146,12 +157,18 @@ export class DailyWorkReportsService {
       if (!employee) {
         throw new NotFoundException('Employee not found.');
       }
+
+      // Verify employee belongs to the same tenant
+      if (employee.tenantId !== userTenantId) {
+        throw new ForbiddenException('Access denied to this employee');
+      }
     }
 
     if (reportDate !== undefined || dto.employeeId !== undefined) {
       const duplicate = await this.prisma.dailyWorkReport.findFirst({
         where: {
           employeeId,
+          tenantId: userTenantId,
           reportDate: reportDate ?? existingReport.reportDate,
           NOT: {
             id,
@@ -229,35 +246,81 @@ export class DailyWorkReportsService {
       module: 'DAILY_WORK_REPORT',
       description: `Daily Work Report updated.`,
       userId: updatedReport.employee.user.id,
+      tenantId: userTenantId,
     });
 
     return updatedReport;
   }
 
-  // =========================
-  // FIND ALL
-  // =========================
-  async findAll(pagination: PaginationDto, search: SearchDto) {
-    const searchText = search.search?.trim();
+  async updateStatus(
+    id: string,
+    dto: UpdateDailyWorkReportStatusDto,
+    userTenantId: string,
+  ) {
+    const report = await this.prisma.dailyWorkReport.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        employee: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
 
-    const where: Prisma.DailyWorkReportWhereInput = searchText
+    if (!report) {
+      throw new NotFoundException('Daily Work Report not found.');
+    }
+
+    // Verify tenant ownership
+    if (report.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this daily work report');
+    }
+
+    const updatedReport = await this.prisma.dailyWorkReport.update({
+      where: {
+        id,
+      },
+      data: {
+        status: dto.status,
+        managerRemarks: dto.managerRemarks,
+      },
+      include: {
+        employee: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    await this.activityLogsService.log({
+      action: 'STATUS_UPDATE',
+      module: 'DAILY_WORK_REPORT',
+      description: `Daily Work Report status updated to ${dto.status}.`,
+      userId: report.employee.user.id,
+      tenantId: userTenantId,
+    });
+
+    return updatedReport;
+  }
+
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    userTenantId: string,
+  ) {
+    const { skip, limit } = pagination;
+
+    const where: Prisma.DailyWorkReportWhereInput = search.search
       ? {
+          tenantId: userTenantId,
           OR: [
             {
               todayWork: {
-                contains: searchText,
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-            {
-              yesterdayWork: {
-                contains: searchText,
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-            {
-              tomorrowPlan: {
-                contains: searchText,
+                contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
               },
             },
@@ -265,7 +328,7 @@ export class DailyWorkReportsService {
               employee: {
                 user: {
                   fullName: {
-                    contains: searchText,
+                    contains: search.search,
                     mode: Prisma.QueryMode.insensitive,
                   },
                 },
@@ -273,20 +336,15 @@ export class DailyWorkReportsService {
             },
           ],
         }
-      : {};
+      : {
+          tenantId: userTenantId,
+        };
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.dailyWorkReport.findMany({
         where,
-
-        skip: pagination.skip,
-
-        take: pagination.limit,
-
-        orderBy: {
-          reportDate: 'desc',
-        },
-
+        skip,
+        take: limit,
         include: {
           employee: {
             include: {
@@ -296,8 +354,10 @@ export class DailyWorkReportsService {
           project: true,
           task: true,
         },
+        orderBy: {
+          reportDate: 'desc',
+        },
       }),
-
       this.prisma.dailyWorkReport.count({
         where,
       }),
@@ -305,35 +365,25 @@ export class DailyWorkReportsService {
 
     return {
       total,
-
       page: pagination.page,
-
       limit: pagination.limit,
-
       totalPages: Math.ceil(total / pagination.limit),
-
       data,
     };
   }
 
-  // =========================
-  // FIND ONE
-  // =========================
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const report = await this.prisma.dailyWorkReport.findUnique({
       where: {
         id,
       },
-
       include: {
         employee: {
           include: {
             user: true,
           },
         },
-
         project: true,
-
         task: true,
       },
     });
@@ -342,30 +392,16 @@ export class DailyWorkReportsService {
       throw new NotFoundException('Daily Work Report not found.');
     }
 
+    // Verify tenant ownership
+    if (report.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this daily work report');
+    }
+
     return report;
   }
 
-  // =========================
-  // DELETE
-  // =========================
-  async delete(id: string) {
-    const report = await this.prisma.dailyWorkReport.findUnique({
-      where: {
-        id,
-      },
-
-      include: {
-        employee: {
-          include: {
-            user: true,
-          },
-        },
-      },
-    });
-
-    if (!report) {
-      throw new NotFoundException('Daily Work Report not found.');
-    }
+  async remove(id: string, userTenantId: string) {
+    const report = await this.findOne(id, userTenantId);
 
     await this.prisma.dailyWorkReport.delete({
       where: {
@@ -376,8 +412,9 @@ export class DailyWorkReportsService {
     await this.activityLogsService.log({
       action: 'DELETE',
       module: 'DAILY_WORK_REPORT',
-      description: `Daily Work Report deleted.`,
+      description: 'Daily Work Report deleted.',
       userId: report.employee.user.id,
+      tenantId: userTenantId,
     });
 
     return {

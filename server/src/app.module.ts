@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './database';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { TenantStatusGuard } from './modules/auth/guards/tenant-status.guard';
 import { HealthModule } from './modules/health/health.module';
 import { RolesGuard } from './modules/auth/guards/roles.guard';
 import { UsersModule } from './modules/users/users.module';
@@ -75,6 +76,10 @@ import { PaymentsModule } from './modules/payments/payments.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: TenantStatusGuard,
     },
     {
       provide: APP_GUARD,

@@ -11,6 +11,8 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { AttendanceService } from './attendance.service';
 import { AttendanceHistoryDto } from './dto/attendance-history.dto';
@@ -27,8 +29,11 @@ export class AttendanceController {
     UserRole.EMPLOYEE,
   )
   @Post('check-in')
-  checkIn(@Body() dto: CreateAttendanceDto) {
-    return this.attendanceService.checkIn(dto);
+  checkIn(
+    @Body() dto: CreateAttendanceDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.attendanceService.checkIn(dto, user.tenantId);
   }
 
   @Roles(
@@ -38,8 +43,11 @@ export class AttendanceController {
     UserRole.EMPLOYEE,
   )
   @Patch('check-out/:employeeId')
-  checkOut(@Param('employeeId') employeeId: string) {
-    return this.attendanceService.checkOut(employeeId);
+  checkOut(
+    @Param('employeeId') employeeId: string,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.attendanceService.checkOut(employeeId, user.tenantId);
   }
 
   @Roles(
@@ -49,8 +57,8 @@ export class AttendanceController {
     UserRole.EMPLOYEE,
   )
   @Get('today')
-  todayAttendance() {
-    return this.attendanceService.todayAttendance();
+  todayAttendance(@GetUser() user: AuthenticatedUser) {
+    return this.attendanceService.todayAttendance(user.tenantId);
   }
 
   @Roles(
@@ -60,7 +68,10 @@ export class AttendanceController {
     UserRole.EMPLOYEE,
   )
   @Get('history')
-  attendanceHistory(@Query() query: AttendanceHistoryDto) {
-    return this.attendanceService.attendanceHistory(query);
+  attendanceHistory(
+    @Query() query: AttendanceHistoryDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.attendanceService.attendanceHistory(query, user.tenantId);
   }
 }

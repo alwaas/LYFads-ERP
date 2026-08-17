@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service';
 
@@ -12,14 +16,20 @@ import { Prisma } from '@prisma/client';
 export class PaymentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreatePaymentDto) {
-    // Verify invoice exists before creating payment
+  async create(dto: CreatePaymentDto, userTenantId: string) {
+    // Verify invoice exists and belongs to tenant
     const invoice = await this.prisma.invoice.findUnique({
       where: { id: dto.invoiceId },
+      select: { id: true, tenantId: true },
     });
 
     if (!invoice) {
       throw new NotFoundException('Invoice not found');
+    }
+
+    // Verify invoice belongs to the same tenant
+    if (invoice.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this invoice');
     }
 
     // Use transaction to ensure atomicity
@@ -32,7 +42,7 @@ export class PaymentsService {
           method: dto.method,
           referenceNo: dto.referenceNo,
           remarks: dto.remarks,
-          tenantId: invoice.tenantId,
+          tenantId: userTenantId,
         },
       });
 
@@ -44,8 +54,11 @@ export class PaymentsService {
     return newPayment;
   }
 
-  findAll() {
+  findAll(userTenantId: string) {
     return this.prisma.payment.findMany({
+      where: {
+        tenantId: userTenantId,
+      },
       include: {
         invoice: true,
       },
@@ -55,7 +68,7 @@ export class PaymentsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { id },
       include: {
@@ -67,17 +80,16 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
+    // Verify tenant ownership
+    if (payment.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this payment');
+    }
+
     return payment;
   }
 
-  async update(id: string, dto: UpdatePaymentDto) {
-    const oldPayment = await this.prisma.payment.findUnique({
-      where: { id },
-    });
-
-    if (!oldPayment) {
-      throw new NotFoundException('Payment not found');
-    }
+  async update(id: string, dto: UpdatePaymentDto, userTenantId: string) {
+    const oldPayment = await this.findOne(id, userTenantId);
 
     const updatedPayment = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.update({
@@ -99,14 +111,8 @@ export class PaymentsService {
     return updatedPayment;
   }
 
-  async remove(id: string) {
-    const payment = await this.prisma.payment.findUnique({
-      where: { id },
-    });
-
-    if (!payment) {
-      throw new NotFoundException('Payment not found');
-    }
+  async remove(id: string, userTenantId: string) {
+    const payment = await this.findOne(id, userTenantId);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.payment.delete({

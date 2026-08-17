@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../../database';
@@ -23,7 +24,7 @@ export class LeavesService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreateLeaveDto) {
+  async create(dto: CreateLeaveDto, userTenantId: string) {
     const employee = await this.prisma.employee.findUnique({
       where: {
         id: dto.employeeId,
@@ -32,6 +33,11 @@ export class LeavesService {
 
     if (!employee) {
       throw new NotFoundException('Employee not found.');
+    }
+
+    // Verify employee belongs to the same tenant
+    if (employee.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this employee');
     }
 
     if (new Date(dto.endDate) < new Date(dto.startDate)) {
@@ -43,6 +49,7 @@ export class LeavesService {
     const overlap = await this.prisma.leave.findFirst({
       where: {
         employeeId: dto.employeeId,
+        tenantId: userTenantId,
         status: {
           in: ['PENDING', 'APPROVED'],
         },
@@ -73,7 +80,7 @@ export class LeavesService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         remarks: dto.remarks,
-        tenantId: employee.tenantId,
+        tenantId: userTenantId,
       },
       include: {
         employee: {
@@ -95,13 +102,13 @@ export class LeavesService {
       module: 'LEAVE',
       description: 'Leave request created.',
       userId: employee.userId,
-      tenantId: employee.tenantId,
+      tenantId: userTenantId,
     });
 
     return leave;
   }
 
-  async update(id: string, dto: UpdateLeaveDto) {
+  async update(id: string, dto: UpdateLeaveDto, userTenantId: string) {
     const leave = await this.prisma.leave.findUnique({
       where: {
         id,
@@ -110,6 +117,11 @@ export class LeavesService {
 
     if (!leave) {
       throw new NotFoundException('Leave request not found.');
+    }
+
+    // Verify tenant ownership
+    if (leave.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this leave request');
     }
 
     if (
@@ -163,12 +175,17 @@ export class LeavesService {
       module: 'LEAVE',
       description: 'Leave request updated.',
       userId: updatedLeave.employee.user.id,
+      tenantId: userTenantId,
     });
 
     return updatedLeave;
   }
 
-  async updateStatus(id: string, dto: UpdateLeaveStatusDto) {
+  async updateStatus(
+    id: string,
+    dto: UpdateLeaveStatusDto,
+    userTenantId: string,
+  ) {
     const leave = await this.prisma.leave.findUnique({
       where: {
         id,
@@ -184,6 +201,11 @@ export class LeavesService {
 
     if (!leave) {
       throw new NotFoundException('Leave request not found.');
+    }
+
+    // Verify tenant ownership
+    if (leave.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this leave request');
     }
 
     const updatedLeave = await this.prisma.leave.update({
@@ -214,16 +236,22 @@ export class LeavesService {
       module: 'LEAVE',
       description: `Leave ${dto.status}.`,
       userId: updatedLeave.employee.user.id,
+      tenantId: userTenantId,
     });
 
     return updatedLeave;
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    userTenantId: string,
+  ) {
     const { skip, limit } = pagination;
 
     const where: Prisma.LeaveWhereInput = search.search
       ? {
+          tenantId: userTenantId,
           OR: [
             {
               reason: {
@@ -243,7 +271,9 @@ export class LeavesService {
             },
           ],
         }
-      : {};
+      : {
+          tenantId: userTenantId,
+        };
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.leave.findMany({
@@ -281,7 +311,7 @@ export class LeavesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const leave = await this.prisma.leave.findUnique({
       where: {
         id,
@@ -303,6 +333,11 @@ export class LeavesService {
 
     if (!leave) {
       throw new NotFoundException('Leave request not found.');
+    }
+
+    // Verify tenant ownership
+    if (leave.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this leave request');
     }
 
     return leave;

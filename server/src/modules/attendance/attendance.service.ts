@@ -2,24 +2,19 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../../database';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { AttendanceHistoryDto } from './dto/attendance-history.dto';
-// import { PaginationDto } from '../../common/dto/pagination.dto';
-// import { SearchDto } from '../../common/dto/search.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AttendanceService {
-  constructor(
-    private readonly prisma: PrismaService,
-    // Future:
-    // private readonly activityLogsService: ActivityLogsService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async checkIn(dto: CreateAttendanceDto) {
+  async checkIn(dto: CreateAttendanceDto, userTenantId: string) {
     const employee = await this.prisma.employee.findUnique({
       where: {
         id: dto.employeeId,
@@ -30,12 +25,18 @@ export class AttendanceService {
       throw new NotFoundException('Employee not found.');
     }
 
+    // Verify employee belongs to the same tenant
+    if (employee.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this employee');
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const existing = await this.prisma.attendance.findFirst({
       where: {
         employeeId: dto.employeeId,
+        tenantId: userTenantId,
         date: {
           gte: today,
         },
@@ -52,7 +53,7 @@ export class AttendanceService {
         date: new Date(),
         checkIn: new Date(),
         remarks: dto.remarks,
-        tenantId: employee.tenantId,
+        tenantId: userTenantId,
       },
       include: {
         employee: {
@@ -69,13 +70,29 @@ export class AttendanceService {
     });
   }
 
-  async checkOut(employeeId: string) {
+  async checkOut(employeeId: string, userTenantId: string) {
+    const employee = await this.prisma.employee.findUnique({
+      where: {
+        id: employeeId,
+      },
+    });
+
+    if (!employee) {
+      throw new NotFoundException('Employee not found.');
+    }
+
+    // Verify employee belongs to the same tenant
+    if (employee.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this employee');
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const attendance = await this.prisma.attendance.findFirst({
       where: {
         employeeId,
+        tenantId: userTenantId,
         date: {
           gte: today,
         },
@@ -111,25 +128,16 @@ export class AttendanceService {
       },
     });
 
-    // Future Activity Log
-    /*
-    await this.activityLogsService.log({
-      action: 'CHECK_OUT',
-      module: 'ATTENDANCE',
-      description: 'Employee checked out.',
-      userId: attendanceRecord.employee.user.id,
-    });
-    */
-
     return attendanceRecord;
   }
 
-  async todayAttendance() {
+  async todayAttendance(userTenantId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return this.prisma.attendance.findMany({
       where: {
+        tenantId: userTenantId,
         date: {
           gte: today,
         },
@@ -153,11 +161,12 @@ export class AttendanceService {
     });
   }
 
-  async attendanceHistory(query: AttendanceHistoryDto) {
+  async attendanceHistory(query: AttendanceHistoryDto, userTenantId: string) {
     const { skip, limit } = query;
 
     const where: Prisma.AttendanceWhereInput = query.search
       ? {
+          tenantId: userTenantId,
           employee: {
             user: {
               fullName: {
@@ -167,7 +176,9 @@ export class AttendanceService {
             },
           },
         }
-      : {};
+      : {
+          tenantId: userTenantId,
+        };
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.attendance.findMany({
@@ -188,15 +199,9 @@ export class AttendanceService {
           },
         },
         orderBy: {
-          // TODO:
-          // Add Date Range Filter
-          // Add Employee Filter
-          // Add Department Filter
-          // Add Export CSV/PDF
           date: 'desc',
         },
       }),
-
       this.prisma.attendance.count({
         where,
       }),

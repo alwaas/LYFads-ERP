@@ -11,6 +11,8 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { LeavesService } from './leaves.service';
 
@@ -32,8 +34,8 @@ export class LeavesController {
     UserRole.EMPLOYEE,
   )
   @Post()
-  create(@Body() dto: CreateLeaveDto) {
-    return this.leavesService.create(dto);
+  create(@Body() dto: CreateLeaveDto, @GetUser() user: AuthenticatedUser) {
+    return this.leavesService.create(dto, user.tenantId);
   }
 
   @Roles(
@@ -43,8 +45,12 @@ export class LeavesController {
     UserRole.EMPLOYEE,
   )
   @Get()
-  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
-    return this.leavesService.findAll(pagination, search);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.leavesService.findAll(pagination, search, user.tenantId);
   }
 
   @Roles(
@@ -54,8 +60,8 @@ export class LeavesController {
     UserRole.EMPLOYEE,
   )
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.leavesService.findOne(id);
+  findOne(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.leavesService.findOne(id, user.tenantId);
   }
 
   @Roles(
@@ -65,13 +71,21 @@ export class LeavesController {
     UserRole.EMPLOYEE,
   )
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateLeaveDto) {
-    return this.leavesService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateLeaveDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.leavesService.update(id, dto, user.tenantId);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateLeaveStatusDto) {
-    return this.leavesService.updateStatus(id, dto);
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateLeaveStatusDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.leavesService.updateStatus(id, dto, user.tenantId);
   }
 }
