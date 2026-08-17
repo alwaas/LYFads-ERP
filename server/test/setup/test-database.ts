@@ -544,6 +544,36 @@ export async function setupTestDatabase() {
     },
   });
 
+  // Create milestones for Tenant A
+  const tenantAMilestone = await prisma.milestone.create({
+    data: {
+      title: 'Tenant A Milestone',
+      description: 'Test milestone for Tenant A',
+      status: 'NOT_STARTED',
+      priority: 'MEDIUM',
+      progress: 0,
+      startDate: new Date('2024-01-01'),
+      deadline: new Date('2024-12-31'),
+      projectId: tenantAProject.id,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create milestones for Tenant B
+  const tenantBMilestone = await prisma.milestone.create({
+    data: {
+      title: 'Tenant B Milestone',
+      description: 'Test milestone for Tenant B',
+      status: 'NOT_STARTED',
+      priority: 'MEDIUM',
+      progress: 0,
+      startDate: new Date('2024-01-01'),
+      deadline: new Date('2024-12-31'),
+      projectId: tenantBProject.id,
+      tenantId: tenantB.id,
+    },
+  });
+
   return {
     tenantA,
     tenantB,
@@ -564,6 +594,7 @@ export async function setupTestDatabase() {
     tenantATimesheet,
     tenantAPayroll,
     tenantADailyWorkReport,
+    tenantAMilestone,
     tenantBAdmin,
     tenantBManager,
     tenantBEmployee,
@@ -581,6 +612,7 @@ export async function setupTestDatabase() {
     tenantBTimesheet,
     tenantBPayroll,
     tenantBDailyWorkReport,
+    tenantBMilestone,
   };
 }
 

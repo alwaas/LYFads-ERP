@@ -50,6 +50,8 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
     tenantBPayroll: { id: string };
     tenantADailyWorkReport: { id: string };
     tenantBDailyWorkReport: { id: string };
+    tenantAMilestone: { id: string };
+    tenantBMilestone: { id: string };
   };
 
   beforeAll(async () => {
@@ -1303,6 +1305,67 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .expect(403);
       });
     });
+
+    describe('MilestonesService Tenant Isolation', () => {
+      it("should only return milestones for the user's tenant", async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+        const tokenB = generateToken(testData.tenantBAdmin);
+
+        const responseA = await request(app.getHttpServer())
+          .get('/milestones')
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(200);
+
+        const responseB = await request(app.getHttpServer())
+          .get('/milestones')
+          .set('Authorization', `Bearer ${tokenB}`)
+          .expect(200);
+
+        if (responseA.body && responseA.body.length > 0) {
+          expect(responseA.body.length).toBeGreaterThan(0);
+          // Verify all milestones belong to respective tenants
+          responseA.body.forEach((milestone: any) => {
+            expect(milestone.tenantId).toBe(testData.tenantA.id);
+          });
+        }
+
+        if (responseB.body && responseB.body.length > 0) {
+          expect(responseB.body.length).toBeGreaterThan(0);
+          // Verify all milestones belong to respective tenants
+          responseB.body.forEach((milestone: any) => {
+            expect(milestone.tenantId).toBe(testData.tenantB.id);
+          });
+        }
+      });
+
+      it('should reject cross-tenant milestone access', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .get(`/milestones/${testData.tenantBMilestone.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+
+      it('should reject cross-tenant milestone update', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .patch(`/milestones/${testData.tenantBMilestone.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .send({ title: 'Hacked Title' })
+          .expect(403);
+      });
+
+      it('should reject cross-tenant milestone deletion', async () => {
+        const tokenA = generateToken(testData.tenantAAdmin);
+
+        await request(app.getHttpServer())
+          .delete(`/milestones/${testData.tenantBMilestone.id}`)
+          .set('Authorization', `Bearer ${tokenA}`)
+          .expect(403);
+      });
+    });
   });
 
   describe('Phase 4.1: TenantId Spoofing Prevention (New Services)', () => {
@@ -1344,6 +1407,26 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
       });
 
       expect(lead?.tenantId).toBe(testData.tenantA.id);
+    });
+
+    it('should prevent updating milestone to change tenantId', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+
+      // Try to update a milestone to change its tenantId
+      await request(app.getHttpServer())
+        .patch(`/milestones/${testData.tenantAMilestone.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          tenantId: testData.tenantB.id, // Try to change tenant
+        })
+        .expect(200); // Should succeed but ignore the tenantId change
+
+      // Verify tenantId didn't change
+      const milestone = await prisma.milestone.findUnique({
+        where: { id: testData.tenantAMilestone.id },
+      });
+
+      expect(milestone?.tenantId).toBe(testData.tenantA.id);
     });
   });
 

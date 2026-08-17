@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,7 +21,7 @@ export class MilestonesService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreateMilestoneDto) {
+  async create(dto: CreateMilestoneDto, userTenantId: string) {
     const startDate = new Date(dto.startDate);
     const deadline = new Date(dto.deadline);
 
@@ -39,6 +40,13 @@ export class MilestonesService {
 
     if (!project) {
       throw new NotFoundException('Project not found.');
+    }
+
+    // Verify project belongs to the same tenant
+    if (project.tenantId !== userTenantId) {
+      throw new ForbiddenException(
+        'Cannot create milestone for project from different tenant',
+      );
     }
 
     const existing = await this.prisma.milestone.findFirst({
@@ -75,7 +83,7 @@ export class MilestonesService {
         progress,
         startDate,
         deadline,
-        tenantId: project.tenantId,
+        tenantId: userTenantId,
       },
       include: {
         project: {
@@ -93,13 +101,17 @@ export class MilestonesService {
       module: 'MILESTONE',
       description: `Milestone "${milestone.title}" created successfully for project "${project.name}".`,
       userId: undefined,
+      tenantId: userTenantId,
     });
 
     return milestone;
   }
 
-  async findAll() {
+  async findAll(userTenantId: string) {
     return this.prisma.milestone.findMany({
+      where: {
+        tenantId: userTenantId,
+      },
       include: {
         project: {
           select: {
@@ -117,7 +129,7 @@ export class MilestonesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const milestone = await this.prisma.milestone.findUnique({
       where: {
         id,
@@ -139,10 +151,15 @@ export class MilestonesService {
       throw new NotFoundException('Milestone not found.');
     }
 
+    // Verify tenant ownership
+    if (milestone.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this milestone');
+    }
+
     return milestone;
   }
 
-  async update(id: string, dto: UpdateMilestoneDto) {
+  async update(id: string, dto: UpdateMilestoneDto, userTenantId: string) {
     const existing = await this.prisma.milestone.findUnique({
       where: {
         id,
@@ -155,6 +172,7 @@ export class MilestonesService {
         deadline: true,
         progress: true,
         status: true,
+        tenantId: true,
       },
     });
 
@@ -162,7 +180,16 @@ export class MilestonesService {
       throw new NotFoundException('Milestone not found.');
     }
 
-    const title = dto.title?.trim();
+    // Verify tenant ownership
+    if (existing.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this milestone');
+    }
+
+    // Prevent tenantId spoofing - ignore any tenantId in the update DTO
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { tenantId, ...updateData } = dto;
+
+    const title = updateData.title?.trim();
 
     if (title) {
       const duplicate = await this.prisma.milestone.findFirst({
@@ -188,16 +215,18 @@ export class MilestonesService {
       }
     }
 
-    const startDate = dto.startDate
-      ? new Date(dto.startDate)
+    const startDate = updateData.startDate
+      ? new Date(updateData.startDate)
       : existing.startDate;
 
-    const deadline = dto.deadline ? new Date(dto.deadline) : existing.deadline;
+    const deadline = updateData.deadline
+      ? new Date(updateData.deadline)
+      : existing.deadline;
 
     this.validateDates(startDate, deadline);
 
-    const progress = dto.progress ?? existing.progress;
-    const status = dto.status ?? existing.status;
+    const progress = updateData.progress ?? existing.progress;
+    const status = updateData.status ?? existing.status;
 
     this.validateProgressStatus(progress, status);
 
@@ -210,27 +239,27 @@ export class MilestonesService {
           title,
         }),
 
-        ...(dto.description !== undefined && {
-          description: dto.description?.trim() || null,
+        ...(updateData.description !== undefined && {
+          description: updateData.description?.trim() || null,
         }),
 
-        ...(dto.priority !== undefined && {
-          priority: dto.priority,
+        ...(updateData.priority !== undefined && {
+          priority: updateData.priority,
         }),
 
-        ...(dto.status !== undefined && {
+        ...(updateData.status !== undefined && {
           status,
         }),
 
-        ...(dto.progress !== undefined && {
+        ...(updateData.progress !== undefined && {
           progress,
         }),
 
-        ...(dto.startDate !== undefined && {
+        ...(updateData.startDate !== undefined && {
           startDate,
         }),
 
-        ...(dto.deadline !== undefined && {
+        ...(updateData.deadline !== undefined && {
           deadline,
         }),
       },
@@ -252,12 +281,13 @@ export class MilestonesService {
       module: 'MILESTONE',
       description: `Milestone "${milestone.title}" updated successfully.`,
       userId: undefined,
+      tenantId: userTenantId,
     });
 
     return milestone;
   }
 
-  async remove(id: string) {
+  async remove(id: string, userTenantId: string) {
     const milestone = await this.prisma.milestone.findUnique({
       where: {
         id,
@@ -265,11 +295,17 @@ export class MilestonesService {
       select: {
         id: true,
         title: true,
+        tenantId: true,
       },
     });
 
     if (!milestone) {
       throw new NotFoundException('Milestone not found.');
+    }
+
+    // Verify tenant ownership
+    if (milestone.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this milestone');
     }
 
     await this.prisma.milestone.delete({
@@ -283,6 +319,7 @@ export class MilestonesService {
       module: 'MILESTONE',
       description: `Milestone "${milestone.title}" deleted successfully.`,
       userId: undefined,
+      tenantId: userTenantId,
     });
 
     return {
