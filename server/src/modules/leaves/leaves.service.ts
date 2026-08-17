@@ -73,6 +73,7 @@ export class LeavesService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         remarks: dto.remarks,
+        tenantId: employee.tenantId,
       },
       include: {
         employee: {
@@ -93,7 +94,8 @@ export class LeavesService {
       action: 'CREATE',
       module: 'LEAVE',
       description: 'Leave request created.',
-      userId: leave.employee.user.id,
+      userId: employee.userId,
+      tenantId: employee.tenantId,
     });
 
     return leave;

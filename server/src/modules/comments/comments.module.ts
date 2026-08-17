@@ -7,10 +7,7 @@ import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ActivityLogsModule,
-  ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [CommentsController],
   providers: [CommentsService],
   exports: [CommentsService],

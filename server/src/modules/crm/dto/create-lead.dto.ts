@@ -41,4 +41,7 @@ export class CreateLeadDto {
   @IsOptional()
   @IsString()
   assignedToId?: string;
+
+  @IsString()
+  tenantId!: string;
 }

@@ -22,4 +22,8 @@ export class CreateActivityLogDto {
   @IsOptional()
   @IsString()
   userId?: string;
+
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
 }

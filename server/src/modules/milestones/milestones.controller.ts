@@ -20,11 +20,7 @@ import { UpdateMilestoneDto } from './dto/update-milestone.dto';
 export class MilestonesController {
   constructor(private readonly milestonesService: MilestonesService) {}
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Post()
   create(@Body() dto: CreateMilestoneDto) {
     return this.milestonesService.create(dto);
@@ -52,23 +48,13 @@ export class MilestonesController {
     return this.milestonesService.findOne(id);
   }
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateMilestoneDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateMilestoneDto) {
     return this.milestonesService.update(id, dto);
   }
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.milestonesService.remove(id);

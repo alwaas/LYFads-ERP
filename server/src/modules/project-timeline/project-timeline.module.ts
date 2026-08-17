@@ -7,10 +7,7 @@ import { ProjectTimelineController } from './project-timeline.controller';
 import { ProjectTimelineService } from './project-timeline.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ActivityLogsModule,
-  ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [ProjectTimelineController],
   providers: [ProjectTimelineService],
   exports: [ProjectTimelineService],

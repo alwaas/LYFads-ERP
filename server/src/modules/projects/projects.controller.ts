@@ -7,11 +7,15 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/tenant.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
@@ -21,6 +25,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Controller('projects')
+@UseGuards(JwtAuthGuard)
 @Roles(
   UserRole.SUPER_ADMIN,
   UserRole.ADMIN,
@@ -32,8 +37,11 @@ export class ProjectsController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Post()
-  create(@Body() dto: CreateProjectDto) {
-    return this.projectsService.create(dto);
+  create(
+    @Body() dto: CreateProjectDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.projectsService.create(dto, user.tenantId);
   }
 
   @Roles(
@@ -43,8 +51,11 @@ export class ProjectsController {
     UserRole.EMPLOYEE,
   )
   @Get()
-  findAll(@Query() pagination: PaginationDto) {
-    return this.projectsService.findAll(pagination);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.projectsService.findAll(pagination, user.tenantId);
   }
 
   @Roles(
@@ -54,19 +65,23 @@ export class ProjectsController {
     UserRole.EMPLOYEE,
   )
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.projectsService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.projectsService.findOne(id, user.tenantId);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateProjectDto) {
-    return this.projectsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProjectDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.projectsService.update(id, dto, user.tenantId);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.projectsService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.projectsService.remove(id, user.tenantId);
   }
 }

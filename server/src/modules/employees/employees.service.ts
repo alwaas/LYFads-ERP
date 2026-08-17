@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,7 +22,14 @@ export class EmployeesService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreateEmployeeDto) {
+  async create(dto: CreateEmployeeDto, userTenantId: string) {
+    // Validate that dto.tenantId (if provided) matches authenticated user's tenant
+    if (dto.tenantId && dto.tenantId !== userTenantId) {
+      throw new ForbiddenException(
+        'Cannot create employee for a different tenant',
+      );
+    }
+
     const existingUser = await this.prisma.user.findUnique({
       where: {
         email: dto.email.toLowerCase(),
@@ -51,6 +59,7 @@ export class EmployeesService {
           email: dto.email.toLowerCase(),
           password: hashedPassword,
           role: dto.role,
+          tenantId: userTenantId,
         },
       });
 
@@ -61,6 +70,7 @@ export class EmployeesService {
           designation: dto.designation,
           department: dto.department,
           userId: user.id,
+          tenantId: userTenantId,
         },
         include: {
           user: {
@@ -80,17 +90,21 @@ export class EmployeesService {
       action: 'CREATE',
       module: 'EMPLOYEE',
       description: `Employee ${employee.employeeCode} created successfully.`,
-      userId: employee.user.id,
+      userId: employee.userId,
+      tenantId: employee.tenantId,
     });
 
     return employee;
   }
 
-  async findAll(pagination: PaginationDto) {
+  async findAll(pagination: PaginationDto, userTenantId: string) {
     const { skip, limit } = pagination;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.employee.findMany({
+        where: {
+          tenantId: userTenantId,
+        },
         skip,
         take: limit,
         include: {
@@ -109,7 +123,11 @@ export class EmployeesService {
         },
       }),
 
-      this.prisma.employee.count(),
+      this.prisma.employee.count({
+        where: {
+          tenantId: userTenantId,
+        },
+      }),
     ]);
 
     return {
@@ -121,7 +139,7 @@ export class EmployeesService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const employee = await this.prisma.employee.findUnique({
       where: {
         id,
@@ -143,13 +161,18 @@ export class EmployeesService {
       throw new NotFoundException('Employee not found.');
     }
 
+    // Verify tenant ownership
+    if (employee.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this employee');
+    }
+
     return employee;
   }
 
-  async update(id: string, dto: UpdateEmployeeDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateEmployeeDto, userTenantId: string) {
+    const employee = await this.findOne(id, userTenantId);
 
-    const employee = await this.prisma.employee.update({
+    const updatedEmployee = await this.prisma.employee.update({
       where: {
         id,
       },
@@ -177,13 +200,14 @@ export class EmployeesService {
       module: 'EMPLOYEE',
       description: `Employee ${employee.employeeCode} updated successfully.`,
       userId: employee.user.id,
+      tenantId: userTenantId,
     });
 
-    return employee;
+    return updatedEmployee;
   }
 
-  async remove(id: string) {
-    const employee = await this.findOne(id);
+  async remove(id: string, userTenantId: string) {
+    const employee = await this.findOne(id, userTenantId);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.employee.delete({
@@ -204,6 +228,7 @@ export class EmployeesService {
       module: 'EMPLOYEE',
       description: `Employee ${employee.employeeCode} deleted successfully.`,
       userId: employee.user.id,
+      tenantId: userTenantId,
     });
 
     return {

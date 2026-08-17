@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
@@ -8,9 +8,21 @@ import { UpdateInvoiceItemDto } from './dto/update-invoice-item.dto';
 export class InvoiceItemsService {
   constructor(private prisma: PrismaService) {}
 
-  create(dto: CreateInvoiceItemDto) {
+  async create(dto: CreateInvoiceItemDto) {
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: dto.invoiceId },
+      select: { id: true, tenantId: true },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
+
     return this.prisma.invoiceItem.create({
-      data: dto,
+      data: {
+        ...dto,
+        tenantId: invoice.tenantId,
+      },
     });
   }
 

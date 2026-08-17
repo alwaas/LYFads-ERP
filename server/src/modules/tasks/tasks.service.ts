@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -15,13 +16,6 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
-type AuthenticatedUser = {
-  id?: string;
-  userId?: string;
-  email?: string;
-  role?: string;
-};
-
 @Injectable()
 export class TasksService {
   constructor(
@@ -29,14 +23,7 @@ export class TasksService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  private getUserId(user?: AuthenticatedUser): string | undefined {
-    return user?.id ?? user?.userId;
-  }
-
-  async create(
-    dto: CreateTaskDto,
-    currentUser?: AuthenticatedUser,
-  ) {
+  async create(dto: CreateTaskDto, userTenantId: string, currentUser?: string) {
     const existingTask = await this.prisma.task.findUnique({
       where: {
         taskCode: dto.taskCode,
@@ -44,34 +31,43 @@ export class TasksService {
     });
 
     if (existingTask) {
-      throw new ConflictException(
-        'Task code already exists.',
-      );
+      throw new ConflictException('Task code already exists.');
     }
 
     const project = await this.prisma.project.findUnique({
       where: {
         id: dto.projectId,
       },
+      select: { id: true, tenantId: true },
     });
 
     if (!project) {
-      throw new NotFoundException(
-        'Project not found.',
+      throw new NotFoundException('Project not found.');
+    }
+
+    // Validate project belongs to the same tenant
+    if (project.tenantId !== userTenantId) {
+      throw new ForbiddenException(
+        'Cannot create task for project from different tenant',
       );
     }
 
     if (dto.employeeId) {
-      const employee =
-        await this.prisma.employee.findUnique({
-          where: {
-            id: dto.employeeId,
-          },
-        });
+      const employee = await this.prisma.employee.findUnique({
+        where: {
+          id: dto.employeeId,
+        },
+        select: { id: true, tenantId: true },
+      });
 
       if (!employee) {
-        throw new NotFoundException(
-          'Employee not found.',
+        throw new NotFoundException('Employee not found.');
+      }
+
+      // Validate employee belongs to the same tenant
+      if (employee.tenantId !== userTenantId) {
+        throw new ForbiddenException(
+          'Cannot assign task to employee from different tenant',
         );
       }
     }
@@ -85,10 +81,9 @@ export class TasksService {
         employeeId: dto.employeeId,
         status: dto.status,
         priority: dto.priority,
-        dueDate: dto.dueDate
-          ? new Date(dto.dueDate)
-          : undefined,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         estimatedHours: dto.estimatedHours,
+        tenantId: userTenantId,
       },
       include: {
         project: {
@@ -118,9 +113,9 @@ export class TasksService {
     await this.activityLogsService.log({
       action: 'CREATE',
       module: 'TASK',
-      description:
-        `Task "${task.title}" created successfully.`,
-      userId: this.getUserId(currentUser),
+      description: `Task "${task.title}" created successfully.`,
+      userId: currentUser,
+      tenantId: userTenantId,
     });
 
     return task;
@@ -129,89 +124,43 @@ export class TasksService {
   async findAll(
     pagination: PaginationDto,
     search: SearchDto,
+    userTenantId: string,
   ) {
     const { skip, limit } = pagination;
 
-    const where: Prisma.TaskWhereInput = search.search
-      ? {
-          OR: [
-            {
-              title: {
-                contains: search.search,
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-            {
-              taskCode: {
-                contains: search.search,
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-          ],
-        }
-      : {};
-
-    const [data, total] =
-      await this.prisma.$transaction([
-        this.prisma.task.findMany({
-          where,
-          skip,
-          take: limit,
-          include: {
-            project: {
-              select: {
-                id: true,
-                projectCode: true,
-                name: true,
-              },
-            },
-            employee: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    fullName: true,
-                    email: true,
-                  },
+    const where: Prisma.TaskWhereInput = {
+      tenantId: userTenantId,
+      ...(search.search
+        ? {
+            OR: [
+              {
+                title: {
+                  contains: search.search,
+                  mode: Prisma.QueryMode.insensitive,
                 },
               },
-            },
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        }),
-
-        this.prisma.task.count({
-          where,
-        }),
-      ]);
-
-    return {
-      total,
-      page: pagination.page,
-      limit: pagination.limit,
-      totalPages: Math.ceil(
-        total / pagination.limit,
-      ),
-      data,
+              {
+                taskCode: {
+                  contains: search.search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            ],
+          }
+        : {}),
     };
-  }
 
-  async findOne(id: string) {
-    const task =
-      await this.prisma.task.findUnique({
-        where: {
-          id,
-        },
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.task.findMany({
+        where,
+        skip,
+        take: limit,
         include: {
           project: {
             select: {
               id: true,
               projectCode: true,
               name: true,
-              status: true,
-              priority: true,
             },
           },
           employee: {
@@ -221,18 +170,68 @@ export class TasksService {
                   id: true,
                   fullName: true,
                   email: true,
-                  role: true,
                 },
               },
             },
           },
         },
-      });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+
+      this.prisma.task.count({
+        where,
+      }),
+    ]);
+
+    return {
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
+    };
+  }
+
+  async findOne(id: string, userTenantId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+            projectCode: true,
+            name: true,
+            status: true,
+            priority: true,
+            tenantId: true,
+          },
+        },
+        employee: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+    });
 
     if (!task) {
-      throw new NotFoundException(
-        'Task not found.',
-      );
+      throw new NotFoundException('Task not found.');
+    }
+
+    // Verify tenant ownership
+    if (task.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this task');
     }
 
     return task;
@@ -241,54 +240,62 @@ export class TasksService {
   async update(
     id: string,
     dto: UpdateTaskDto,
-    currentUser?: AuthenticatedUser,
+    userTenantId: string,
+    currentUser?: string,
   ) {
-    await this.findOne(id);
+    await this.findOne(id, userTenantId);
 
     if (dto.taskCode) {
-      const duplicate =
-        await this.prisma.task.findFirst({
-          where: {
-            taskCode: dto.taskCode,
-            NOT: {
-              id,
-            },
+      const duplicate = await this.prisma.task.findFirst({
+        where: {
+          taskCode: dto.taskCode,
+          NOT: {
+            id,
           },
-        });
+        },
+      });
 
       if (duplicate) {
-        throw new ConflictException(
-          'Task code already exists.',
-        );
+        throw new ConflictException('Task code already exists.');
       }
     }
 
     if (dto.projectId) {
-      const project =
-        await this.prisma.project.findUnique({
-          where: {
-            id: dto.projectId,
-          },
-        });
+      const project = await this.prisma.project.findUnique({
+        where: {
+          id: dto.projectId,
+        },
+        select: { id: true, tenantId: true },
+      });
 
       if (!project) {
-        throw new NotFoundException(
-          'Project not found.',
+        throw new NotFoundException('Project not found.');
+      }
+
+      // Validate project belongs to the same tenant
+      if (project.tenantId !== userTenantId) {
+        throw new ForbiddenException(
+          'Cannot assign task to project from different tenant',
         );
       }
     }
 
     if (dto.employeeId) {
-      const employee =
-        await this.prisma.employee.findUnique({
-          where: {
-            id: dto.employeeId,
-          },
-        });
+      const employee = await this.prisma.employee.findUnique({
+        where: {
+          id: dto.employeeId,
+        },
+        select: { id: true, tenantId: true },
+      });
 
       if (!employee) {
-        throw new NotFoundException(
-          'Employee not found.',
+        throw new NotFoundException('Employee not found.');
+      }
+
+      // Validate employee belongs to the same tenant
+      if (employee.tenantId !== userTenantId) {
+        throw new ForbiddenException(
+          'Cannot assign task to employee from different tenant',
         );
       }
     }
@@ -332,66 +339,58 @@ export class TasksService {
     }
 
     if (dto.priority !== undefined) {
-      data.priority =
-        dto.priority as TaskPriority;
+      data.priority = dto.priority as TaskPriority;
     }
 
     if (dto.dueDate !== undefined) {
-      data.dueDate = dto.dueDate
-        ? new Date(dto.dueDate)
-        : null;
+      data.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
     }
 
     if (dto.estimatedHours !== undefined) {
-      data.estimatedHours =
-        dto.estimatedHours;
+      data.estimatedHours = dto.estimatedHours;
     }
 
-    const task =
-      await this.prisma.task.update({
-        where: {
-          id,
-        },
-        data,
-        include: {
-          project: {
-            select: {
-              id: true,
-              projectCode: true,
-              name: true,
-            },
+    const updatedTask = await this.prisma.task.update({
+      where: {
+        id,
+      },
+      data,
+      include: {
+        project: {
+          select: {
+            id: true,
+            projectCode: true,
+            name: true,
           },
-          employee: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  fullName: true,
-                  email: true,
-                  role: true,
-                },
+        },
+        employee: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                role: true,
               },
             },
           },
         },
-      });
+      },
+    });
 
     await this.activityLogsService.log({
       action: 'UPDATE',
       module: 'TASK',
-      description:
-        `Task "${task.title}" updated successfully.`,
-      userId: this.getUserId(currentUser),
+      description: `Task "${updatedTask.title}" updated successfully.`,
+      userId: currentUser,
+      tenantId: userTenantId,
     });
 
-    return task;
+    return updatedTask;
   }
 
-  async remove(
-    id: string,
-    currentUser?: AuthenticatedUser,
-  ) {
-    const task = await this.findOne(id);
+  async remove(id: string, userTenantId: string, currentUser?: string) {
+    const task = await this.findOne(id, userTenantId);
 
     await this.prisma.task.delete({
       where: {
@@ -402,9 +401,9 @@ export class TasksService {
     await this.activityLogsService.log({
       action: 'DELETE',
       module: 'TASK',
-      description:
-        `Task "${task.title}" deleted successfully.`,
-      userId: this.getUserId(currentUser),
+      description: `Task "${task.title}" deleted successfully.`,
+      userId: currentUser,
+      tenantId: userTenantId,
     });
 
     return {

@@ -1,9 +1,4 @@
-import {
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateAttachmentDto {
   @IsString()
@@ -45,7 +40,6 @@ export class CreateAttachmentDto {
   @IsString()
   commentId?: string;
 }
-
 
 // import { IsOptional, IsString } from 'class-validator';
 

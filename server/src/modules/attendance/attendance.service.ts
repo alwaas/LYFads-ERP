@@ -52,6 +52,7 @@ export class AttendanceService {
         date: new Date(),
         checkIn: new Date(),
         remarks: dto.remarks,
+        tenantId: employee.tenantId,
       },
       include: {
         employee: {

@@ -28,4 +28,8 @@ export class CreateUserDto {
 
   @IsEnum(UserRole)
   role!: UserRole;
+
+  @IsString()
+  @IsNotEmpty()
+  tenantId!: string;
 }

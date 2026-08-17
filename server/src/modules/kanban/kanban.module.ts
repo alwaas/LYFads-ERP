@@ -7,10 +7,7 @@ import { KanbanController } from './kanban.controller';
 import { KanbanService } from './kanban.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ActivityLogsModule,
-  ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [KanbanController],
   providers: [KanbanService],
   exports: [KanbanService],

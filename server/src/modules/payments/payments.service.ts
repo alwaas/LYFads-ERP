@@ -32,6 +32,7 @@ export class PaymentsService {
           method: dto.method,
           referenceNo: dto.referenceNo,
           remarks: dto.remarks,
+          tenantId: invoice.tenantId,
         },
       });
 
@@ -121,7 +122,10 @@ export class PaymentsService {
     };
   }
 
-  private async refreshInvoice(invoiceId: string, tx?: Prisma.TransactionClient) {
+  private async refreshInvoice(
+    invoiceId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
     const prismaClient = tx || this.prisma;
 
     const invoice = await prismaClient.invoice.findUnique({

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
@@ -7,8 +11,11 @@ import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(userTenantId: string) {
     return this.prisma.user.findMany({
+      where: {
+        tenantId: userTenantId,
+      },
       select: {
         id: true,
         fullName: true,
@@ -24,7 +31,7 @@ export class UsersService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -33,6 +40,7 @@ export class UsersService {
         email: true,
         role: true,
         isActive: true,
+        tenantId: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -42,10 +50,17 @@ export class UsersService {
       throw new NotFoundException('User not found.');
     }
 
+    // Verify tenant ownership
+    if (user.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this user');
+    }
+
     return user;
   }
 
-  async updateRole(id: string, dto: UpdateUserRoleDto) {
+  async updateRole(id: string, dto: UpdateUserRoleDto, userTenantId: string) {
+    await this.findOne(id, userTenantId);
+
     return this.prisma.user.update({
       where: { id },
       data: {
@@ -61,7 +76,13 @@ export class UsersService {
     });
   }
 
-  async updateStatus(id: string, dto: UpdateUserStatusDto) {
+  async updateStatus(
+    id: string,
+    dto: UpdateUserStatusDto,
+    userTenantId: string,
+  ) {
+    await this.findOne(id, userTenantId);
+
     return this.prisma.user.update({
       where: { id },
       data: {

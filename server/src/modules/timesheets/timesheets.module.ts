@@ -7,10 +7,7 @@ import { TimesheetsController } from './timesheets.controller';
 import { TimesheetsService } from './timesheets.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ActivityLogsModule,
-  ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [TimesheetsController],
   providers: [TimesheetsService],
   exports: [TimesheetsService],

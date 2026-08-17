@@ -5,30 +5,24 @@
   Post,
   Req,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 
-import {
-  FileInterceptor,
-} from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 
-import {
-  memoryStorage,
-} from 'multer';
+import { memoryStorage } from 'multer';
 
-import {
-  AttachmentsService,
-} from '../attachments/attachments.service';
+import { AttachmentsService } from '../attachments/attachments.service';
 
-import {
-  CreateAttachmentDto,
-} from '../attachments/dto/create-attachment.dto';
+import { CreateAttachmentDto } from '../attachments/dto/create-attachment.dto';
 
-import {
-  UploadsService,
-} from './uploads.service';
+import { UploadsService } from './uploads.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 @Controller('uploads')
+@UseGuards(JwtAuthGuard)
 export class UploadsController {
   constructor(
     private readonly uploadsService: UploadsService,
@@ -44,11 +38,7 @@ export class UploadsController {
         fileSize: 5 * 1024 * 1024,
       },
 
-      fileFilter: (
-        req,
-        file,
-        callback,
-      ) => {
+      fileFilter: (req, file, callback) => {
         const allowedTypes = [
           'image/jpeg',
           'image/png',
@@ -56,11 +46,7 @@ export class UploadsController {
           'application/pdf',
         ];
 
-        if (
-          !allowedTypes.includes(
-            file.mimetype,
-          )
-        ) {
+        if (!allowedTypes.includes(file.mimetype)) {
           return callback(
             new BadRequestException(
               `Invalid file type received: ${file.mimetype}`,
@@ -85,66 +71,49 @@ export class UploadsController {
       commentId?: string;
     },
 
-    @Req() req: any,
+    @Req() req: { user: AuthenticatedUser },
   ) {
     if (!file) {
-      throw new BadRequestException(
-        'File is required.',
-      );
+      throw new BadRequestException('File is required.');
     }
 
-    const uploadedBy =
-      req.user?.sub ??
-      req.user?.id;
+    const uploadedBy = req.user?.id;
 
     if (!uploadedBy) {
-      throw new BadRequestException(
-        'Authenticated user ID not found.',
-      );
+      throw new BadRequestException('Authenticated user ID not found.');
     }
 
-    const uploadedFile =
-      await this.uploadsService.uploadFile(
-        file,
-        'attachments',
-      );
+    const uploadedFile = await this.uploadsService.uploadFile(
+      file,
+      'attachments',
+    );
 
-    const createAttachmentDto:
-      CreateAttachmentDto = {
-      fileName:
-        uploadedFile.fileName,
+    const createAttachmentDto: CreateAttachmentDto = {
+      fileName: uploadedFile.fileName,
 
-      originalName:
-        uploadedFile.originalName,
+      originalName: uploadedFile.originalName,
 
-      mimeType:
-        uploadedFile.mimeType,
+      mimeType: uploadedFile.mimeType,
 
-      fileSize:
-        uploadedFile.fileSize,
+      fileSize: uploadedFile.fileSize,
 
-      fileUrl:
-        uploadedFile.fileUrl,
+      fileUrl: uploadedFile.fileUrl,
 
       uploadedBy,
 
-      projectId:
-        body.projectId || undefined,
+      projectId: body.projectId || undefined,
 
-      taskId:
-        body.taskId || undefined,
+      taskId: body.taskId || undefined,
 
-      milestoneId:
-        body.milestoneId || undefined,
+      milestoneId: body.milestoneId || undefined,
 
-      commentId:
-        body.commentId || undefined,
+      commentId: body.commentId || undefined,
     };
 
-    const attachment =
-      await this.attachmentsService.create(
-        createAttachmentDto,
-      );
+    const attachment = await this.attachmentsService.create(
+      createAttachmentDto,
+      req.user.tenantId,
+    );
 
     return {
       success: true,
@@ -152,8 +121,7 @@ export class UploadsController {
       data: {
         ...attachment,
 
-        filePath:
-          uploadedFile.filePath,
+        filePath: uploadedFile.filePath,
       },
     };
   }

@@ -20,15 +20,9 @@ import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(
-    private readonly notificationsService: NotificationsService,
-  ) {}
+  constructor(private readonly notificationsService: NotificationsService) {}
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Post()
   create(@Body() dto: CreateNotificationDto) {
     return this.notificationsService.create(dto);
@@ -41,14 +35,8 @@ export class NotificationsController {
     UserRole.EMPLOYEE,
   )
   @Get()
-  findAll(
-    @Query() pagination: PaginationDto,
-    @Query() search: SearchDto,
-  ) {
-    return this.notificationsService.findAll(
-      pagination,
-      search,
-    );
+  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
+    return this.notificationsService.findAll(pagination, search);
   }
 
   @Roles(

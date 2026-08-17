@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -19,7 +20,7 @@ export class AuthService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async register(createUserDto: CreateUserDto) {
+  async register(createUserDto: CreateUserDto, userTenantId?: string) {
     const existingUser = await this.prisma.user.findUnique({
       where: {
         email: createUserDto.email,
@@ -32,12 +33,21 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
 
+    // Use provided tenantId from authenticated context, otherwise use dto.tenantId
+    // For SUPER_ADMIN, they can specify tenantId. For normal users, use their tenant.
+    const tenantId = userTenantId || createUserDto.tenantId;
+
+    if (!tenantId) {
+      throw new BadRequestException('TenantId is required');
+    }
+
     const user = await this.prisma.user.create({
       data: {
         fullName: createUserDto.fullName,
         email: createUserDto.email.toLowerCase(),
         password: hashedPassword,
         role: createUserDto.role,
+        tenantId,
       },
     });
 
@@ -77,6 +87,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      tenantId: user.tenantId,
     });
 
     await this.activityLogsService.log({
@@ -84,17 +95,18 @@ export class AuthService {
       module: 'AUTH',
       description: `${user.fullName} logged into the system.`,
       userId: user.id,
+      tenantId: user.tenantId,
     });
 
     return {
-      success: true,
-      message: 'Login successful.',
       accessToken,
       user: {
         id: user.id,
+        userId: user.id,
         fullName: user.fullName,
         email: user.email,
         role: user.role,
+        tenantId: user.tenantId,
       },
     };
   }

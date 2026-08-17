@@ -27,10 +27,7 @@ export class PayrollController {
   }
 
   @Get()
-  findAll(
-    @Query() pagination: PaginationDto,
-    @Query() search: SearchDto,
-  ) {
+  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
     return this.payrollService.findAll(pagination, search);
   }
 
@@ -40,10 +37,7 @@ export class PayrollController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdatePayrollDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdatePayrollDto) {
     return this.payrollService.update(id, dto);
   }
 

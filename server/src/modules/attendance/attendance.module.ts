@@ -7,10 +7,7 @@ import { AttendanceController } from './attendance.controller';
 import { AttendanceService } from './attendance.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ActivityLogsModule,
-  ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [AttendanceController],
   providers: [AttendanceService],
   exports: [AttendanceService],

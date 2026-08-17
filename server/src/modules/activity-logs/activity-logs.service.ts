@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../../database';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto';
@@ -11,15 +16,22 @@ export class ActivityLogsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateActivityLogDto) {
+    if (!dto.tenantId) {
+      throw new Error('tenantId is required');
+    }
+
+    const activityData: Prisma.ActivityLogUncheckedCreateInput = {
+      action: dto.action,
+      module: dto.module,
+      description: dto.description,
+      ipAddress: dto.ipAddress,
+      userAgent: dto.userAgent,
+      userId: dto.userId,
+      tenantId: dto.tenantId,
+    };
+
     return this.prisma.activityLog.create({
-      data: {
-        action: dto.action,
-        module: dto.module,
-        description: dto.description,
-        ipAddress: dto.ipAddress,
-        userAgent: dto.userAgent,
-        userId: dto.userId,
-      },
+      data: activityData,
     });
   }
 
@@ -152,16 +164,11 @@ export class ActivityLogsService {
     module: string;
     description?: string;
     userId?: string;
+    tenantId?: string;
     ipAddress?: string;
     userAgent?: string;
   }) {
-    const activityData: Prisma.ActivityLogCreateInput = {
-      action: data.action,
-      module: data.module,
-      description: data.description,
-      ipAddress: data.ipAddress,
-      userAgent: data.userAgent,
-    };
+    let finalTenantId: string;
 
     if (data.userId) {
       const userExists = await this.prisma.user.findUnique({
@@ -170,17 +177,41 @@ export class ActivityLogsService {
         },
         select: {
           id: true,
+          tenantId: true,
         },
       });
 
-      if (userExists) {
-        activityData.user = {
-          connect: {
-            id: data.userId,
-          },
-        };
+      if (!userExists) {
+        throw new NotFoundException('User not found');
       }
+
+      // If both userId and tenantId are provided, validate consistency
+      if (data.tenantId && userExists.tenantId !== data.tenantId) {
+        throw new ForbiddenException(
+          'TenantId mismatch: user does not belong to the provided tenant',
+        );
+      }
+
+      finalTenantId = userExists.tenantId;
+    } else if (data.tenantId) {
+      // Only tenantId provided - use it directly
+      // Note: This should ideally be validated against authenticated user's tenant
+      finalTenantId = data.tenantId;
+    } else {
+      throw new BadRequestException(
+        'Either userId or tenantId must be provided',
+      );
     }
+
+    const activityData: Prisma.ActivityLogUncheckedCreateInput = {
+      action: data.action,
+      module: data.module,
+      description: data.description,
+      ipAddress: data.ipAddress,
+      userAgent: data.userAgent,
+      userId: data.userId,
+      tenantId: finalTenantId,
+    };
 
     return this.prisma.activityLog.create({
       data: activityData,

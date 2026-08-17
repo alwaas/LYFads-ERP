@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
 
@@ -6,7 +10,7 @@ import { CreateAttachmentDto } from './dto/create-attachment.dto';
 export class AttachmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateAttachmentDto) {
+  async create(dto: CreateAttachmentDto, userTenantId: string) {
     // Validate uploader
     const user = await this.prisma.user.findUnique({
       where: {
@@ -14,11 +18,19 @@ export class AttachmentsService {
       },
       select: {
         id: true,
+        tenantId: true,
       },
     });
 
     if (!user) {
       throw new NotFoundException('User not found.');
+    }
+
+    // Validate uploader belongs to the same tenant
+    if (user.tenantId !== userTenantId) {
+      throw new ForbiddenException(
+        'Cannot upload attachment for different tenant',
+      );
     }
 
     // Validate project if provided
@@ -29,11 +41,19 @@ export class AttachmentsService {
         },
         select: {
           id: true,
+          tenantId: true,
         },
       });
 
       if (!project) {
         throw new NotFoundException('Project not found.');
+      }
+
+      // Validate project belongs to the same tenant
+      if (project.tenantId !== userTenantId) {
+        throw new ForbiddenException(
+          'Cannot attach to project from different tenant',
+        );
       }
     }
 
@@ -45,11 +65,19 @@ export class AttachmentsService {
         },
         select: {
           id: true,
+          tenantId: true,
         },
       });
 
       if (!task) {
         throw new NotFoundException('Task not found.');
+      }
+
+      // Validate task belongs to the same tenant
+      if (task.tenantId !== userTenantId) {
+        throw new ForbiddenException(
+          'Cannot attach to task from different tenant',
+        );
       }
     }
 
@@ -61,11 +89,19 @@ export class AttachmentsService {
         },
         select: {
           id: true,
+          tenantId: true,
         },
       });
 
       if (!milestone) {
         throw new NotFoundException('Milestone not found.');
+      }
+
+      // Validate milestone belongs to the same tenant
+      if (milestone.tenantId !== userTenantId) {
+        throw new ForbiddenException(
+          'Cannot attach to milestone from different tenant',
+        );
       }
     }
 
@@ -77,11 +113,19 @@ export class AttachmentsService {
         },
         select: {
           id: true,
+          tenantId: true,
         },
       });
 
       if (!comment) {
         throw new NotFoundException('Comment not found.');
+      }
+
+      // Validate comment belongs to the same tenant
+      if (comment.tenantId !== userTenantId) {
+        throw new ForbiddenException(
+          'Cannot attach to comment from different tenant',
+        );
       }
     }
 
@@ -92,9 +136,8 @@ export class AttachmentsService {
         mimeType: dto.mimeType,
         fileSize: dto.fileSize,
         fileUrl: dto.fileUrl,
-
         uploadedBy: dto.uploadedBy,
-
+        tenantId: userTenantId,
         projectId: dto.projectId ?? null,
         taskId: dto.taskId ?? null,
         milestoneId: dto.milestoneId ?? null,
@@ -122,28 +165,24 @@ export class AttachmentsService {
     return attachment;
   }
 
-  async findAll(filters?: {
-    projectId?: string;
-    taskId?: string;
-    milestoneId?: string;
-    commentId?: string;
-  }) {
+  async findAll(
+    userTenantId: string,
+    filters?: {
+      projectId?: string;
+      taskId?: string;
+      milestoneId?: string;
+      commentId?: string;
+    },
+  ) {
     const where = {
-      ...(filters?.projectId
-        ? { projectId: filters.projectId }
-        : {}),
+      tenantId: userTenantId,
+      ...(filters?.projectId ? { projectId: filters.projectId } : {}),
 
-      ...(filters?.taskId
-        ? { taskId: filters.taskId }
-        : {}),
+      ...(filters?.taskId ? { taskId: filters.taskId } : {}),
 
-      ...(filters?.milestoneId
-        ? { milestoneId: filters.milestoneId }
-        : {}),
+      ...(filters?.milestoneId ? { milestoneId: filters.milestoneId } : {}),
 
-      ...(filters?.commentId
-        ? { commentId: filters.commentId }
-        : {}),
+      ...(filters?.commentId ? { commentId: filters.commentId } : {}),
     };
 
     return this.prisma.attachment.findMany({
@@ -172,7 +211,7 @@ export class AttachmentsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const attachment = await this.prisma.attachment.findUnique({
       where: {
         id,
@@ -200,10 +239,15 @@ export class AttachmentsService {
       throw new NotFoundException('Attachment not found.');
     }
 
+    // Verify tenant ownership
+    if (attachment.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this attachment');
+    }
+
     return attachment;
   }
 
-  async remove(id: string) {
+  async remove(id: string, userTenantId: string) {
     const attachment = await this.prisma.attachment.findUnique({
       where: {
         id,
@@ -211,11 +255,17 @@ export class AttachmentsService {
 
       select: {
         id: true,
+        tenantId: true,
       },
     });
 
     if (!attachment) {
       throw new NotFoundException('Attachment not found.');
+    }
+
+    // Verify tenant ownership
+    if (attachment.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this attachment');
     }
 
     await this.prisma.attachment.delete({

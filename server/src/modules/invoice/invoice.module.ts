@@ -7,10 +7,7 @@ import { InvoiceController } from './invoice.controller';
 import { InvoiceService } from './invoice.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ActivityLogsModule,
-  ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [InvoiceController],
   providers: [InvoiceService],
   exports: [InvoiceService],

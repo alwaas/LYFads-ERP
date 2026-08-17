@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,8 +14,24 @@ export class ProjectTimelineService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async getTimeline(projectId: string) {
+  async getTimeline(projectId: string, userTenantId: string) {
     const project = await this.prisma.project.findUnique({
+      where: {
+        id: projectId,
+      },
+      select: { id: true, tenantId: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found.');
+    }
+
+    // Verify project belongs to the same tenant
+    if (project.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this project');
+    }
+
+    const fullProject = await this.prisma.project.findUnique({
       where: {
         id: projectId,
       },
@@ -36,6 +53,9 @@ export class ProjectTimelineService {
         },
 
         tasks: {
+          where: {
+            tenantId: userTenantId,
+          },
           orderBy: {
             dueDate: 'asc',
           },
@@ -56,17 +76,14 @@ export class ProjectTimelineService {
       },
     });
 
-    if (!project) {
-      throw new NotFoundException('Project not found.');
-    }
-
-    return project;
+    return fullProject;
   }
 
-  async getUpcomingDeadlines() {
+  async getUpcomingDeadlines(userTenantId: string) {
     const milestones = await this.prisma.milestone.findMany({
       where: {
         completedAt: null,
+        tenantId: userTenantId,
       },
       orderBy: {
         deadline: 'asc',
@@ -81,6 +98,7 @@ export class ProjectTimelineService {
       action: 'VIEW',
       module: 'PROJECT_TIMELINE',
       description: 'Viewed upcoming project deadlines.',
+      tenantId: userTenantId,
     });
 
     return milestones;

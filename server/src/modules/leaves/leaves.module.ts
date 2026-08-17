@@ -7,10 +7,7 @@ import { LeavesController } from './leaves.controller';
 import { LeavesService } from './leaves.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ActivityLogsModule,
-  ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [LeavesController],
   providers: [LeavesService],
   exports: [LeavesService],

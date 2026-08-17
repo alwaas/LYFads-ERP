@@ -27,6 +27,7 @@ export class PayrollService {
       where: {
         id: dto.employeeId,
       },
+      include: { user: true },
     });
 
     if (!employee) {
@@ -42,9 +43,7 @@ export class PayrollService {
     });
 
     if (existing) {
-      throw new ConflictException(
-        'Payroll already generated for this month.',
-      );
+      throw new ConflictException('Payroll already generated for this month.');
     }
 
     const payroll = await this.prisma.payroll.create({
@@ -59,6 +58,7 @@ export class PayrollService {
         bonus: dto.bonus ?? 0,
         netSalary: dto.netSalary,
         status: dto.status ?? 'PENDING',
+        tenantId: employee.user.tenantId,
       },
       include: {
         employee: {
@@ -79,10 +79,7 @@ export class PayrollService {
     return payroll;
   }
 
-  async findAll(
-    pagination: PaginationDto,
-    search: SearchDto,
-  ) {
+  async findAll(pagination: PaginationDto, search: SearchDto) {
     const { skip, limit } = pagination;
 
     const where: Prisma.PayrollWhereInput = search.search

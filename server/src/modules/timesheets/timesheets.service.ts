@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
@@ -17,11 +14,11 @@ export class TimesheetsService {
   ) {}
 
   async create(dto: CreateTimesheetDto) {
-    console.log("========== TIMESHEET CREATE START ==========");
-    console.log("DTO RECEIVED:", dto);
+    console.log('========== TIMESHEET CREATE START ==========');
+    console.log('DTO RECEIVED:', dto);
 
     try {
-      console.log("1. Finding employee:", dto.employeeId);
+      console.log('1. Finding employee:', dto.employeeId);
 
       const employee = await this.prisma.employee.findUnique({
         where: {
@@ -29,16 +26,19 @@ export class TimesheetsService {
         },
       });
 
-      console.log("2. Employee:", employee);
+      console.log('2. Employee:', employee);
 
       if (!employee) {
-        throw new NotFoundException("Employee not found.");
+        throw new NotFoundException('Employee not found.');
       }
 
-      console.log("3. Creating timesheet...");
+      console.log('3. Creating timesheet...');
 
       const timesheet = await this.prisma.timesheet.create({
-        data: dto,
+        data: {
+          ...dto,
+          tenantId: employee.tenantId,
+        },
         include: {
           employee: true,
           project: true,
@@ -46,25 +46,25 @@ export class TimesheetsService {
         },
       });
 
-      console.log("4. Timesheet created:", timesheet.id);
+      console.log('4. Timesheet created:', timesheet.id);
 
-      console.log("5. Creating activity log...");
+      console.log('5. Creating activity log...');
 
       await this.activityLogsService.log({
-        action: "CREATE",
-        module: "TIMESHEET",
-        description: "Timesheet created successfully.",
+        action: 'CREATE',
+        module: 'TIMESHEET',
+        description: 'Timesheet created successfully.',
         userId: employee.userId,
       });
 
-      console.log("6. Activity log created.");
-      console.log("========== TIMESHEET CREATE SUCCESS ==========");
+      console.log('6. Activity log created.');
+      console.log('========== TIMESHEET CREATE SUCCESS ==========');
 
       return timesheet;
     } catch (error) {
-      console.error("========== TIMESHEET CREATE ERROR ==========");
+      console.error('========== TIMESHEET CREATE ERROR ==========');
       console.error(error);
-      console.error("=============================================");
+      console.error('=============================================');
 
       throw error;
     }

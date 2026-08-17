@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -17,7 +18,14 @@ export class ClientsService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreateClientDto) {
+  async create(dto: CreateClientDto, userTenantId: string) {
+    // Validate that dto.tenantId (if provided) matches authenticated user's tenant
+    if (dto.tenantId && dto.tenantId !== userTenantId) {
+      throw new ForbiddenException(
+        'Cannot create client for a different tenant',
+      );
+    }
+
     const existing = await this.prisma.client.findUnique({
       where: {
         email: dto.email.toLowerCase(),
@@ -30,8 +38,19 @@ export class ClientsService {
 
     const client = await this.prisma.client.create({
       data: {
-        ...dto,
+        companyName: dto.companyName,
+        contactPerson: dto.contactPerson,
         email: dto.email.toLowerCase(),
+        phone: dto.phone,
+        gstNumber: dto.gstNumber,
+        website: dto.website,
+        address: dto.address,
+        city: dto.city,
+        state: dto.state,
+        country: dto.country,
+        pincode: dto.pincode,
+        accountManagerId: dto.accountManagerId,
+        tenantId: userTenantId,
       },
     });
 
@@ -40,16 +59,20 @@ export class ClientsService {
       module: 'CLIENT',
       description: `Client ${client.companyName} created successfully.`,
       userId: client.accountManagerId ?? undefined,
+      tenantId: userTenantId,
     });
 
     return client;
   }
 
-  async findAll(pagination: PaginationDto) {
+  async findAll(pagination: PaginationDto, userTenantId: string) {
     const { skip, limit } = pagination;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.client.findMany({
+        where: {
+          tenantId: userTenantId,
+        },
         skip,
         take: limit,
         include: {
@@ -66,7 +89,11 @@ export class ClientsService {
         },
       }),
 
-      this.prisma.client.count(),
+      this.prisma.client.count({
+        where: {
+          tenantId: userTenantId,
+        },
+      }),
     ]);
 
     return {
@@ -78,7 +105,7 @@ export class ClientsService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const client = await this.prisma.client.findUnique({
       where: { id },
       include: {
@@ -96,18 +123,27 @@ export class ClientsService {
       throw new NotFoundException('Client not found.');
     }
 
+    // Verify tenant ownership
+    if (client.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this client');
+    }
+
     return client;
   }
 
-  async update(id: string, dto: UpdateClientDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateClientDto, userTenantId: string) {
+    await this.findOne(id, userTenantId);
 
-    const client = await this.prisma.client.update({
+    // Prevent tenantId change by removing it from the update data
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { tenantId: _tenantId, ...updateData } = dto;
+
+    const updatedClient = await this.prisma.client.update({
       where: {
         id,
       },
       data: {
-        ...dto,
+        ...updateData,
         email: dto.email?.toLowerCase(),
       },
       include: {
@@ -124,15 +160,16 @@ export class ClientsService {
     await this.activityLogsService.log({
       action: 'UPDATE',
       module: 'CLIENT',
-      description: `Client ${client.companyName} updated successfully.`,
-      userId: client.accountManagerId ?? undefined,
+      description: `Client ${updatedClient.companyName} updated successfully.`,
+      userId: updatedClient.accountManagerId ?? undefined,
+      tenantId: userTenantId,
     });
 
-    return client;
+    return updatedClient;
   }
 
-  async remove(id: string) {
-    const client = await this.findOne(id);
+  async remove(id: string, userTenantId: string) {
+    const client = await this.findOne(id, userTenantId);
 
     await this.prisma.client.delete({
       where: {
@@ -145,6 +182,7 @@ export class ClientsService {
       module: 'CLIENT',
       description: `Client ${client.companyName} deleted successfully.`,
       userId: client.accountManager?.id ?? undefined,
+      tenantId: userTenantId,
     });
 
     return {

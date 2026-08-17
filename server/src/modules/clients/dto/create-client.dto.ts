@@ -45,4 +45,7 @@ export class CreateClientDto {
   @IsOptional()
   @IsString()
   accountManagerId?: string;
+
+  @IsString()
+  tenantId!: string;
 }

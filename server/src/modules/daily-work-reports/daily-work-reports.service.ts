@@ -48,13 +48,12 @@ export class DailyWorkReportsService {
 
     reportDate.setHours(0, 0, 0, 0);
 
-    const existingReport =
-      await this.prisma.dailyWorkReport.findFirst({
-        where: {
-          employeeId: dto.employeeId,
-          reportDate,
-        },
-      });
+    const existingReport = await this.prisma.dailyWorkReport.findFirst({
+      where: {
+        employeeId: dto.employeeId,
+        reportDate,
+      },
+    });
 
     if (existingReport) {
       throw new ConflictException(
@@ -65,24 +64,16 @@ export class DailyWorkReportsService {
     const report = await this.prisma.dailyWorkReport.create({
       data: {
         employeeId: dto.employeeId,
-
         projectId: dto.projectId || null,
-
         taskId: dto.taskId || null,
-
         reportDate,
-
         yesterdayWork: dto.yesterdayWork || null,
-
         todayWork: dto.todayWork,
-
         tomorrowPlan: dto.tomorrowPlan || null,
-
         hoursWorked: new Prisma.Decimal(dto.hoursWorked),
-
         status: dto.status ?? WorkStatus.COMPLETED,
-
         managerRemarks: dto.managerRemarks || null,
+        tenantId: employee.tenantId,
       },
 
       include: {
@@ -100,7 +91,8 @@ export class DailyWorkReportsService {
       action: 'CREATE',
       module: 'DAILY_WORK_REPORT',
       description: `Daily Work Report created.`,
-      userId: report.employee.user.id,
+      userId: employee.userId,
+      tenantId: employee.tenantId,
     });
 
     return report;
@@ -109,28 +101,22 @@ export class DailyWorkReportsService {
   // =========================
   // UPDATE
   // =========================
-  async update(
-    id: string,
-    dto: UpdateDailyWorkReportDto,
-  ) {
-    const existingReport =
-      await this.prisma.dailyWorkReport.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          employee: {
-            include: {
-              user: true,
-            },
+  async update(id: string, dto: UpdateDailyWorkReportDto) {
+    const existingReport = await this.prisma.dailyWorkReport.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        employee: {
+          include: {
+            user: true,
           },
         },
-      });
+      },
+    });
 
     if (!existingReport) {
-      throw new NotFoundException(
-        'Daily Work Report not found.',
-      );
+      throw new NotFoundException('Daily Work Report not found.');
     }
 
     let reportDate: Date | undefined;
@@ -139,50 +125,39 @@ export class DailyWorkReportsService {
       reportDate = new Date(dto.reportDate);
 
       if (Number.isNaN(reportDate.getTime())) {
-        throw new ConflictException(
-          'Invalid report date.',
-        );
+        throw new ConflictException('Invalid report date.');
       }
 
       reportDate.setHours(0, 0, 0, 0);
     }
 
-    const employeeId =
-      dto.employeeId ?? existingReport.employeeId;
+    const employeeId = dto.employeeId ?? existingReport.employeeId;
 
     if (
       dto.employeeId !== undefined &&
       dto.employeeId !== existingReport.employeeId
     ) {
-      const employee =
-        await this.prisma.employee.findUnique({
-          where: {
-            id: dto.employeeId,
-          },
-        });
+      const employee = await this.prisma.employee.findUnique({
+        where: {
+          id: dto.employeeId,
+        },
+      });
 
       if (!employee) {
-        throw new NotFoundException(
-          'Employee not found.',
-        );
+        throw new NotFoundException('Employee not found.');
       }
     }
 
-    if (
-      reportDate !== undefined ||
-      dto.employeeId !== undefined
-    ) {
-      const duplicate =
-        await this.prisma.dailyWorkReport.findFirst({
-          where: {
-            employeeId,
-            reportDate:
-              reportDate ?? existingReport.reportDate,
-            NOT: {
-              id,
-            },
+    if (reportDate !== undefined || dto.employeeId !== undefined) {
+      const duplicate = await this.prisma.dailyWorkReport.findFirst({
+        where: {
+          employeeId,
+          reportDate: reportDate ?? existingReport.reportDate,
+          NOT: {
+            id,
           },
-        });
+        },
+      });
 
       if (duplicate) {
         throw new ConflictException(
@@ -191,69 +166,63 @@ export class DailyWorkReportsService {
       }
     }
 
-    const updatedReport =
-      await this.prisma.dailyWorkReport.update({
-        where: {
-          id,
-        },
+    const updatedReport = await this.prisma.dailyWorkReport.update({
+      where: {
+        id,
+      },
 
-        data: {
-          ...(dto.employeeId !== undefined && {
-            employeeId: dto.employeeId,
-          }),
+      data: {
+        ...(dto.employeeId !== undefined && {
+          employeeId: dto.employeeId,
+        }),
 
-          ...(dto.projectId !== undefined && {
-            projectId: dto.projectId || null,
-          }),
+        ...(dto.projectId !== undefined && {
+          projectId: dto.projectId || null,
+        }),
 
-          ...(dto.taskId !== undefined && {
-            taskId: dto.taskId || null,
-          }),
+        ...(dto.taskId !== undefined && {
+          taskId: dto.taskId || null,
+        }),
 
-          ...(reportDate !== undefined && {
-            reportDate,
-          }),
+        ...(reportDate !== undefined && {
+          reportDate,
+        }),
 
-          ...(dto.yesterdayWork !== undefined && {
-            yesterdayWork:
-              dto.yesterdayWork || null,
-          }),
+        ...(dto.yesterdayWork !== undefined && {
+          yesterdayWork: dto.yesterdayWork || null,
+        }),
 
-          ...(dto.todayWork !== undefined && {
-            todayWork: dto.todayWork,
-          }),
+        ...(dto.todayWork !== undefined && {
+          todayWork: dto.todayWork,
+        }),
 
-          ...(dto.tomorrowPlan !== undefined && {
-            tomorrowPlan:
-              dto.tomorrowPlan || null,
-          }),
+        ...(dto.tomorrowPlan !== undefined && {
+          tomorrowPlan: dto.tomorrowPlan || null,
+        }),
 
-          ...(dto.hoursWorked !== undefined && {
-            hoursWorked: new Prisma.Decimal(
-              dto.hoursWorked,
-            ),
-          }),
+        ...(dto.hoursWorked !== undefined && {
+          hoursWorked: new Prisma.Decimal(dto.hoursWorked),
+        }),
 
-          ...(dto.status !== undefined && {
-            status: dto.status,
-          }),
+        ...(dto.status !== undefined && {
+          status: dto.status,
+        }),
 
-          ...(dto.managerRemarks !== undefined && {
-            managerRemarks:
-              dto.managerRemarks || null,
-          }),
-        },
+        ...(dto.managerRemarks !== undefined && {
+          managerRemarks: dto.managerRemarks || null,
+        }),
+      },
 
-        include: {
-          employee: {
-            include: {
-              user: true,
-            },
+      include: {
+        employee: {
+          include: {
+            user: true,
           },
-          project: true,
-          task: true,
         },
-      });
+        project: true,
+        task: true,
+      },
+    });
 
     await this.activityLogsService.log({
       action: 'UPDATE',
@@ -268,76 +237,71 @@ export class DailyWorkReportsService {
   // =========================
   // FIND ALL
   // =========================
-  async findAll(
-    pagination: PaginationDto,
-    search: SearchDto,
-  ) {
+  async findAll(pagination: PaginationDto, search: SearchDto) {
     const searchText = search.search?.trim();
 
-    const where: Prisma.DailyWorkReportWhereInput =
-      searchText
-        ? {
-            OR: [
-              {
-                todayWork: {
-                  contains: searchText,
-                  mode: Prisma.QueryMode.insensitive,
-                },
+    const where: Prisma.DailyWorkReportWhereInput = searchText
+      ? {
+          OR: [
+            {
+              todayWork: {
+                contains: searchText,
+                mode: Prisma.QueryMode.insensitive,
               },
-              {
-                yesterdayWork: {
-                  contains: searchText,
-                  mode: Prisma.QueryMode.insensitive,
-                },
+            },
+            {
+              yesterdayWork: {
+                contains: searchText,
+                mode: Prisma.QueryMode.insensitive,
               },
-              {
-                tomorrowPlan: {
-                  contains: searchText,
-                  mode: Prisma.QueryMode.insensitive,
-                },
+            },
+            {
+              tomorrowPlan: {
+                contains: searchText,
+                mode: Prisma.QueryMode.insensitive,
               },
-              {
-                employee: {
-                  user: {
-                    fullName: {
-                      contains: searchText,
-                      mode: Prisma.QueryMode.insensitive,
-                    },
+            },
+            {
+              employee: {
+                user: {
+                  fullName: {
+                    contains: searchText,
+                    mode: Prisma.QueryMode.insensitive,
                   },
                 },
               },
-            ],
-          }
-        : {};
-
-    const [data, total] =
-      await this.prisma.$transaction([
-        this.prisma.dailyWorkReport.findMany({
-          where,
-
-          skip: pagination.skip,
-
-          take: pagination.limit,
-
-          orderBy: {
-            reportDate: 'desc',
-          },
-
-          include: {
-            employee: {
-              include: {
-                user: true,
-              },
             },
-            project: true,
-            task: true,
-          },
-        }),
+          ],
+        }
+      : {};
 
-        this.prisma.dailyWorkReport.count({
-          where,
-        }),
-      ]);
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.dailyWorkReport.findMany({
+        where,
+
+        skip: pagination.skip,
+
+        take: pagination.limit,
+
+        orderBy: {
+          reportDate: 'desc',
+        },
+
+        include: {
+          employee: {
+            include: {
+              user: true,
+            },
+          },
+          project: true,
+          task: true,
+        },
+      }),
+
+      this.prisma.dailyWorkReport.count({
+        where,
+      }),
+    ]);
 
     return {
       total,
@@ -346,10 +310,7 @@ export class DailyWorkReportsService {
 
       limit: pagination.limit,
 
-      totalPages:
-        Math.ceil(
-          total / pagination.limit,
-        ),
+      totalPages: Math.ceil(total / pagination.limit),
 
       data,
     };
@@ -359,29 +320,26 @@ export class DailyWorkReportsService {
   // FIND ONE
   // =========================
   async findOne(id: string) {
-    const report =
-      await this.prisma.dailyWorkReport.findUnique({
-        where: {
-          id,
-        },
+    const report = await this.prisma.dailyWorkReport.findUnique({
+      where: {
+        id,
+      },
 
-        include: {
-          employee: {
-            include: {
-              user: true,
-            },
+      include: {
+        employee: {
+          include: {
+            user: true,
           },
-
-          project: true,
-
-          task: true,
         },
-      });
+
+        project: true,
+
+        task: true,
+      },
+    });
 
     if (!report) {
-      throw new NotFoundException(
-        'Daily Work Report not found.',
-      );
+      throw new NotFoundException('Daily Work Report not found.');
     }
 
     return report;
@@ -391,25 +349,22 @@ export class DailyWorkReportsService {
   // DELETE
   // =========================
   async delete(id: string) {
-    const report =
-      await this.prisma.dailyWorkReport.findUnique({
-        where: {
-          id,
-        },
+    const report = await this.prisma.dailyWorkReport.findUnique({
+      where: {
+        id,
+      },
 
-        include: {
-          employee: {
-            include: {
-              user: true,
-            },
+      include: {
+        employee: {
+          include: {
+            user: true,
           },
         },
-      });
+      },
+    });
 
     if (!report) {
-      throw new NotFoundException(
-        'Daily Work Report not found.',
-      );
+      throw new NotFoundException('Daily Work Report not found.');
     }
 
     await this.prisma.dailyWorkReport.delete({
@@ -427,8 +382,7 @@ export class DailyWorkReportsService {
 
     return {
       success: true,
-      message:
-        'Daily Work Report deleted successfully.',
+      message: 'Daily Work Report deleted successfully.',
     };
   }
 }

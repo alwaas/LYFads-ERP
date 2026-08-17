@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,7 +21,7 @@ export class ProjectsService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreateProjectDto) {
+  async create(dto: CreateProjectDto, userTenantId: string) {
     const existingProject = await this.prisma.project.findUnique({
       where: {
         projectCode: dto.projectCode,
@@ -29,6 +30,22 @@ export class ProjectsService {
 
     if (existingProject) {
       throw new ConflictException('Project code already exists.');
+    }
+
+    const client = await this.prisma.client.findUnique({
+      where: { id: dto.clientId },
+      select: { id: true, tenantId: true },
+    });
+
+    if (!client) {
+      throw new NotFoundException('Client not found.');
+    }
+
+    // Validate client belongs to the same tenant
+    if (client.tenantId !== userTenantId) {
+      throw new ForbiddenException(
+        'Cannot create project for client from different tenant',
+      );
     }
 
     const project = await this.prisma.project.create({
@@ -43,6 +60,7 @@ export class ProjectsService {
         budget: dto.budget,
         clientId: dto.clientId,
         managerId: dto.managerId,
+        tenantId: userTenantId,
       },
       include: {
         client: true,
@@ -61,16 +79,20 @@ export class ProjectsService {
       module: 'PROJECT',
       description: `Project ${project.projectCode} created successfully.`,
       userId: project.managerId ?? undefined,
+      tenantId: userTenantId,
     });
 
     return project;
   }
 
-  async findAll(pagination: PaginationDto) {
+  async findAll(pagination: PaginationDto, userTenantId: string) {
     const { skip, limit } = pagination;
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.project.findMany({
+        where: {
+          tenantId: userTenantId,
+        },
         skip,
         take: limit,
         include: {
@@ -88,7 +110,11 @@ export class ProjectsService {
         },
       }),
 
-      this.prisma.project.count(),
+      this.prisma.project.count({
+        where: {
+          tenantId: userTenantId,
+        },
+      }),
     ]);
 
     return {
@@ -102,7 +128,7 @@ export class ProjectsService {
   // TODO:
   // Add search, status, manager and client filters.
 
-  async findOne(id: string) {
+  async findOne(id: string, userTenantId: string) {
     const project = await this.prisma.project.findUnique({
       where: {
         id,
@@ -123,13 +149,36 @@ export class ProjectsService {
       throw new NotFoundException('Project not found.');
     }
 
+    // Verify tenant ownership
+    if (project.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this project');
+    }
+
     return project;
   }
 
-  async update(id: string, dto: UpdateProjectDto) {
-    await this.findOne(id);
+  async update(id: string, dto: UpdateProjectDto, userTenantId: string) {
+    await this.findOne(id, userTenantId);
 
-    const project = await this.prisma.project.update({
+    // If clientId is being changed, validate the new client belongs to the same tenant
+    if (dto.clientId) {
+      const client = await this.prisma.client.findUnique({
+        where: { id: dto.clientId },
+        select: { id: true, tenantId: true },
+      });
+
+      if (!client) {
+        throw new NotFoundException('Client not found.');
+      }
+
+      if (client.tenantId !== userTenantId) {
+        throw new ForbiddenException(
+          'Cannot assign project to client from different tenant',
+        );
+      }
+    }
+
+    const updatedProject = await this.prisma.project.update({
       where: {
         id,
       },
@@ -150,15 +199,16 @@ export class ProjectsService {
     await this.activityLogsService.log({
       action: 'UPDATE',
       module: 'PROJECT',
-      description: `Project ${project.projectCode} updated successfully.`,
-      userId: project.managerId ?? undefined,
+      description: `Project ${updatedProject.projectCode} updated successfully.`,
+      userId: updatedProject.managerId ?? undefined,
+      tenantId: userTenantId,
     });
 
-    return project;
+    return updatedProject;
   }
 
-  async remove(id: string) {
-    const project = await this.findOne(id);
+  async remove(id: string, userTenantId: string) {
+    const project = await this.findOne(id, userTenantId);
 
     await this.prisma.project.delete({
       where: {
@@ -171,6 +221,7 @@ export class ProjectsService {
       module: 'PROJECT',
       description: `Project ${project.projectCode} deleted successfully.`,
       userId: project.managerId ?? undefined,
+      tenantId: userTenantId,
     });
 
     return {

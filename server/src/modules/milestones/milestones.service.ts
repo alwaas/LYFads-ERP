@@ -33,6 +33,7 @@ export class MilestonesService {
       select: {
         id: true,
         name: true,
+        tenantId: true,
       },
     });
 
@@ -74,6 +75,7 @@ export class MilestonesService {
         progress,
         startDate,
         deadline,
+        tenantId: project.tenantId,
       },
       include: {
         project: {
@@ -190,9 +192,7 @@ export class MilestonesService {
       ? new Date(dto.startDate)
       : existing.startDate;
 
-    const deadline = dto.deadline
-      ? new Date(dto.deadline)
-      : existing.deadline;
+    const deadline = dto.deadline ? new Date(dto.deadline) : existing.deadline;
 
     this.validateDates(startDate, deadline);
 
@@ -291,17 +291,9 @@ export class MilestonesService {
     };
   }
 
-  private validateDates(
-    startDate: Date,
-    deadline: Date,
-  ): void {
-    if (
-      Number.isNaN(startDate.getTime()) ||
-      Number.isNaN(deadline.getTime())
-    ) {
-      throw new BadRequestException(
-        'Invalid milestone date.',
-      );
+  private validateDates(startDate: Date, deadline: Date): void {
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(deadline.getTime())) {
+      throw new BadRequestException('Invalid milestone date.');
     }
 
     if (deadline < startDate) {
@@ -321,19 +313,13 @@ export class MilestonesService {
       );
     }
 
-    if (
-      status === MilestoneStatus.COMPLETED &&
-      progress !== 100
-    ) {
+    if (status === MilestoneStatus.COMPLETED && progress !== 100) {
       throw new BadRequestException(
         'Completed milestones must have 100% progress.',
       );
     }
 
-    if (
-      progress === 100 &&
-      status !== MilestoneStatus.COMPLETED
-    ) {
+    if (progress === 100 && status !== MilestoneStatus.COMPLETED) {
       throw new BadRequestException(
         'A milestone with 100% progress must have COMPLETED status.',
       );

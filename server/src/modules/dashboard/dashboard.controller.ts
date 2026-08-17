@@ -1,10 +1,14 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/tenant.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 import { DashboardService } from './dashboard.service';
 
 @Controller('dashboard')
+@UseGuards(JwtAuthGuard)
 @Roles(
   UserRole.SUPER_ADMIN,
   UserRole.ADMIN,
@@ -15,57 +19,57 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('stats')
-  getStats() {
-    return this.dashboardService.getStats();
+  getStats(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getStats(user.tenantId);
   }
 
   @Get('recent-projects')
-  getRecentProjects() {
-    return this.dashboardService.getRecentProjects();
+  getRecentProjects(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getRecentProjects(user.tenantId);
   }
 
   @Get('recent-tasks')
-  getRecentTasks() {
-    return this.dashboardService.getRecentTasks();
+  getRecentTasks(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getRecentTasks(user.tenantId);
   }
 
   @Get('activity-summary')
-  getActivitySummary() {
-    return this.dashboardService.getActivitySummary();
+  getActivitySummary(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getActivitySummary(user.tenantId);
   }
 
   @Get('charts')
-  getCharts() {
-    return this.dashboardService.getCharts();
+  getCharts(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getCharts(user.tenantId);
   }
 
   @Get('employee-workload')
-  getEmployeeWorkload() {
-    return this.dashboardService.getEmployeeWorkload();
+  getEmployeeWorkload(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getEmployeeWorkload(user.tenantId);
   }
 
   @Get('priority-chart')
-  getPriorityChart() {
-    return this.dashboardService.getPriorityChart();
+  getPriorityChart(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getPriorityChart(user.tenantId);
   }
 
   @Get('project-status-chart')
-  getProjectStatusChart() {
-    return this.dashboardService.getProjectStatusChart();
+  getProjectStatusChart(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getProjectStatusChart(user.tenantId);
   }
 
   @Get('task-status-chart')
-  getTaskStatusChart() {
-    return this.dashboardService.getTaskStatusChart();
+  getTaskStatusChart(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getTaskStatusChart(user.tenantId);
   }
 
   @Get('upcoming-deadlines')
-  getUpcomingDeadlines() {
-    return this.dashboardService.getUpcomingDeadlines();
+  getUpcomingDeadlines(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getUpcomingDeadlines(user.tenantId);
   }
 
   @Get('recent-activities')
-  getRecentActivities() {
-    return this.dashboardService.getRecentActivities();
+  getRecentActivities(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getRecentActivities(user.tenantId);
   }
 }

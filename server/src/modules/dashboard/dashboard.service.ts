@@ -7,7 +7,7 @@ import { PrismaService } from '../../database';
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getStats() {
+  async getStats(userTenantId: string) {
     const [
       users,
       employees,
@@ -21,43 +21,58 @@ export class DashboardService {
       completedTasks,
       pendingTasks,
     ] = await this.prisma.$transaction([
-      this.prisma.user.count(),
+      this.prisma.user.count({
+        where: { tenantId: userTenantId },
+      }),
 
-      this.prisma.employee.count(),
+      this.prisma.employee.count({
+        where: { tenantId: userTenantId },
+      }),
 
       this.prisma.user.count({
         where: {
           isActive: true,
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.user.count({
         where: {
           isActive: false,
+          tenantId: userTenantId,
         },
       }),
 
-      this.prisma.client.count(),
+      this.prisma.client.count({
+        where: { tenantId: userTenantId },
+      }),
 
-      this.prisma.project.count(),
+      this.prisma.project.count({
+        where: { tenantId: userTenantId },
+      }),
 
       this.prisma.project.count({
         where: {
           status: 'ACTIVE',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.project.count({
         where: {
           status: 'COMPLETED',
+          tenantId: userTenantId,
         },
       }),
 
-      this.prisma.task.count(),
+      this.prisma.task.count({
+        where: { tenantId: userTenantId },
+      }),
 
       this.prisma.task.count({
         where: {
           status: TaskStatus.COMPLETED,
+          tenantId: userTenantId,
         },
       }),
 
@@ -66,6 +81,7 @@ export class DashboardService {
           NOT: {
             status: TaskStatus.COMPLETED,
           },
+          tenantId: userTenantId,
         },
       }),
     ]);
@@ -95,8 +111,9 @@ export class DashboardService {
     };
   }
 
-  async getRecentProjects() {
+  async getRecentProjects(userTenantId: string) {
     return this.prisma.project.findMany({
+      where: { tenantId: userTenantId },
       take: 5,
       orderBy: {
         createdAt: 'desc',
@@ -119,8 +136,9 @@ export class DashboardService {
     });
   }
 
-  async getRecentTasks() {
+  async getRecentTasks(userTenantId: string) {
     return this.prisma.task.findMany({
+      where: { tenantId: userTenantId },
       take: 5,
       orderBy: {
         createdAt: 'desc',
@@ -148,7 +166,7 @@ export class DashboardService {
     });
   }
 
-  async getActivitySummary() {
+  async getActivitySummary(userTenantId: string) {
     const [
       totalProjects,
       activeProjects,
@@ -162,31 +180,40 @@ export class DashboardService {
       totalEmployees,
       totalClients,
     ] = await this.prisma.$transaction([
-      this.prisma.project.count(),
+      this.prisma.project.count({
+        where: { tenantId: userTenantId },
+      }),
       this.prisma.project.count({
         where: {
           status: 'ACTIVE',
+          tenantId: userTenantId,
         },
       }),
       this.prisma.project.count({
         where: {
           status: 'COMPLETED',
+          tenantId: userTenantId,
         },
       }),
-      this.prisma.task.count(),
+      this.prisma.task.count({
+        where: { tenantId: userTenantId },
+      }),
       this.prisma.task.count({
         where: {
           status: 'COMPLETED',
+          tenantId: userTenantId,
         },
       }),
       this.prisma.task.count({
         where: {
           status: 'IN_PROGRESS',
+          tenantId: userTenantId,
         },
       }),
       this.prisma.task.count({
         where: {
           status: 'TODO',
+          tenantId: userTenantId,
         },
       }),
 
@@ -199,6 +226,7 @@ export class DashboardService {
           status: {
             not: 'COMPLETED',
           },
+          tenantId: userTenantId,
         },
       }),
 
@@ -206,12 +234,17 @@ export class DashboardService {
       this.prisma.task.count({
         where: {
           priority: 'HIGH',
+          tenantId: userTenantId,
         },
       }),
 
-      this.prisma.employee.count(),
+      this.prisma.employee.count({
+        where: { tenantId: userTenantId },
+      }),
 
-      this.prisma.client.count(),
+      this.prisma.client.count({
+        where: { tenantId: userTenantId },
+      }),
     ]);
 
     const completionRate =
@@ -242,7 +275,7 @@ export class DashboardService {
     };
   }
 
-  async getCharts() {
+  async getCharts(userTenantId: string) {
     const [
       activeProjects,
       completedProjects,
@@ -253,30 +286,35 @@ export class DashboardService {
       this.prisma.project.count({
         where: {
           status: 'ACTIVE',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.project.count({
         where: {
           status: 'COMPLETED',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.task.count({
         where: {
           status: 'TODO',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.task.count({
         where: {
           status: 'IN_PROGRESS',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.task.count({
         where: {
           status: 'COMPLETED',
+          tenantId: userTenantId,
         },
       }),
     ]);
@@ -310,8 +348,9 @@ export class DashboardService {
     };
   }
 
-  async getRecentActivities() {
+  async getRecentActivities(userTenantId: string) {
     return this.prisma.activityLog.findMany({
+      where: { tenantId: userTenantId },
       take: 10,
       orderBy: {
         createdAt: 'desc',
@@ -328,15 +367,16 @@ export class DashboardService {
     });
   }
 
-  async getEmployeeWorkload() {
+  async getEmployeeWorkload(userTenantId: string) {
     const employees = await this.prisma.employee.findMany({
+      where: { tenantId: userTenantId },
       include: {
         user: {
           select: {
             fullName: true,
           },
         },
-        Task: {
+        task: {
           select: {
             id: true,
           },
@@ -346,153 +386,155 @@ export class DashboardService {
 
     return employees.map((employee) => ({
       name: employee.user.fullName,
-      tasks: employee.Task.length,
+      tasks: employee.task.length,
     }));
   }
 
-  async getPriorityChart() {
-    const [low, medium, high, urgent] =
-      await this.prisma.$transaction([
-        this.prisma.task.count({
-          where: {
-            priority: "LOW",
-          },
-        }),
+  async getPriorityChart(userTenantId: string) {
+    const [low, medium, high, urgent] = await this.prisma.$transaction([
+      this.prisma.task.count({
+        where: {
+          priority: 'LOW',
+          tenantId: userTenantId,
+        },
+      }),
 
-        this.prisma.task.count({
-          where: {
-            priority: "MEDIUM",
-          },
-        }),
+      this.prisma.task.count({
+        where: {
+          priority: 'MEDIUM',
+          tenantId: userTenantId,
+        },
+      }),
 
-        this.prisma.task.count({
-          where: {
-            priority: "HIGH",
-          },
-        }),
+      this.prisma.task.count({
+        where: {
+          priority: 'HIGH',
+          tenantId: userTenantId,
+        },
+      }),
 
-        this.prisma.task.count({
-          where: {
-            priority: "URGENT",
-          },
-        }),
-      ]);
+      this.prisma.task.count({
+        where: {
+          priority: 'URGENT',
+          tenantId: userTenantId,
+        },
+      }),
+    ]);
 
     return [
       {
-        name: "Low",
+        name: 'Low',
         value: low,
       },
       {
-        name: "Medium",
+        name: 'Medium',
         value: medium,
       },
       {
-        name: "High",
+        name: 'High',
         value: high,
       },
       {
-        name: "Urgent",
+        name: 'Urgent',
         value: urgent,
       },
     ];
   }
 
-  async getProjectStatusChart() {
-    const [
-      active,
-      completed,
-      pending,
-    ] = await this.prisma.$transaction([
+  async getProjectStatusChart(userTenantId: string) {
+    const [active, completed, pending] = await this.prisma.$transaction([
       this.prisma.project.count({
         where: {
-          status: "ACTIVE",
+          status: 'ACTIVE',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.project.count({
         where: {
-          status: "COMPLETED",
+          status: 'COMPLETED',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.project.count({
         where: {
-          status: "PLANNING",
+          status: 'PLANNING',
+          tenantId: userTenantId,
         },
       }),
     ]);
 
     return [
       {
-        name: "Active",
+        name: 'Active',
         value: active,
       },
       {
-        name: "Completed",
+        name: 'Completed',
         value: completed,
       },
       {
-        name: "Pending",
+        name: 'Pending',
         value: pending,
       },
     ];
   }
 
-  async getTaskStatusChart() {
-    const [
-      todo,
-      progress,
-      completed,
-    ] = await this.prisma.$transaction([
+  async getTaskStatusChart(userTenantId: string) {
+    const [todo, progress, completed] = await this.prisma.$transaction([
       this.prisma.task.count({
         where: {
-          status: "TODO",
+          status: 'TODO',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.task.count({
         where: {
-          status: "IN_PROGRESS",
+          status: 'IN_PROGRESS',
+          tenantId: userTenantId,
         },
       }),
 
       this.prisma.task.count({
         where: {
-          status: "COMPLETED",
+          status: 'COMPLETED',
+          tenantId: userTenantId,
         },
       }),
     ]);
 
     return [
       {
-        name: "Todo",
+        name: 'Todo',
         value: todo,
       },
       {
-        name: "In Progress",
+        name: 'In Progress',
         value: progress,
       },
       {
-        name: "Completed",
+        name: 'Completed',
         value: completed,
       },
     ];
   }
 
-  async getUpcomingDeadlines() {
+  async getUpcomingDeadlines(userTenantId: string) {
     return this.prisma.task.findMany({
       where: {
         dueDate: {
           gte: new Date(),
         },
         NOT: {
-          status: "COMPLETED",
+          status: 'COMPLETED',
         },
+        tenantId: userTenantId,
       },
 
       orderBy: {
-        dueDate: "asc",
+        dueDate: 'asc',
       },
 
       take: 10,
@@ -516,5 +558,4 @@ export class DashboardService {
       },
     });
   }
-
 }

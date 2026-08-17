@@ -7,10 +7,7 @@ import { MilestonesController } from './milestones.controller';
 import { MilestonesService } from './milestones.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    ActivityLogsModule,
-  ],
+  imports: [PrismaModule, ActivityLogsModule],
   controllers: [MilestonesController],
   providers: [MilestonesService],
   exports: [MilestonesService],

@@ -1,9 +1,6 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
-import { Prisma, UserRole } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
@@ -35,6 +32,7 @@ export class NotificationsService {
         userId: dto.userId,
         title: dto.title,
         message: dto.message,
+        tenantId: user.tenantId,
       },
       include: {
         user: {
@@ -88,10 +86,7 @@ export class NotificationsService {
     return updated;
   }
 
-  async findAll(
-    pagination: PaginationDto,
-    search: SearchDto,
-  ) {
+  async findAll(pagination: PaginationDto, search: SearchDto) {
     const { skip, limit } = pagination;
 
     const where: Prisma.NotificationWhereInput = search.search

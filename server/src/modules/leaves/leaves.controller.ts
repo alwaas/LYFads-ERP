@@ -43,10 +43,7 @@ export class LeavesController {
     UserRole.EMPLOYEE,
   )
   @Get()
-  findAll(
-    @Query() pagination: PaginationDto,
-    @Query() search: SearchDto,
-  ) {
+  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
     return this.leavesService.findAll(pagination, search);
   }
 
@@ -68,23 +65,13 @@ export class LeavesController {
     UserRole.EMPLOYEE,
   )
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateLeaveDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateLeaveDto) {
     return this.leavesService.update(id, dto);
   }
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Patch(':id/status')
-  updateStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateLeaveStatusDto,
-  ) {
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateLeaveStatusDto) {
     return this.leavesService.updateStatus(id, dto);
   }
 }

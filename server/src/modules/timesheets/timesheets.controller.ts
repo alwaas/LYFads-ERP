@@ -31,11 +31,7 @@ export class TimesheetsController {
     return this.timesheetsService.create(dto);
   }
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Get()
   findAll() {
     return this.timesheetsService.findAll();
@@ -52,11 +48,7 @@ export class TimesheetsController {
     return this.timesheetsService.findOne(id);
   }
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateTimesheetDto) {
     return this.timesheetsService.update(id, dto);

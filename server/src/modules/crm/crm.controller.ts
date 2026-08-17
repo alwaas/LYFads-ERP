@@ -7,11 +7,15 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/tenant.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { CrmService } from './crm.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -19,19 +23,14 @@ import { UpdateLeadDto } from './dto/update-lead.dto';
 import { GetLeadsDto } from './dto/get-leads.dto';
 
 @Controller('crm')
+@UseGuards(JwtAuthGuard)
 export class CrmController {
-  constructor(
-    private readonly crmService: CrmService,
-  ) {}
+  constructor(private readonly crmService: CrmService) {}
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Post('leads')
-  create(@Body() dto: CreateLeadDto) {
-    return this.crmService.create(dto);
+  create(@Body() dto: CreateLeadDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.crmService.create(dto, user.tenantId);
   }
 
   @Roles(
@@ -41,8 +40,8 @@ export class CrmController {
     UserRole.EMPLOYEE,
   )
   @Get('leads')
-  findAll(@Query() query: GetLeadsDto) {
-    return this.crmService.findAll(query);
+  findAll(@Query() query: GetLeadsDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.crmService.findAll(query, user.tenantId);
   }
 
   @Roles(
@@ -52,29 +51,23 @@ export class CrmController {
     UserRole.EMPLOYEE,
   )
   @Get('leads/:id')
-  findOne(@Param('id') id: string) {
-    return this.crmService.findOne(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.crmService.findOne(id, user.tenantId);
   }
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-    UserRole.MANAGER,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Patch('leads/:id')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateLeadDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.crmService.update(id, dto);
+    return this.crmService.update(id, dto, user.tenantId);
   }
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete('leads/:id')
-  remove(@Param('id') id: string) {
-    return this.crmService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.crmService.remove(id, user.tenantId);
   }
 }

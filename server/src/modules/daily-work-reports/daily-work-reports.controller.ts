@@ -45,14 +45,8 @@ export class DailyWorkReportsController {
     UserRole.EMPLOYEE,
   )
   @Get()
-  findAll(
-    @Query() pagination: PaginationDto,
-    @Query() search: SearchDto,
-  ) {
-    return this.dailyWorkReportsService.findAll(
-      pagination,
-      search,
-    );
+  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
+    return this.dailyWorkReportsService.findAll(pagination, search);
   }
 
   @Roles(
@@ -73,17 +67,11 @@ export class DailyWorkReportsController {
     UserRole.EMPLOYEE,
   )
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateDailyWorkReportDto,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateDailyWorkReportDto) {
     return this.dailyWorkReportsService.update(id, dto);
   }
 
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ADMIN,
-  )
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.dailyWorkReportsService.delete(id);

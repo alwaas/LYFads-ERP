@@ -4,10 +4,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 
-import {
-  createClient,
-  SupabaseClient,
-} from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class UploadsService {
@@ -18,13 +15,10 @@ export class UploadsService {
     const supabaseUrl = process.env.SUPABASE_URL;
 
     const supabaseKey =
-      process.env.SUPABASE_SECRET_KEY ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY;
+      process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl) {
-      throw new Error(
-        'SUPABASE_URL is required.',
-      );
+      throw new Error('SUPABASE_URL is required.');
     }
 
     if (!supabaseKey) {
@@ -33,42 +27,29 @@ export class UploadsService {
       );
     }
 
-    this.bucket =
-      process.env.SUPABASE_STORAGE_BUCKET ||
-      'attachments';
+    this.bucket = process.env.SUPABASE_STORAGE_BUCKET || 'attachments';
 
-    this.supabase = createClient(
-      supabaseUrl,
-      supabaseKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
+    this.supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
 
-        global: {
-          headers: {
-            Authorization: `Bearer ${supabaseKey}`,
-          },
+      global: {
+        headers: {
+          Authorization: `Bearer ${supabaseKey}`,
         },
       },
-    );
+    });
   }
 
-  async uploadFile(
-    file: Express.Multer.File,
-    folder = 'general',
-  ) {
+  async uploadFile(file: Express.Multer.File, folder = 'general') {
     if (!file) {
-      throw new BadRequestException(
-        'File is required.',
-      );
+      throw new BadRequestException('File is required.');
     }
 
     if (!file.buffer) {
-      throw new BadRequestException(
-        'Uploaded file buffer is missing.',
-      );
+      throw new BadRequestException('Uploaded file buffer is missing.');
     }
 
     const safeOriginalName = file.originalname
@@ -84,64 +65,44 @@ export class UploadsService {
       .replace(/^\/+|\/+$/g, '')
       .replace(/[^a-zA-Z0-9/_-]/g, '_');
 
-    const filePath = cleanFolder
-      ? `${cleanFolder}/${fileName}`
-      : fileName;
+    const filePath = cleanFolder ? `${cleanFolder}/${fileName}` : fileName;
 
     try {
       const { data: bucketData, error: bucketError } =
-        await this.supabase.storage.getBucket(
-          this.bucket,
-        );
+        await this.supabase.storage.getBucket(this.bucket);
 
       if (bucketError || !bucketData) {
-        console.error(
-          'Supabase bucket check failed:',
-          bucketError,
-        );
+        console.error('Supabase bucket check failed:', bucketError);
 
         throw new InternalServerErrorException(
           `Storage bucket "${this.bucket}" is not available.`,
         );
       }
 
-      const { error: uploadError } =
-        await this.supabase.storage
-          .from(this.bucket)
-          .upload(
-            filePath,
-            file.buffer,
-            {
-              contentType: file.mimetype,
-              cacheControl: '3600',
-              upsert: false,
-            },
-          );
+      const { error: uploadError } = await this.supabase.storage
+        .from(this.bucket)
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype,
+          cacheControl: '3600',
+          upsert: false,
+        });
 
       if (uploadError) {
-        console.error(
-          'Supabase storage upload failed:',
-          uploadError,
-        );
+        console.error('Supabase storage upload failed:', uploadError);
 
         throw new InternalServerErrorException(
           'Failed to upload file to storage.',
         );
       }
 
-      const { data: publicData } =
-        this.supabase.storage
-          .from(this.bucket)
-          .getPublicUrl(filePath);
+      const { data: publicData } = this.supabase.storage
+        .from(this.bucket)
+        .getPublicUrl(filePath);
 
       if (!publicData?.publicUrl) {
-        console.error(
-          'Supabase public URL generation failed.',
-        );
+        console.error('Supabase public URL generation failed.');
 
-        throw new InternalServerErrorException(
-          'Failed to generate file URL.',
-        );
+        throw new InternalServerErrorException('Failed to generate file URL.');
       }
 
       return {
@@ -153,42 +114,28 @@ export class UploadsService {
         fileUrl: publicData.publicUrl,
       };
     } catch (error) {
-      if (
-        error instanceof
-        InternalServerErrorException
-      ) {
+      if (error instanceof InternalServerErrorException) {
         throw error;
       }
 
-      console.error(
-        'Unexpected Supabase upload error:',
-        error,
-      );
+      console.error('Unexpected Supabase upload error:', error);
 
-      throw new InternalServerErrorException(
-        'Failed to upload file.',
-      );
+      throw new InternalServerErrorException('Failed to upload file.');
     }
   }
 
   async deleteFile(filePath: string) {
     if (!filePath) {
-      throw new BadRequestException(
-        'File path is required.',
-      );
+      throw new BadRequestException('File path is required.');
     }
 
     try {
-      const { error } =
-        await this.supabase.storage
-          .from(this.bucket)
-          .remove([filePath]);
+      const { error } = await this.supabase.storage
+        .from(this.bucket)
+        .remove([filePath]);
 
       if (error) {
-        console.error(
-          'Supabase storage delete failed:',
-          error,
-        );
+        console.error('Supabase storage delete failed:', error);
 
         throw new InternalServerErrorException(
           'Failed to delete file from storage.',
@@ -200,21 +147,13 @@ export class UploadsService {
         message: 'File deleted successfully.',
       };
     } catch (error) {
-      if (
-        error instanceof
-        InternalServerErrorException
-      ) {
+      if (error instanceof InternalServerErrorException) {
         throw error;
       }
 
-      console.error(
-        'Unexpected Supabase delete error:',
-        error,
-      );
+      console.error('Unexpected Supabase delete error:', error);
 
-      throw new InternalServerErrorException(
-        'Failed to delete file.',
-      );
+      throw new InternalServerErrorException('Failed to delete file.');
     }
   }
 }
