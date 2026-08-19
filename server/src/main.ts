@@ -26,7 +26,21 @@ async function bootstrap() {
   app.use(compression());
 
   // CORS
-  app.enableCors();
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const allowedOrigins = [frontendUrl, 'http://localhost:3000'];
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
 
   // Validation
   app.useGlobalPipes(
@@ -43,16 +57,18 @@ async function bootstrap() {
   });
 
   // Swagger Documentation
-  const config = new DocumentBuilder()
-    .setTitle('LYFads ERP API')
-    .setDescription('Enterprise ERP Backend API Documentation')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('LYFads ERP API')
+      .setDescription('Enterprise ERP Backend API Documentation')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+    const document = SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup('docs', app, document);
+    SwaggerModule.setup('docs', app, document);
+  }
 
   const port = Number(process.env.PORT) || 3000;
 

@@ -7,10 +7,18 @@ import type { AuthenticatedUser } from '../../../common/types/auth-user.type';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+      throw new Error(
+        'JWT_SECRET environment variable is required but was not provided.',
+      );
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'lyfads-super-secret-key-2026',
+      secretOrKey: secret,
     });
   }
 
