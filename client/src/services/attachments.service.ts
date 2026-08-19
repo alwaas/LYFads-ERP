@@ -62,6 +62,15 @@ export const getAttachmentById = async (
   return response.data.data;
 };
 
+export const updateAttachment = async (
+  id: string,
+  data: Record<string, unknown>,
+) => {
+  const response = await api.patch(`/attachments/${id}`, data);
+
+  return response.data.data;
+};
+
 export const deleteAttachment = async (
   id: string,
 ): Promise<void> => {

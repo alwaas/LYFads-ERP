@@ -72,6 +72,7 @@ export async function cleanDatabase() {
     await prisma.attendance.deleteMany();
     await prisma.employee.deleteMany();
     await prisma.client.deleteMany();
+    await prisma.followUp.deleteMany();
     await prisma.lead.deleteMany();
     await prisma.activityLog.deleteMany();
     await prisma.notification.deleteMany();
@@ -308,6 +309,28 @@ export async function setupTestDatabase() {
       email: 'lead@tenant-b-lead.com',
       phone: '2222222222',
       status: 'NEW',
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create follow-ups for Tenant A
+  const tenantAFollowUp = await prisma.followUp.create({
+    data: {
+      leadId: tenantALead.id,
+      nextFollowUp: new Date('2024-02-01'),
+      remarks: 'Follow up with Tenant A lead',
+      isCompleted: false,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create follow-ups for Tenant B
+  const tenantBFollowUp = await prisma.followUp.create({
+    data: {
+      leadId: tenantBLead.id,
+      nextFollowUp: new Date('2024-02-01'),
+      remarks: 'Follow up with Tenant B lead',
+      isCompleted: false,
       tenantId: tenantB.id,
     },
   });
@@ -585,6 +608,7 @@ export async function setupTestDatabase() {
     tenantAProject,
     tenantATask,
     tenantALead,
+    tenantAFollowUp,
     tenantAInvoice,
     tenantAInvoiceItem,
     tenantAPayment,
@@ -603,6 +627,7 @@ export async function setupTestDatabase() {
     tenantBProject,
     tenantBTask,
     tenantBLead,
+    tenantBFollowUp,
     tenantBInvoice,
     tenantBInvoiceItem,
     tenantBPayment,

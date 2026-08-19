@@ -27,7 +27,7 @@ export class InvoiceController {
     @Body() dto: CreateInvoiceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.invoiceService.create(dto, user.tenantId);
+    return this.invoiceService.create(dto, user.tenantId, user.id);
   }
 
   @Get()
@@ -46,11 +46,11 @@ export class InvoiceController {
     @Body() dto: UpdateInvoiceDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.invoiceService.update(id, dto, user.tenantId);
+    return this.invoiceService.update(id, dto, user.tenantId, user.id);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.invoiceService.remove(id, user.tenantId);
+    return this.invoiceService.remove(id, user.tenantId, user.id);
   }
 }

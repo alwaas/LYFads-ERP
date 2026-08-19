@@ -35,33 +35,40 @@ export class ActivityLogsService {
     });
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    userTenantId: string,
+  ) {
     const { skip, limit } = pagination;
 
-    const where: Prisma.ActivityLogWhereInput = search.search
-      ? {
-          OR: [
-            {
-              action: {
-                contains: search.search,
-                mode: Prisma.QueryMode.insensitive,
+    const where: Prisma.ActivityLogWhereInput = {
+      tenantId: userTenantId,
+      ...(search.search
+        ? {
+            OR: [
+              {
+                action: {
+                  contains: search.search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
               },
-            },
-            {
-              module: {
-                contains: search.search,
-                mode: Prisma.QueryMode.insensitive,
+              {
+                module: {
+                  contains: search.search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
               },
-            },
-            {
-              description: {
-                contains: search.search,
-                mode: Prisma.QueryMode.insensitive,
+              {
+                description: {
+                  contains: search.search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
               },
-            },
-          ],
-        }
-      : {};
+            ],
+          }
+        : {}),
+    };
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.activityLog.findMany({
@@ -95,10 +102,11 @@ export class ActivityLogsService {
     };
   }
 
-  async findOne(id: string) {
-    const activityLog = await this.prisma.activityLog.findUnique({
+  async findOne(id: string, userTenantId: string) {
+    const activityLog = await this.prisma.activityLog.findFirst({
       where: {
         id,
+        tenantId: userTenantId,
       },
       include: {
         user: {
@@ -118,8 +126,17 @@ export class ActivityLogsService {
     return activityLog;
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(id: string, userTenantId: string) {
+    const activityLog = await this.prisma.activityLog.findFirst({
+      where: {
+        id,
+        tenantId: userTenantId,
+      },
+    });
+
+    if (!activityLog) {
+      throw new NotFoundException('Activity log not found.');
+    }
 
     await this.prisma.activityLog.delete({
       where: {
@@ -133,29 +150,31 @@ export class ActivityLogsService {
     };
   }
 
-  async getStatistics() {
+  async getStatistics(userTenantId: string) {
     const today = new Date();
 
     today.setHours(0, 0, 0, 0);
 
-    const [totalLogs, todayLogs, totalUsers] = await this.prisma.$transaction([
-      this.prisma.activityLog.count(),
+    const [totalLogs, todayLogs] = await this.prisma.$transaction([
+      this.prisma.activityLog.count({
+        where: {
+          tenantId: userTenantId,
+        },
+      }),
 
       this.prisma.activityLog.count({
         where: {
           createdAt: {
             gte: today,
           },
+          tenantId: userTenantId,
         },
       }),
-
-      this.prisma.user.count(),
     ]);
 
     return {
       totalLogs,
       todayLogs,
-      totalUsers,
     };
   }
 

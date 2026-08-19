@@ -40,14 +40,17 @@ export class EmployeesService {
       throw new ConflictException('Email already exists.');
     }
 
-    const existingEmployee = await this.prisma.employee.findUnique({
+    const existingEmployee = await this.prisma.employee.findFirst({
       where: {
         employeeCode: dto.employeeCode,
+        tenantId: userTenantId,
       },
     });
 
     if (existingEmployee) {
-      throw new ConflictException('Employee code already exists.');
+      throw new ConflictException(
+        'Employee code already exists in this tenant.',
+      );
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 12);
@@ -171,6 +174,26 @@ export class EmployeesService {
 
   async update(id: string, dto: UpdateEmployeeDto, userTenantId: string) {
     const employee = await this.findOne(id, userTenantId);
+
+    // Validate employeeCode uniqueness within tenant (if being changed)
+    if (dto.employeeCode && dto.employeeCode !== employee.employeeCode) {
+      const existingEmployee = await this.prisma.employee.findFirst({
+        where: {
+          employeeCode: dto.employeeCode,
+          tenantId: userTenantId,
+          id: {
+            not: id,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (existingEmployee) {
+        throw new ConflictException(
+          'Employee code already exists in this tenant.',
+        );
+      }
+    }
 
     const updatedEmployee = await this.prisma.employee.update({
       where: {

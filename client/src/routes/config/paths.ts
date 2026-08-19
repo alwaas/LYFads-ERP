@@ -7,35 +7,35 @@ export const PATHS = {
   EMPLOYEES: "/employees",
   ADD_EMPLOYEE: "/employees/add",
   EDIT_EMPLOYEE: "/employees/edit/:id",
-  VIEW_EMPLOYEE: "/employees/:id",
+  VIEW_EMPLOYEE: "/employees/view/:id",
 
   CLIENTS: "/clients",
   ADD_CLIENT: "/clients/add",
   EDIT_CLIENT: "/clients/edit/:id",
-  VIEW_CLIENT: "/clients/:id",
+  VIEW_CLIENT: "/clients/view/:id",
 
   PROJECTS: "/projects",
   ADD_PROJECT: "/projects/add",
   EDIT_PROJECT: "/projects/edit/:id",
-  VIEW_PROJECT: "/projects/:id",
+  VIEW_PROJECT: "/projects/view/:id",
   KANBAN: "/projects/:projectId/kanban",
 
   TASKS: "/tasks",
   ADD_TASK: "/tasks/add",
   EDIT_TASK: "/tasks/edit/:id",
-  VIEW_TASK: "/tasks/:id",
+  VIEW_TASK: "/tasks/view/:id",
 
   ATTENDANCE: "/attendance",
 
   LEAVES: "/leaves",
   ADD_LEAVE: "/leaves/add",
   EDIT_LEAVE: "/leaves/edit/:id",
-  VIEW_LEAVE: "/leaves/:id",
+  VIEW_LEAVE: "/leaves/view/:id",
 
   DAILY_WORK_REPORTS: "/daily-work-reports",
   ADD_DAILY_WORK_REPORT: "/daily-work-reports/add",
   EDIT_DAILY_WORK_REPORT: "/daily-work-reports/edit/:id",
-  VIEW_DAILY_WORK_REPORT: "/daily-work-reports/:id",
+  VIEW_DAILY_WORK_REPORT: "/daily-work-reports/view/:id",
 
   NOTIFICATIONS: "/notifications",
 
@@ -46,7 +46,7 @@ export const PATHS = {
   CRM: "/crm",
   ADD_LEAD: "/crm/add",
   EDIT_LEAD: "/crm/edit/:id",
-  VIEW_LEAD: "/crm/:id",
+  VIEW_LEAD: "/crm/view/:id",
 
   REPORTS: "/reports",
 
@@ -63,8 +63,8 @@ export const PATHS = {
   
   MILESTONES: "/milestones",
   ADD_MILESTONE: "/milestones/add",
-  EDIT_MILESTONE: "/milestones/:id/edit",
-  VIEW_MILESTONE: "/milestones/:id",
+  EDIT_MILESTONE: "/milestones/edit/:id",
+  VIEW_MILESTONE: "/milestones/view/:id",
 
 
 } as const;

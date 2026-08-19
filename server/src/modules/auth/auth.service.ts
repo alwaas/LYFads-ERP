@@ -1,7 +1,8 @@
 import {
-  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -11,6 +12,7 @@ import { PrismaService } from '../../database';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +22,11 @@ export class AuthService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async register(createUserDto: CreateUserDto, userTenantId?: string) {
+  async register(
+    createUserDto: CreateUserDto,
+    userTenantId: string,
+    requesterRole: UserRole,
+  ) {
     const existingUser = await this.prisma.user.findUnique({
       where: {
         email: createUserDto.email,
@@ -33,12 +39,27 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 12);
 
-    // Use provided tenantId from authenticated context, otherwise use dto.tenantId
-    // For SUPER_ADMIN, they can specify tenantId. For normal users, use their tenant.
-    const tenantId = userTenantId || createUserDto.tenantId;
+    const targetTenant = await this.prisma.tenant.findUnique({
+      where: { id: createUserDto.tenantId },
+      select: { id: true, status: true },
+    });
 
-    if (!tenantId) {
-      throw new BadRequestException('TenantId is required');
+    if (!targetTenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+
+    if (targetTenant.status !== 'ACTIVE') {
+      throw new ForbiddenException('Tenant is not active');
+    }
+
+    let tenantId = createUserDto.tenantId;
+    let role = createUserDto.role as UserRole;
+
+    if (requesterRole !== UserRole.SUPER_ADMIN) {
+      tenantId = userTenantId;
+      if (role === UserRole.SUPER_ADMIN) {
+        role = UserRole.EMPLOYEE;
+      }
     }
 
     const user = await this.prisma.user.create({
@@ -46,9 +67,17 @@ export class AuthService {
         fullName: createUserDto.fullName,
         email: createUserDto.email.toLowerCase(),
         password: hashedPassword,
-        role: createUserDto.role,
+        role,
         tenantId,
       },
+    });
+
+    await this.activityLogsService.log({
+      action: 'CREATE',
+      module: 'USER',
+      description: `User ${user.email} registered.`,
+      userId: user.id,
+      tenantId: user.tenantId,
     });
 
     return {

@@ -279,4 +279,74 @@ export class AttachmentsService {
       message: 'Attachment deleted successfully.',
     };
   }
+
+  async update(
+    id: string,
+    data: {
+      fileName?: string;
+      originalName?: string;
+      mimeType?: string;
+      fileSize?: number;
+      fileUrl?: string;
+      projectId?: string | null;
+      taskId?: string | null;
+      milestoneId?: string | null;
+      commentId?: string | null;
+    },
+    userTenantId: string,
+  ) {
+    const attachment = await this.prisma.attachment.findUnique({
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+        tenantId: true,
+      },
+    });
+
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found.');
+    }
+
+    if (attachment.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this attachment');
+    }
+
+    const updateData: Record<string, unknown> = {};
+
+    if (data.fileName !== undefined) updateData.fileName = data.fileName;
+    if (data.originalName !== undefined)
+      updateData.originalName = data.originalName;
+    if (data.mimeType !== undefined) updateData.mimeType = data.mimeType;
+    if (data.fileSize !== undefined) updateData.fileSize = data.fileSize;
+    if (data.fileUrl !== undefined) updateData.fileUrl = data.fileUrl;
+    if (data.projectId !== undefined) updateData.projectId = data.projectId;
+    if (data.taskId !== undefined) updateData.taskId = data.taskId;
+    if (data.milestoneId !== undefined)
+      updateData.milestoneId = data.milestoneId;
+    if (data.commentId !== undefined) updateData.commentId = data.commentId;
+
+    const updated = await this.prisma.attachment.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            isActive: true,
+          },
+        },
+        project: true,
+        task: true,
+        milestone: true,
+        comment: true,
+      },
+    });
+
+    return updated;
+  }
 }

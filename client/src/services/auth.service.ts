@@ -5,10 +5,30 @@ export type LoginDto = {
   password: string;
 };
 
+export type RegisterDto = {
+  fullName: string;
+  email: string;
+  password: string;
+  role: string;
+  tenantId: string;
+};
+
 export const login = async (data: LoginDto) => {
   const response = await api.post("/auth/login", data);
+  return response.data;
+};
 
-  // console.log("AUTH API RESPONSE:", JSON.stringify(response.data, null, 2));
+export const register = async (data: RegisterDto) => {
+  const response = await api.post("/auth/register", data);
+  return response.data;
+};
 
+export const logout = async () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("user");
+};
+
+export const getCurrentUser = async () => {
+  const response = await api.get("/auth/me");
   return response.data;
 };

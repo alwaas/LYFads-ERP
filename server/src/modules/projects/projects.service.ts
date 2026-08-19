@@ -27,10 +27,11 @@ export class ProjectsService {
 
     this.validateProjectDates(dto.startDate, dto.endDate);
 
-    // Validate project code.
-    const existingProject = await this.prisma.project.findUnique({
+    // Validate project code (tenant-scoped uniqueness).
+    const existingProject = await this.prisma.project.findFirst({
       where: {
         projectCode,
+        tenantId: userTenantId,
       },
       select: {
         id: true,
@@ -39,7 +40,9 @@ export class ProjectsService {
     });
 
     if (existingProject) {
-      throw new ConflictException('Project code already exists.');
+      throw new ConflictException(
+        'Project code already exists in this tenant.',
+      );
     }
 
     // Client must belong to the authenticated tenant.
@@ -203,6 +206,7 @@ export class ProjectsService {
       const duplicate = await this.prisma.project.findFirst({
         where: {
           projectCode,
+          tenantId: userTenantId,
           id: {
             not: id,
           },
@@ -213,7 +217,9 @@ export class ProjectsService {
       });
 
       if (duplicate) {
-        throw new ConflictException('Project code already exists.');
+        throw new ConflictException(
+          'Project code already exists in this tenant.',
+        );
       }
     }
 

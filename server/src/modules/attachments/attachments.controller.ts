@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -18,6 +19,7 @@ import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { AttachmentsService } from './attachments.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
+import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 
 @Controller('attachments')
 @UseGuards(JwtAuthGuard)
@@ -36,6 +38,21 @@ export class AttachmentsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.attachmentsService.create(dto, user.tenantId);
+  }
+
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.MANAGER,
+    UserRole.EMPLOYEE,
+  )
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateAttachmentDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.attachmentsService.update(id, dto, user.tenantId);
   }
 
   @Roles(

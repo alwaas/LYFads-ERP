@@ -10,6 +10,8 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { GetUser } from '../auth/decorators/get-user.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 import { ActivityLogsService } from './activity-logs.service';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -26,27 +28,37 @@ export class ActivityLogsController {
   constructor(private readonly activityLogsService: ActivityLogsService) {}
 
   @Post()
-  create(@Body() dto: CreateActivityLogDto) {
-    return this.activityLogsService.create(dto);
+  create(
+    @Body() dto: CreateActivityLogDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.activityLogsService.create({
+      ...dto,
+      tenantId: user.tenantId,
+    });
   }
 
   @Get()
-  findAll(@Query() pagination: PaginationDto, @Query() search: SearchDto) {
-    return this.activityLogsService.findAll(pagination, search);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.activityLogsService.findAll(pagination, search, user.tenantId);
   }
 
   @Get('statistics')
-  statistics() {
-    return this.activityLogsService.getStatistics();
+  statistics(@GetUser() user: AuthenticatedUser) {
+    return this.activityLogsService.getStatistics(user.tenantId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.activityLogsService.findOne(id);
+  findOne(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.activityLogsService.findOne(id, user.tenantId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.activityLogsService.remove(id);
+  remove(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.activityLogsService.remove(id, user.tenantId);
   }
 }

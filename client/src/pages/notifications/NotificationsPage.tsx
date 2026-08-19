@@ -12,6 +12,8 @@ import {
   markNotificationRead,
 } from "../../services/notification.service";
 
+import { useAuthStore } from "../../stores/auth.store";
+
 import type { Notification } from "../../types/notification";
 
 function NotificationsPage() {
@@ -21,6 +23,8 @@ function NotificationsPage() {
   const [search, setSearch] = useState("");
 
   const [unread, setUnread] = useState(0);
+
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     loadNotifications();
@@ -32,12 +36,8 @@ function NotificationsPage() {
 
       setNotifications(data);
 
-      // TODO:
-      // Replace with logged in user id
-      const userId = localStorage.getItem("userId");
-
-      if (userId) {
-        const count = await getUnreadCount(userId);
+      if (user?.id) {
+        const count = await getUnreadCount(user.id);
 
         setUnread(count.unread);
       }

@@ -58,13 +58,41 @@ export class PayrollService {
         employeeId: dto.employeeId,
         month: dto.month,
         year: dto.year,
-        basicSalary: dto.basicSalary,
-        totalHours: dto.totalHours ?? 0,
-        overtimeHours: dto.overtimeHours ?? 0,
-        deductions: dto.deductions ?? 0,
-        bonus: dto.bonus ?? 0,
-        netSalary: dto.netSalary,
+        basicSalary: new Prisma.Decimal(dto.basicSalary),
+        totalHours: dto.totalHours
+          ? new Prisma.Decimal(dto.totalHours)
+          : new Prisma.Decimal(0),
+        overtimeHours: dto.overtimeHours
+          ? new Prisma.Decimal(dto.overtimeHours)
+          : new Prisma.Decimal(0),
+        overtimeAmount: dto.overtimeAmount
+          ? new Prisma.Decimal(dto.overtimeAmount)
+          : new Prisma.Decimal(0),
+        hra: dto.hra ? new Prisma.Decimal(dto.hra) : new Prisma.Decimal(0),
+        allowances: dto.allowances
+          ? new Prisma.Decimal(dto.allowances)
+          : new Prisma.Decimal(0),
+        bonus: dto.bonus
+          ? new Prisma.Decimal(dto.bonus)
+          : new Prisma.Decimal(0),
+        incentives: dto.incentives
+          ? new Prisma.Decimal(dto.incentives)
+          : new Prisma.Decimal(0),
+        grossSalary: dto.grossSalary
+          ? new Prisma.Decimal(dto.grossSalary)
+          : new Prisma.Decimal(0),
+        pf: dto.pf ? new Prisma.Decimal(dto.pf) : new Prisma.Decimal(0),
+        esi: dto.esi ? new Prisma.Decimal(dto.esi) : new Prisma.Decimal(0),
+        tds: dto.tds ? new Prisma.Decimal(dto.tds) : new Prisma.Decimal(0),
+        deductions: dto.deductions
+          ? new Prisma.Decimal(dto.deductions)
+          : new Prisma.Decimal(0),
+        totalDeduction: dto.totalDeduction
+          ? new Prisma.Decimal(dto.totalDeduction)
+          : new Prisma.Decimal(0),
+        netSalary: new Prisma.Decimal(dto.netSalary),
         status: dto.status ?? 'PENDING',
+        payslipNo: dto.payslipNo,
         tenantId: userTenantId,
       },
       include: {
@@ -167,11 +195,45 @@ export class PayrollService {
   async update(id: string, dto: UpdatePayrollDto, userTenantId: string) {
     await this.findOne(id, userTenantId);
 
+    const data: Prisma.PayrollUpdateInput = {};
+
+    if (dto.basicSalary !== undefined)
+      data.basicSalary = new Prisma.Decimal(dto.basicSalary);
+    if (dto.totalHours !== undefined)
+      data.totalHours = new Prisma.Decimal(dto.totalHours);
+    if (dto.overtimeHours !== undefined)
+      data.overtimeHours = new Prisma.Decimal(dto.overtimeHours);
+    if (dto.overtimeAmount !== undefined)
+      data.overtimeAmount = new Prisma.Decimal(dto.overtimeAmount);
+    if (dto.hra !== undefined) data.hra = new Prisma.Decimal(dto.hra);
+    if (dto.allowances !== undefined)
+      data.allowances = new Prisma.Decimal(dto.allowances);
+    if (dto.bonus !== undefined) data.bonus = new Prisma.Decimal(dto.bonus);
+    if (dto.incentives !== undefined)
+      data.incentives = new Prisma.Decimal(dto.incentives);
+    if (dto.grossSalary !== undefined)
+      data.grossSalary = new Prisma.Decimal(dto.grossSalary);
+    if (dto.pf !== undefined) data.pf = new Prisma.Decimal(dto.pf);
+    if (dto.esi !== undefined) data.esi = new Prisma.Decimal(dto.esi);
+    if (dto.tds !== undefined) data.tds = new Prisma.Decimal(dto.tds);
+    if (dto.deductions !== undefined)
+      data.deductions = new Prisma.Decimal(dto.deductions);
+    if (dto.totalDeduction !== undefined)
+      data.totalDeduction = new Prisma.Decimal(dto.totalDeduction);
+    if (dto.netSalary !== undefined)
+      data.netSalary = new Prisma.Decimal(dto.netSalary);
+    if (dto.status !== undefined) data.status = dto.status;
+    if (dto.payslipNo !== undefined) data.payslipNo = dto.payslipNo;
+    if (dto.generatedAt !== undefined)
+      data.generatedAt = dto.generatedAt ? new Date(dto.generatedAt) : null;
+    if (dto.paidAt !== undefined)
+      data.paidAt = dto.paidAt ? new Date(dto.paidAt) : null;
+
     const payroll = await this.prisma.payroll.update({
       where: {
         id,
       },
-      data: dto,
+      data,
       include: {
         employee: {
           include: {

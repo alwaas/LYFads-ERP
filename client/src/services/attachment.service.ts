@@ -6,10 +6,6 @@ import type {
   AttachmentResponse,
 } from "../types/attachment";
 
-/* ===========================
-   Upload Attachment
-=========================== */
-
 export const uploadAttachment = async (
   file: File,
   options?: {
@@ -47,21 +43,11 @@ export const uploadAttachment = async (
   return response.data.data;
 };
 
-/* ===========================
-   Get All Attachments
-=========================== */
-
 export const getAttachments = async (): Promise<Attachment[]> => {
-  const response = await api.get<AttachmentListResponse>(
-    "/attachments",
-  );
+  const response = await api.get<AttachmentListResponse>("/attachments");
 
   return response.data.data;
 };
-
-/* ===========================
-   Get Attachment By ID
-=========================== */
 
 export const getAttachmentById = async (
   id: string,
@@ -73,9 +59,14 @@ export const getAttachmentById = async (
   return response.data.data;
 };
 
-/* ===========================
-   Delete Attachment
-=========================== */
+export const updateAttachment = async (
+  id: string,
+  data: Record<string, unknown>,
+) => {
+  const response = await api.patch(`/attachments/${id}`, data);
+
+  return response.data.data;
+};
 
 export const deleteAttachment = async (
   id: string,

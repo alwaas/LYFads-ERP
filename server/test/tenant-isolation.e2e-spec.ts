@@ -30,6 +30,8 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
     };
     tenantALead: { id: string };
     tenantBLead: { id: string };
+    tenantAFollowUp: { id: string };
+    tenantBFollowUp: { id: string };
     tenantAClient: { id: string };
     tenantBClient: { id: string };
     tenantAInvoice: { id: string };
@@ -226,6 +228,47 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           tenantId: testData.tenantB.id, // Try to spoof
         })
         .expect(403); // Should be rejected for trying to spoof tenantId
+    });
+
+    it('should only return follow-ups for same-tenant leads', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      // Get Tenant A's lead with follow-ups
+      const responseA = await request(app.getHttpServer())
+        .get(`/crm/leads/${testData.tenantALead.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+
+      // Verify follow-ups belong to Tenant A
+      if (responseA.body.followUps && responseA.body.followUps.length > 0) {
+        responseA.body.followUps.forEach((followUp: any) => {
+          expect(followUp.tenantId).toBe(testData.tenantA.id);
+        });
+      }
+
+      // Get Tenant B's lead with follow-ups
+      const responseB = await request(app.getHttpServer())
+        .get(`/crm/leads/${testData.tenantBLead.id}`)
+        .set('Authorization', `Bearer ${tokenB}`)
+        .expect(200);
+
+      // Verify follow-ups belong to Tenant B
+      if (responseB.body.followUps && responseB.body.followUps.length > 0) {
+        responseB.body.followUps.forEach((followUp: any) => {
+          expect(followUp.tenantId).toBe(testData.tenantB.id);
+        });
+      }
+    });
+
+    it('should prevent cross-tenant follow-up access through lead operations', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+
+      // Tenant A cannot access Tenant B's lead, so cannot access its follow-ups
+      await request(app.getHttpServer())
+        .get(`/crm/leads/${testData.tenantBLead.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
     });
   });
 
@@ -761,6 +804,32 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .get(`/attachments/${attachmentB.id}`)
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
+    });
+
+    it('should prevent uploading attachment to cross-tenant project', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      // Get a project from Tenant B
+      const tenantBProject = await prisma.project.findFirst({
+        where: { tenantId: testData.tenantB.id },
+      });
+
+      if (tenantBProject) {
+        // Try to create attachment for Tenant B's project while authenticated as Tenant A
+        await request(app.getHttpServer())
+          .post('/attachments')
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            fileName: 'test.pdf',
+            fileUrl: '/uploads/test.pdf',
+            fileSize: 1024,
+            mimeType: 'application/pdf',
+            originalName: 'test.pdf',
+            uploadedBy: testData.tenantAAdmin.id,
+            projectId: tenantBProject.id, // Cross-tenant project
+          })
+          .expect(403);
+      }
     });
   });
 
