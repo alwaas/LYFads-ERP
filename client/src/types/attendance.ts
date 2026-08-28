@@ -31,3 +31,13 @@ export interface Attendance {
 
   updatedAt: string;
 }
+
+export interface MyAttendanceStatus {
+  checkedIn: boolean;
+  checkedOut: boolean;
+  attendanceId: string | null;
+  checkIn: string | null;
+  checkOut: string | null;
+  status: string | null;
+  date: string;
+}

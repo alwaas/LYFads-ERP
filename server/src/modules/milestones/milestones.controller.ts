@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -19,6 +20,9 @@ import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 import { MilestonesService } from './milestones.service';
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
+
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('milestones')
 @UseGuards(JwtAuthGuard)
@@ -41,8 +45,14 @@ export class MilestonesController {
     UserRole.EMPLOYEE,
   )
   @Get()
-  findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.milestonesService.findAll(user.tenantId);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+  ) {
+    return this.milestonesService.findAll(pagination, search, status, priority, user.tenantId);
   }
 
   @Roles(

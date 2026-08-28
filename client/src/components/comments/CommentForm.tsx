@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { createCommentSchema, editCommentSchema, type CreateCommentFormData, type EditCommentFormData } from "../../features/validation/comment.schema";
 
 interface CommentFormData {
   content: string;
@@ -6,47 +10,60 @@ interface CommentFormData {
 
 interface Props {
   initialData?: CommentFormData;
-  onSubmit: (
-    data: CommentFormData
-  ) => Promise<void>;
+  onSubmit: (data: CommentFormData) => Promise<void>;
   loading?: boolean;
+  serverErrors?: Record<string, string>;
 }
+
+type FormData = CreateCommentFormData | EditCommentFormData;
 
 export default function CommentForm({
   initialData,
   onSubmit,
   loading = false,
+  serverErrors,
 }: Props) {
+  const schema = initialData ? editCommentSchema : createCommentSchema;
 
-  const [content, setContent] = useState(
-    initialData?.content ?? ""
-  );
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
+    defaultValues: {
+      content: "",
+    },
+  });
 
-
-  const handleSubmit = async (
-    e: React.FormEvent
-  ) => {
-
-    e.preventDefault();
-
-
-    if (!content.trim()) {
-      alert("Comment is required");
-      return;
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        content: initialData.content || "",
+      });
     }
+  }, [initialData, reset]);
 
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      clearErrors();
+      Object.entries(serverErrors).forEach(([field, message]) => {
+        setError(field as keyof FormData, { message });
+      });
+    }
+  }, [serverErrors, setError, clearErrors]);
 
-    await onSubmit({
-      content,
-    });
-
+  const handleFormSubmit = (data: FormData) => {
+    onSubmit(data as unknown as CommentFormData);
   };
-
 
   return (
 
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(handleFormSubmit)}
       className="bg-white rounded-lg shadow p-6 space-y-5"
     >
 
@@ -59,13 +76,13 @@ export default function CommentForm({
 
         <textarea
           rows={5}
-          value={content}
-          onChange={(e)=>
-            setContent(e.target.value)
-          }
+          {...register("content")}
           className="w-full border rounded-lg p-3"
           placeholder="Write comment..."
         />
+        {errors.content && (
+          <p className="text-red-500 text-xs mt-1">{errors.content.message}</p>
+        )}
 
       </div>
 
@@ -92,6 +109,5 @@ export default function CommentForm({
 
 
     </form>
-
   );
 }

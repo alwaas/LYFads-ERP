@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { ArrowLeft, User, Mail, Phone, Briefcase, Building, Shield, Pencil, Trash2, Calendar } from "lucide-react";
+import { ArrowLeft, User, Mail, Phone, Briefcase, Building, Shield, Pencil, Trash2, Calendar, Banknote, Users, AlertTriangle } from "lucide-react";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
@@ -183,6 +183,55 @@ function ViewEmployeePage() {
                   <p className="text-slate-900 font-semibold text-base mt-0.5">
                     {employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : "-"}
                   </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-emerald-600 rounded-lg shadow-2xs mt-0.5"><Shield size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Status</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.status || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-blue-600 rounded-lg shadow-2xs mt-0.5"><Users size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Manager</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.manager?.user?.fullName || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-emerald-600 rounded-lg shadow-2xs mt-0.5"><Banknote size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Bank Name</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.bankName || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-emerald-600 rounded-lg shadow-2xs mt-0.5"><Banknote size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Bank Account Number</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.bankAccountNumber || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-emerald-600 rounded-lg shadow-2xs mt-0.5"><Banknote size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">IFSC Code</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.ifscCode || "-"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="p-2.5 bg-white text-red-600 rounded-lg shadow-2xs mt-0.5"><AlertTriangle size={18} /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Emergency Contact</p>
+                  <p className="text-slate-900 font-semibold text-base mt-0.5">{employee.emergencyContactName || "-"}</p>
+                  <p className="text-xs text-slate-500">{employee.emergencyContactPhone || ""}</p>
                 </div>
               </div>
 

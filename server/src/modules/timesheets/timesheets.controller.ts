@@ -6,19 +6,26 @@ import {
   Param,
   Patch,
   Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { AuthenticatedUser } from '../../common/types/auth-user.type';
+
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 import { TimesheetsService } from './timesheets.service';
 import { CreateTimesheetDto } from './dto/create-timesheet.dto';
 import { UpdateTimesheetDto } from './dto/update-timesheet.dto';
 
 @Controller('timesheets')
+@UseGuards(JwtAuthGuard)
 export class TimesheetsController {
   constructor(private readonly timesheetsService: TimesheetsService) {}
 
@@ -30,13 +37,17 @@ export class TimesheetsController {
   )
   @Post()
   create(@Body() dto: CreateTimesheetDto, @GetUser() user: AuthenticatedUser) {
-    return this.timesheetsService.create(dto, user.tenantId);
+    return this.timesheetsService.create(dto, user.tenantId, user.role);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Get()
-  findAll(@GetUser() user: AuthenticatedUser) {
-    return this.timesheetsService.findAll(user.tenantId);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.timesheetsService.findAll(pagination, search, user.tenantId);
   }
 
   @Roles(
@@ -58,6 +69,38 @@ export class TimesheetsController {
     @GetUser() user: AuthenticatedUser,
   ) {
     return this.timesheetsService.update(id, dto, user.tenantId);
+  }
+
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.EMPLOYEE)
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.timesheetsService.updateStatus(id, status, user.tenantId, user.userId);
+  }
+
+  @Post(':id/submit')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.EMPLOYEE)
+  submit(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.timesheetsService.updateStatus(id, 'SUBMITTED', user.tenantId, user.userId);
+  }
+
+  @Post(':id/approve')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+  approve(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.timesheetsService.updateStatus(id, 'APPROVED', user.tenantId, user.userId);
+  }
+
+  @Post(':id/reject')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+  reject(
+    @Param('id') id: string,
+    @Body('rejectionReason') rejectionReason: string,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.timesheetsService.updateStatus(id, 'REJECTED', user.tenantId, user.userId, rejectionReason);
   }
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)

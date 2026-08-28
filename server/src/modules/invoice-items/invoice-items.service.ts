@@ -7,12 +7,15 @@ import { PrismaService } from '../../database/prisma.service';
 
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
 import { UpdateInvoiceItemDto } from './dto/update-invoice-item.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Injectable()
 export class InvoiceItemsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateInvoiceItemDto, userTenantId: string) {
+    // ... existing create code
     const invoice = await this.prisma.invoice.findUnique({
       where: { id: dto.invoiceId },
       select: { id: true, tenantId: true },
@@ -39,15 +42,36 @@ export class InvoiceItemsService {
     });
   }
 
-  findAll(userTenantId: string) {
-    return this.prisma.invoiceItem.findMany({
-      where: {
-        tenantId: userTenantId,
-      },
-      include: {
-        invoice: true,
-      },
-    });
+  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
+    const { skip, limit } = pagination;
+
+    const where: Record<string, unknown> = {
+      tenantId: userTenantId,
+    };
+
+    if (search.search) {
+      where.description = { contains: search.search, mode: 'insensitive' };
+    }
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.invoiceItem.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          invoice: true,
+        },
+      }),
+      this.prisma.invoiceItem.count({ where }),
+    ]);
+
+    return {
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
+    };
   }
 
   async findOne(id: string, userTenantId: string) {

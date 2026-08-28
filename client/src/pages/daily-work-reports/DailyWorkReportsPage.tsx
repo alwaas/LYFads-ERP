@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -6,6 +6,7 @@ import DashboardLayout from "../../layouts/DashboardLayout";
 
 import DailyWorkReportTable from "../../components/daily-work-reports/DailyWorkReportTable";
 import DailyWorkReportStats from "../../components/daily-work-reports/DailyWorkReportStats";
+import Pagination from "../../components/ui/Pagination";
 
 import {
   getDailyWorkReports,
@@ -33,18 +34,15 @@ function DailyWorkReportsPage() {
   const [page, setPage] =
     useState(1);
 
-  const rowsPerPage = 10;
-
-  useEffect(() => {
-    loadReports();
-  }, []);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   const loadReports = async () => {
     try {
-      const data =
-        await getDailyWorkReports();
-
-      setReports(data);
+      setLoading(true);
+      const result: any = await getDailyWorkReports(page, limit, search, status);
+      setReports(result.data || []);
+      setTotalPages(result.totalPages || 1);
     } catch (error) {
       console.error(error);
 
@@ -55,6 +53,10 @@ function DailyWorkReportsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadReports();
+  }, [page, limit, search, status]);
 
   const handleDelete = async (
     id: string
@@ -83,47 +85,25 @@ function DailyWorkReportsPage() {
     }
   };
 
-  const filteredReports =
-    useMemo(() => {
-      return reports.filter(
-        (report) => {
-          const matchesSearch =
-            report.employee.user.fullName
-              .toLowerCase()
-              .includes(
-                search.toLowerCase()
-              ) ||
-            report.employee.employeeCode
-              .toLowerCase()
-              .includes(
-                search.toLowerCase()
-              );
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
-          const matchesStatus =
-            status === "" ||
-            report.status === status;
+  const handleStatusChange = (value: string) => {
+    setStatus(value);
+    setPage(1);
+  };
 
-          return (
-            matchesSearch &&
-            matchesStatus
-          );
-        }
-      );
-    }, [
-      reports,
-      search,
-      status,
-    ]);
-
-  const totalPages = Math.ceil(
-    filteredReports.length / rowsPerPage
-  );
-
-  const paginatedReports =
-    filteredReports.slice(
-      (page - 1) * rowsPerPage,
-      page * rowsPerPage
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+        </div>
+      </DashboardLayout>
     );
+  }
 
   return (
     <DashboardLayout>
@@ -159,7 +139,7 @@ function DailyWorkReportsPage() {
             placeholder="Search Employee..."
             value={search}
             onChange={(e) =>
-              setSearch(
+              handleSearch(
                 e.target.value
               )
             }
@@ -169,7 +149,7 @@ function DailyWorkReportsPage() {
           <select
             value={status}
             onChange={(e) =>
-              setStatus(
+              handleStatusChange(
                 e.target.value
               )
             }
@@ -199,14 +179,17 @@ function DailyWorkReportsPage() {
 
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+        {reports.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-2xs space-y-3">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-800">No Reports Found</h3>
+            <p className="text-slate-500 text-sm max-w-sm mx-auto">
+              {search || status ? "No reports match your search criteria." : "Start by adding your first report."}
+            </p>
           </div>
         ) : (
           <DailyWorkReportTable
             reports={
-              paginatedReports
+              reports
             }
             onDelete={
               handleDelete
@@ -214,45 +197,16 @@ function DailyWorkReportsPage() {
           />
         )}
 
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-4">
-
-            <button
-              disabled={
-                page === 1
-              }
-              onClick={() =>
-                setPage(
-                  page - 1
-                )
-              }
-              className="border px-4 py-2 rounded-lg disabled:opacity-50"
-            >
-              Previous
-            </button>
-
-            <span className="font-semibold">
-              Page {page} of{" "}
-              {totalPages}
-            </span>
-
-            <button
-              disabled={
-                page ===
-                totalPages
-              }
-              onClick={() =>
-                setPage(
-                  page + 1
-                )
-              }
-              className="border px-4 py-2 rounded-lg disabled:opacity-50"
-            >
-              Next
-            </button>
-
-          </div>
-        )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          limit={limit}
+          onLimitChange={(newLimit) => {
+            setLimit(newLimit);
+            setPage(1);
+          }}
+        />
 
       </div>
     </DashboardLayout>

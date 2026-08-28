@@ -1,58 +1,51 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 import CommentForm from "../../components/comments/CommentForm";
 import { commentService } from "../../services/comment.service";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
 
 export default function AddCommentPage() {
 
   const navigate = useNavigate();
 
-  const [loading,setLoading] = useState(false);
-
-
+  const [loading, setLoading] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (
-    data:{
-      content:string;
-    }
+    data: { content: string }
   ) => {
-
+    setServerErrors({});
     try {
 
       setLoading(true);
 
+      await commentService.createComment({
+        content: data.content,
+      });
 
-      await commentService.createComment(data);
-
-
-      alert(
-        "Comment created successfully."
-      );
-
+      toast.success("Comment created successfully.");
 
       navigate("/comments");
 
-
-    } catch(error){
+    } catch(error: unknown) {
 
       console.error(error);
 
-      alert(
-        "Failed to create comment."
-      );
-
-
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error("Failed to create comment.");
+      }
     } finally {
 
       setLoading(false);
 
     }
-
   };
-
-
 
   return (
 
@@ -66,6 +59,7 @@ export default function AddCommentPage() {
       <CommentForm
         onSubmit={handleSubmit}
         loading={loading}
+        serverErrors={serverErrors}
       />
 
     </div>

@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { createDailyWorkReportSchema, editDailyWorkReportSchema, type CreateDailyWorkReportFormData, type EditDailyWorkReportFormData } from "../../features/validation/daily-work-report.schema";
 
 import type {
   CreateDailyWorkReportDto,
   DailyWorkReport,
-  WorkStatus,
 } from "../../types/daily-work-report";
 
 type Employee = {
@@ -32,7 +35,10 @@ type Props = {
   loading?: boolean;
   initialData?: DailyWorkReport;
   onSubmit: (data: CreateDailyWorkReportDto) => void;
+  serverErrors?: Record<string, string>;
 };
+
+type FormData = CreateDailyWorkReportFormData | EditDailyWorkReportFormData;
 
 function DailyWorkReportForm({
   employees,
@@ -41,24 +47,50 @@ function DailyWorkReportForm({
   loading = false,
   initialData,
   onSubmit,
+  serverErrors,
 }: Props) {
-  const [formData, setFormData] = useState({
-    employeeId: "",
-    projectId: "",
-    taskId: "",
-    reportDate: "",
-    yesterdayWork: "",
-    todayWork: "",
-    tomorrowPlan: "",
-    hoursWorked: 8,
-    status: "COMPLETED" as WorkStatus,
-    managerRemarks: "",
+  const schema = initialData ? editDailyWorkReportSchema : createDailyWorkReportSchema;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
+    defaultValues: {
+      employeeId: "",
+      projectId: "",
+      taskId: "",
+      reportDate: "",
+      yesterdayWork: "",
+      todayWork: "",
+      tomorrowPlan: "",
+      hoursWorked: 8,
+      status: "COMPLETED",
+      managerRemarks: "",
+    },
   });
+
+  const watchedProjectId = watch("projectId");
+
+  const filteredTasks = useMemo(() => {
+    if (!watchedProjectId) {
+      return tasks;
+    }
+
+    return tasks.filter(
+      (task) => task.projectId === watchedProjectId,
+    );
+  }, [tasks, watchedProjectId]);
 
   useEffect(() => {
     if (!initialData) return;
 
-    setFormData({
+    reset({
       employeeId: initialData.employeeId,
       projectId: initialData.projectId ?? "",
       taskId: initialData.taskId ?? "",
@@ -67,113 +99,27 @@ function DailyWorkReportForm({
       todayWork: initialData.todayWork,
       tomorrowPlan: initialData.tomorrowPlan ?? "",
       hoursWorked: Number(initialData.hoursWorked),
-      status: initialData.status,
+      status: initialData.status as FormData["status"],
       managerRemarks: initialData.managerRemarks ?? "",
     });
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const filteredTasks = useMemo(() => {
-    if (!formData.projectId) {
-      return tasks;
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      clearErrors();
+      Object.entries(serverErrors).forEach(([field, message]) => {
+        setError(field as keyof FormData, { message });
+      });
     }
+  }, [serverErrors, setError, clearErrors]);
 
-    return tasks.filter(
-      (task) => task.projectId === formData.projectId,
-    );
-  }, [formData.projectId, tasks]);
-
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value } = e.target;
-
-    setFormData((previous) => {
-      if (name === "projectId") {
-        return {
-          ...previous,
-          projectId: value,
-          taskId:
-            previous.taskId &&
-            !tasks.some(
-              (task) =>
-                task.id === previous.taskId &&
-                task.projectId === value,
-            )
-              ? ""
-              : previous.taskId,
-        };
-      }
-
-      return {
-        ...previous,
-        [name]:
-          name === "hoursWorked"
-            ? value === ""
-              ? 0
-              : Number(value)
-            : value,
-      };
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    const hours = Number(formData.hoursWorked);
-
-    if (!Number.isFinite(hours)) {
-      return;
-    }
-
-    if (hours < 0 || hours > 24) {
-      return;
-    }
-
-    if (!formData.employeeId) {
-      return;
-    }
-
-    if (!formData.reportDate) {
-      return;
-    }
-
-    if (!formData.todayWork.trim()) {
-      return;
-    }
-
-    const payload: CreateDailyWorkReportDto = {
-      employeeId: formData.employeeId,
-      projectId: formData.projectId || undefined,
-      taskId: formData.taskId || undefined,
-      reportDate: formData.reportDate,
-      yesterdayWork: formData.yesterdayWork || undefined,
-      todayWork: formData.todayWork.trim(),
-      tomorrowPlan: formData.tomorrowPlan || undefined,
-      hoursWorked: hours,
-      status: formData.status,
-      managerRemarks: formData.managerRemarks || undefined,
-    };
-
-    onSubmit(payload);
-  };
-
-  const renderTaskOptions = () => {
-    if (!Array.isArray(filteredTasks) || filteredTasks.length === 0) {
-      return <option value="">No matching tasks</option>;
-    }
-
-    return filteredTasks.map((task) => (
-      <option key={task.id} value={task.id}>
-        {task.title}
-      </option>
-    ));
+  const handleFormSubmit = (data: FormData) => {
+    onSubmit(data as unknown as CreateDailyWorkReportDto);
   };
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(handleFormSubmit)}
       className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6"
     >
       {/* Employee */}
@@ -183,11 +129,9 @@ function DailyWorkReportForm({
         </label>
 
         <select
-          name="employeeId"
-          value={formData.employeeId}
-          onChange={handleChange}
+          {...register("employeeId")}
           className="w-full border border-slate-300 rounded-lg px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          required
+          disabled={loading}
         >
           <option value="">Select Employee</option>
 
@@ -198,6 +142,9 @@ function DailyWorkReportForm({
               </option>
             ))}
         </select>
+        {errors.employeeId && (
+          <p className="mt-1 text-xs text-red-600">{errors.employeeId.message}</p>
+        )}
       </div>
 
       {/* Project + Task */}
@@ -209,10 +156,9 @@ function DailyWorkReportForm({
           </label>
 
           <select
-            name="projectId"
-            value={formData.projectId}
-            onChange={handleChange}
+            {...register("projectId")}
             className="w-full border border-slate-300 rounded-lg px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           >
             <option value="">Select Project</option>
 
@@ -232,14 +178,17 @@ function DailyWorkReportForm({
           </label>
 
           <select
-            name="taskId"
-            value={formData.taskId}
-            onChange={handleChange}
+            {...register("taskId")}
             className="w-full border border-slate-300 rounded-lg px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           >
             <option value="">Select Task</option>
 
-            {renderTaskOptions()}
+            {filteredTasks.map((task) => (
+              <option key={task.id} value={task.id}>
+                {task.title}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -254,12 +203,13 @@ function DailyWorkReportForm({
 
           <input
             type="date"
-            name="reportDate"
-            value={formData.reportDate}
-            onChange={handleChange}
+            {...register("reportDate")}
             className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
+            disabled={loading}
           />
+          {errors.reportDate && (
+            <p className="mt-1 text-xs text-red-600">{errors.reportDate.message}</p>
+          )}
         </div>
 
         {/* Hours Worked */}
@@ -271,18 +221,17 @@ function DailyWorkReportForm({
           <input
             type="number"
             step="0.01"
-            min="0"
-            max="24"
-            name="hoursWorked"
-            value={formData.hoursWorked}
-            onChange={handleChange}
+            {...register("hoursWorked", { valueAsNumber: true })}
             className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
+            disabled={loading}
           />
 
           <p className="mt-1 text-xs text-slate-500">
             Enter a value between 0 and 24 hours.
           </p>
+          {errors.hoursWorked && (
+            <p className="mt-1 text-xs text-red-600">{errors.hoursWorked.message}</p>
+          )}
         </div>
 
         {/* Status */}
@@ -292,16 +241,18 @@ function DailyWorkReportForm({
           </label>
 
           <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
+            {...register("status")}
             className="w-full border border-slate-300 rounded-lg px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           >
             <option value="PLANNED">Planned</option>
             <option value="IN_PROGRESS">In Progress</option>
             <option value="COMPLETED">Completed</option>
             <option value="BLOCKED">Blocked</option>
           </select>
+          {errors.status && (
+            <p className="mt-1 text-xs text-red-600">{errors.status.message}</p>
+          )}
         </div>
       </div>
 
@@ -313,11 +264,10 @@ function DailyWorkReportForm({
 
         <textarea
           rows={3}
-          name="yesterdayWork"
-          value={formData.yesterdayWork}
-          onChange={handleChange}
+          {...register("yesterdayWork")}
           className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="What did you complete yesterday?"
+          disabled={loading}
         />
       </div>
 
@@ -329,13 +279,14 @@ function DailyWorkReportForm({
 
         <textarea
           rows={4}
-          name="todayWork"
-          value={formData.todayWork}
-          onChange={handleChange}
+          {...register("todayWork")}
           className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="What did you work on today?"
-          required
+          disabled={loading}
         />
+        {errors.todayWork && (
+          <p className="mt-1 text-xs text-red-600">{errors.todayWork.message}</p>
+        )}
       </div>
 
       {/* Tomorrow Plan */}
@@ -346,11 +297,10 @@ function DailyWorkReportForm({
 
         <textarea
           rows={3}
-          name="tomorrowPlan"
-          value={formData.tomorrowPlan}
-          onChange={handleChange}
+          {...register("tomorrowPlan")}
           className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="What do you plan to work on tomorrow?"
+          disabled={loading}
         />
       </div>
 
@@ -362,11 +312,10 @@ function DailyWorkReportForm({
 
         <textarea
           rows={3}
-          name="managerRemarks"
-          value={formData.managerRemarks}
-          onChange={handleChange}
+          {...register("managerRemarks")}
           className="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Manager remarks"
+          disabled={loading}
         />
       </div>
 

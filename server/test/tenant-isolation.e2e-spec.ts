@@ -139,8 +139,8 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .expect(200);
 
       expect(responseA.body.data).toBeDefined();
-      const logsA = Array.isArray(responseA.body.data)
-        ? responseA.body.data
+      const logsA = Array.isArray(responseA.body.data.data)
+        ? responseA.body.data.data
         : [];
       logsA.forEach((log: any) => {
         expect(log.tenantId).toBe(testData.tenantA.id);
@@ -153,8 +153,8 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .expect(200);
 
       expect(responseB.body.data).toBeDefined();
-      const logsB = Array.isArray(responseB.body.data)
-        ? responseB.body.data
+      const logsB = Array.isArray(responseB.body.data.data)
+        ? responseB.body.data.data
         : [];
       logsB.forEach((log: any) => {
         expect(log.tenantId).toBe(testData.tenantB.id);
@@ -195,7 +195,7 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .expect(200);
 
       expect(response.body.data).toBeDefined();
-      const leads = Array.isArray(response.body.data) ? response.body.data : [];
+      const leads = Array.isArray(response.body.data.data) ? response.body.data.data : [];
       leads.forEach((lead: any) => {
         expect(lead.tenantId).toBe(testData.tenantA.id);
       });
@@ -281,9 +281,9 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      expect(response.body.data).toBeDefined();
-      const employees = Array.isArray(response.body.data)
-        ? response.body.data
+       expect(response.body.data).toBeDefined();
+      const employees = Array.isArray(response.body.data.data)
+        ? response.body.data.data
         : [];
       employees.forEach((employee: any) => {
         expect(employee.tenantId).toBe(testData.tenantA.id);
@@ -299,8 +299,8 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      const employees = Array.isArray(response.body.data)
-        ? response.body.data
+      const employees = Array.isArray(response.body.data.data)
+        ? response.body.data.data
         : [];
       employees.forEach((employee: any) => {
         expect(employee.tenantId).not.toBe(testData.tenantB.id);
@@ -336,8 +336,8 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .expect(200);
 
       expect(response.body.data).toBeDefined();
-      const clients = Array.isArray(response.body.data)
-        ? response.body.data
+      const clients = Array.isArray(response.body.data.data)
+        ? response.body.data.data
         : [];
       clients.forEach((client: any) => {
         expect(client.tenantId).toBe(testData.tenantA.id);
@@ -373,7 +373,7 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      response.body.data.forEach((invoice: any) => {
+      response.body.data.data.forEach((invoice: any) => {
         expect(invoice.tenantId).toBe(testData.tenantA.id);
       });
     });
@@ -408,8 +408,8 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .expect(200);
 
       expect(response.body.data).toBeDefined();
-      const projects = Array.isArray(response.body.data)
-        ? response.body.data
+      const projects = Array.isArray(response.body.data.data)
+        ? response.body.data.data
         : [];
       projects.forEach((project: any) => {
         expect(project.tenantId).toBe(testData.tenantA.id);
@@ -480,7 +480,7 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      const tasks = Array.isArray(response.body.data) ? response.body.data : [];
+       const tasks = Array.isArray(response.body.data.data) ? response.body.data.data : [];
       tasks.forEach((task: any) => {
         expect(task.tenantId).toBe(testData.tenantA.id);
       });
@@ -568,9 +568,9 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      const projects = Array.isArray(response.body)
-        ? response.body
-        : response.body.data || [];
+       const projects = Array.isArray(response.body)
+         ? response.body
+         : response.body.data.data || [];
       projects.forEach((project: any) => {
         expect(project.tenantId).toBe(testData.tenantA.id);
       });
@@ -584,9 +584,9 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      const tasks = Array.isArray(response.body)
-        ? response.body
-        : response.body.data || [];
+       const tasks = Array.isArray(response.body)
+         ? response.body
+         : response.body.data.data || [];
       tasks.forEach((task: any) => {
         expect(task.tenantId).toBe(testData.tenantA.id);
       });
@@ -602,7 +602,7 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      response.body.data.forEach((user: any) => {
+       response.body.data.data.forEach((user: any) => {
         // Skip check if tenantId is not returned in the response
         if (user.tenantId) {
           expect(user.tenantId).toBe(testData.tenantA.id);
@@ -734,9 +734,9 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      const deadlines = Array.isArray(response.body)
-        ? response.body
-        : response.body.data || [];
+       const deadlines = Array.isArray(response.body)
+         ? response.body
+         : response.body.data.data || [];
       deadlines.forEach((milestone: any) => {
         expect(milestone.tenantId).toBe(testData.tenantA.id);
       });
@@ -777,9 +777,9 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      const attachments = Array.isArray(response.body)
-        ? response.body
-        : response.body.data || [];
+       const attachments = Array.isArray(response.body)
+         ? response.body
+         : response.body.data.data || [];
       attachments.forEach((attachment: any) => {
         expect(attachment.tenantId).toBe(testData.tenantA.id);
       });
@@ -859,9 +859,9 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${token}`)
           .expect(200);
 
-        const comments = Array.isArray(response.body)
-          ? response.body
-          : response.body.data || [];
+         const comments = Array.isArray(response.body)
+           ? response.body
+           : response.body.data.data || [];
         comments.forEach((comment: any) => {
           expect(comment.tenantId).toBe(testData.tenantA.id);
         });
@@ -1045,15 +1045,15 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${tokenB}`)
           .expect(200);
 
-        expect(responseA.body.data.length).toBeGreaterThan(0);
-        expect(responseB.body.data.length).toBeGreaterThan(0);
+        expect(responseA.body.data.data.length).toBeGreaterThan(0);
+        expect(responseB.body.data.data.length).toBeGreaterThan(0);
 
         // Verify all items belong to respective tenants
-        responseA.body.data.forEach((item: any) => {
+        responseA.body.data.data.forEach((item: any) => {
           expect(item.tenantId).toBe(testData.tenantA.id);
         });
 
-        responseB.body.data.forEach((item: any) => {
+        responseB.body.data.data.forEach((item: any) => {
           expect(item.tenantId).toBe(testData.tenantB.id);
         });
       });
@@ -1083,18 +1083,18 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${tokenB}`)
           .expect(200);
 
-        if (responseA.body && responseA.body.length > 0) {
-          expect(responseA.body.length).toBeGreaterThan(0);
+        if (responseA.body.data && responseA.body.data.length > 0) {
+          expect(responseA.body.data.length).toBeGreaterThan(0);
           // Verify all payments belong to respective tenants
-          responseA.body.forEach((payment: any) => {
+          responseA.body.data.forEach((payment: any) => {
             expect(payment.tenantId).toBe(testData.tenantA.id);
           });
         }
 
-        if (responseB.body && responseB.body.length > 0) {
-          expect(responseB.body.length).toBeGreaterThan(0);
+        if (responseB.body.data && responseB.body.data.length > 0) {
+          expect(responseB.body.data.length).toBeGreaterThan(0);
           // Verify all payments belong to respective tenants
-          responseB.body.forEach((payment: any) => {
+          responseB.body.data.forEach((payment: any) => {
             expect(payment.tenantId).toBe(testData.tenantB.id);
           });
         }
@@ -1150,18 +1150,18 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${tokenB}`)
           .expect(200);
 
-        if (responseA.body.data && responseA.body.data.length > 0) {
-          expect(responseA.body.data.length).toBeGreaterThan(0);
+        if (responseA.body.data.data && responseA.body.data.data.length > 0) {
+          expect(responseA.body.data.data.length).toBeGreaterThan(0);
           // Verify all leaves belong to respective tenants
-          responseA.body.data.forEach((leave: any) => {
+          responseA.body.data.data.forEach((leave: any) => {
             expect(leave.tenantId).toBe(testData.tenantA.id);
           });
         }
 
-        if (responseB.body.data && responseB.body.data.length > 0) {
-          expect(responseB.body.data.length).toBeGreaterThan(0);
+        if (responseB.body.data.data && responseB.body.data.data.length > 0) {
+          expect(responseB.body.data.data.length).toBeGreaterThan(0);
           // Verify all leaves belong to respective tenants
-          responseB.body.data.forEach((leave: any) => {
+          responseB.body.data.data.forEach((leave: any) => {
             expect(leave.tenantId).toBe(testData.tenantB.id);
           });
         }
@@ -1193,14 +1193,18 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .expect(200);
 
         // Verify all attendance records belong to respective tenants
-        if (responseA.body.length > 0) {
-          responseA.body.forEach((attendance: any) => {
+        if (responseA.body.data && responseA.body.data.length > 0) {
+          expect(responseA.body.data.length).toBeGreaterThan(0);
+          // Verify all attendance records belong to respective tenants
+          responseA.body.data.forEach((attendance: any) => {
             expect(attendance.tenantId).toBe(testData.tenantA.id);
           });
         }
 
-        if (responseB.body.length > 0) {
-          responseB.body.forEach((attendance: any) => {
+        if (responseB.body.data && responseB.body.data.length > 0) {
+          expect(responseB.body.data.length).toBeGreaterThan(0);
+          // Verify all attendance records belong to respective tenants
+          responseB.body.data.forEach((attendance: any) => {
             expect(attendance.tenantId).toBe(testData.tenantB.id);
           });
         }
@@ -1222,18 +1226,18 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${tokenB}`)
           .expect(200);
 
-        if (responseA.body.data && responseA.body.data.length > 0) {
-          expect(responseA.body.data.length).toBeGreaterThan(0);
+        if (responseA.body.data.data && responseA.body.data.data.length > 0) {
+          expect(responseA.body.data.data.length).toBeGreaterThan(0);
           // Verify all notifications belong to respective tenants
-          responseA.body.data.forEach((notification: any) => {
+          responseA.body.data.data.forEach((notification: any) => {
             expect(notification.tenantId).toBe(testData.tenantA.id);
           });
         }
 
-        if (responseB.body.data && responseB.body.data.length > 0) {
-          expect(responseB.body.data.length).toBeGreaterThan(0);
+        if (responseB.body.data.data && responseB.body.data.data.length > 0) {
+          expect(responseB.body.data.data.length).toBeGreaterThan(0);
           // Verify all notifications belong to respective tenants
-          responseB.body.data.forEach((notification: any) => {
+          responseB.body.data.data.forEach((notification: any) => {
             expect(notification.tenantId).toBe(testData.tenantB.id);
           });
         }
@@ -1264,18 +1268,18 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${tokenB}`)
           .expect(200);
 
-        if (responseA.body && responseA.body.length > 0) {
-          expect(responseA.body.length).toBeGreaterThan(0);
+        if (responseA.body.data && responseA.body.data.length > 0) {
+          expect(responseA.body.data.length).toBeGreaterThan(0);
           // Verify all timesheets belong to respective tenants
-          responseA.body.forEach((timesheet: any) => {
+          responseA.body.data.forEach((timesheet: any) => {
             expect(timesheet.tenantId).toBe(testData.tenantA.id);
           });
         }
 
-        if (responseB.body && responseB.body.length > 0) {
-          expect(responseB.body.length).toBeGreaterThan(0);
+        if (responseB.body.data && responseB.body.data.length > 0) {
+          expect(responseB.body.data.length).toBeGreaterThan(0);
           // Verify all timesheets belong to respective tenants
-          responseB.body.forEach((timesheet: any) => {
+          responseB.body.data.forEach((timesheet: any) => {
             expect(timesheet.tenantId).toBe(testData.tenantB.id);
           });
         }
@@ -1306,18 +1310,18 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${tokenB}`)
           .expect(200);
 
-        if (responseA.body.data && responseA.body.data.length > 0) {
-          expect(responseA.body.data.length).toBeGreaterThan(0);
+        if (responseA.body.data.data && responseA.body.data.data.length > 0) {
+          expect(responseA.body.data.data.length).toBeGreaterThan(0);
           // Verify all payroll records belong to respective tenants
-          responseA.body.data.forEach((payroll: any) => {
+          responseA.body.data.data.forEach((payroll: any) => {
             expect(payroll.tenantId).toBe(testData.tenantA.id);
           });
         }
 
-        if (responseB.body.data && responseB.body.data.length > 0) {
-          expect(responseB.body.data.length).toBeGreaterThan(0);
+        if (responseB.body.data.data && responseB.body.data.data.length > 0) {
+          expect(responseB.body.data.data.length).toBeGreaterThan(0);
           // Verify all payroll records belong to respective tenants
-          responseB.body.data.forEach((payroll: any) => {
+          responseB.body.data.data.forEach((payroll: any) => {
             expect(payroll.tenantId).toBe(testData.tenantB.id);
           });
         }
@@ -1348,18 +1352,18 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${tokenB}`)
           .expect(200);
 
-        if (responseA.body.data && responseA.body.data.length > 0) {
-          expect(responseA.body.data.length).toBeGreaterThan(0);
+        if (responseA.body.data.data && responseA.body.data.data.length > 0) {
+          expect(responseA.body.data.data.length).toBeGreaterThan(0);
           // Verify all daily work reports belong to respective tenants
-          responseA.body.data.forEach((report: any) => {
+          responseA.body.data.data.forEach((report: any) => {
             expect(report.tenantId).toBe(testData.tenantA.id);
           });
         }
 
-        if (responseB.body.data && responseB.body.data.length > 0) {
-          expect(responseB.body.data.length).toBeGreaterThan(0);
+        if (responseB.body.data.data && responseB.body.data.data.length > 0) {
+          expect(responseB.body.data.data.length).toBeGreaterThan(0);
           // Verify all daily work reports belong to respective tenants
-          responseB.body.data.forEach((report: any) => {
+          responseB.body.data.data.forEach((report: any) => {
             expect(report.tenantId).toBe(testData.tenantB.id);
           });
         }
@@ -1390,18 +1394,18 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .set('Authorization', `Bearer ${tokenB}`)
           .expect(200);
 
-        if (responseA.body && responseA.body.length > 0) {
-          expect(responseA.body.length).toBeGreaterThan(0);
+        if (responseA.body.data && responseA.body.data.data.length > 0) {
+          expect(responseA.body.data.data.length).toBeGreaterThan(0);
           // Verify all milestones belong to respective tenants
-          responseA.body.forEach((milestone: any) => {
+          responseA.body.data.data.forEach((milestone: any) => {
             expect(milestone.tenantId).toBe(testData.tenantA.id);
           });
         }
 
-        if (responseB.body && responseB.body.length > 0) {
-          expect(responseB.body.length).toBeGreaterThan(0);
+        if (responseB.body.data && responseB.body.data.data.length > 0) {
+          expect(responseB.body.data.data.length).toBeGreaterThan(0);
           // Verify all milestones belong to respective tenants
-          responseB.body.forEach((milestone: any) => {
+          responseB.body.data.data.forEach((milestone: any) => {
             expect(milestone.tenantId).toBe(testData.tenantB.id);
           });
         }
@@ -1532,6 +1536,1271 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
       // Cleanup
       await prisma.user.delete({ where: { id: suspendedUser.id } });
       await prisma.tenant.delete({ where: { id: suspendedTenant.id } });
+    });
+  });
+
+  describe('Phase 3.1: Role-Based Authorization', () => {
+    it('should deny EMPLOYEE role access to payroll endpoints', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .get('/payroll')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+
+    it('should deny EMPLOYEE role access to payments endpoints', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .get('/payments')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+
+    it('should deny EMPLOYEE role access to invoice endpoints', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .get('/invoice')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+
+    it('should deny EMPLOYEE role access to reports endpoints', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .get('/reports/dashboard')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+
+    it('should deny EMPLOYEE role access to invoice-items endpoints', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .get('/invoice-items')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+  });
+
+  describe('Phase 4.2: Self-Service Attendance', () => {
+    afterEach(async () => {
+      await prisma.attendance.deleteMany({
+        where: {
+          OR: [
+            { employeeId: testData.tenantAEmployeeRecord.id },
+            { employeeId: testData.tenantBEmployeeRecord.id },
+          ],
+        },
+      });
+    });
+
+    it('should allow EMPLOYEE to check in for self', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      const response = await request(app.getHttpServer())
+        .post('/attendance/check-in/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.employeeId).toBe(testData.tenantAEmployeeRecord.id);
+      expect(response.body.data.checkIn).toBeDefined();
+    });
+
+    it('should prevent duplicate check-in for self', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .post('/attendance/check-in/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post('/attendance/check-in/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(409);
+    });
+
+    it('should allow EMPLOYEE to check out after check-in', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .post('/attendance/check-in/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      const response = await request(app.getHttpServer())
+        .patch('/attendance/check-out/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.checkOut).toBeDefined();
+    });
+
+    it('should reject check-out without check-in', async () => {
+      const token = generateToken(testData.tenantBEmployee);
+
+      await request(app.getHttpServer())
+        .patch('/attendance/check-out/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(404);
+    });
+
+    it('should prevent double check-out', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .post('/attendance/check-in/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .patch('/attendance/check-out/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .patch('/attendance/check-out/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(409);
+    });
+
+    it('should reject unauthenticated access to self check-in', async () => {
+      await request(app.getHttpServer())
+        .post('/attendance/check-in/self')
+        .expect(401);
+    });
+
+    it('should return my-status for authenticated user', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      const response = await request(app.getHttpServer())
+        .get('/attendance/my-status')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.date).toBeDefined();
+    });
+
+    it('should block CLIENT role from attendance', async () => {
+      const clientUser = await prisma.user.create({
+        data: {
+          fullName: 'Tenant A Client',
+          email: 'client@tenant-a.com',
+          password: '$2b$10$dummy.hash.for.testing',
+          role: 'CLIENT',
+          isActive: true,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(clientUser);
+
+      await request(app.getHttpServer())
+        .post('/attendance/check-in/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .patch('/attendance/check-out/self')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .get('/attendance/my-status')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+
+      await prisma.user.delete({ where: { id: clientUser.id } });
+    });
+
+    it('should reject cross-tenant self check-in', async () => {
+      const tokenA = generateToken(testData.tenantAEmployee);
+      const tokenB = generateToken(testData.tenantBEmployee);
+
+      await request(app.getHttpServer())
+        .post('/attendance/check-in/self')
+        .set('Authorization', `Bearer ${tokenB}`)
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .patch('/attendance/check-out/self')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(404);
+    });
+  });
+
+  describe('Phase 4.3: Expenses Module', () => {
+    afterEach(async () => {
+      await prisma.expense.deleteMany({
+        where: {
+          OR: [
+            { tenantId: testData.tenantA.id },
+            { tenantId: testData.tenantB.id },
+          ],
+        },
+      });
+    });
+
+    it('should allow ADMIN to create expense', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const response = await request(app.getHttpServer())
+        .post('/expenses')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          expenseDate: '2024-01-15',
+          category: 'Office Supplies',
+          description: 'Printer paper and ink',
+          amount: '150.00',
+          paymentMethod: 'CASH',
+        })
+        .expect(201);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.category).toBe('Office Supplies');
+      expect(Number(response.body.data.amount)).toBe(150);
+      expect(response.body.data.tenantId).toBe(testData.tenantA.id);
+    });
+
+    it('should allow ADMIN to list expenses', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Travel',
+          description: 'Client meeting',
+          amount: 500,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/expenses')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+    });
+
+    it('should allow ADMIN to get expense by id', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const expense = await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Utilities',
+          description: 'Electric bill',
+          amount: 200,
+          paymentMethod: 'BANK_TRANSFER',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/expenses/${expense.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.id).toBe(expense.id);
+    });
+
+    it('should allow ADMIN to update expense', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const expense = await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Supplies',
+          description: 'Office supplies',
+          amount: 100,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .patch(`/expenses/${expense.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ amount: '120.00' })
+        .expect(200);
+
+      expect(Number(response.body.data.amount)).toBe(120);
+    });
+
+    it('should allow ADMIN to delete expense', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const expense = await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Supplies',
+          description: 'Office supplies',
+          amount: 100,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .delete(`/expenses/${expense.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const deleted = await prisma.expense.findUnique({
+        where: { id: expense.id },
+      });
+      expect(deleted).toBeNull();
+    });
+
+    it('should reject unauthenticated access to expenses', async () => {
+      await request(app.getHttpServer())
+        .get('/expenses')
+        .expect(401);
+    });
+
+    it('should block EMPLOYEE role from expenses', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .get('/expenses')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+
+    it('should block CLIENT role from expenses', async () => {
+      const clientUser = await prisma.user.create({
+        data: {
+          fullName: 'Tenant A Client',
+          email: 'client-expense@tenant-a.com',
+          password: '$2b$10$dummy.hash.for.testing',
+          role: 'CLIENT',
+          isActive: true,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(clientUser);
+
+      await request(app.getHttpServer())
+        .get('/expenses')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+
+      await prisma.user.delete({ where: { id: clientUser.id } });
+    });
+
+    it('should reject cross-tenant expense access', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      const expenseB = await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Travel',
+          description: 'Tenant B expense',
+          amount: 300,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .get(`/expenses/${expenseB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .patch(`/expenses/${expenseB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ amount: '500' })
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .delete(`/expenses/${expenseB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
+    });
+
+    it('should only return expenses for the current tenant', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Travel',
+          description: 'Tenant A expense',
+          amount: 300,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Supplies',
+          description: 'Tenant B expense',
+          amount: 200,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      const responseA = await request(app.getHttpServer())
+        .get('/expenses')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+
+      const responseB = await request(app.getHttpServer())
+        .get('/expenses')
+        .set('Authorization', `Bearer ${tokenB}`)
+        .expect(200);
+
+      expect(responseA.body.data.data).toBeDefined();
+      expect(responseB.body.data.data).toBeDefined();
+      responseA.body.data.data.forEach((expense: any) => {
+        expect(expense.tenantId).toBe(testData.tenantA.id);
+      });
+      responseB.body.data.data.forEach((expense: any) => {
+        expect(expense.tenantId).toBe(testData.tenantB.id);
+      });
+    });
+
+    it('should filter expenses by category', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Travel',
+          description: 'Flight tickets',
+          amount: 500,
+          paymentMethod: 'CARD',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-16'),
+          category: 'Supplies',
+          description: 'Office supplies',
+          amount: 100,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/expenses?category=Travel')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+      response.body.data.data.forEach((expense: any) => {
+        expect(expense.category).toBe('Travel');
+      });
+    });
+
+    it('should filter expenses by date range', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      await prisma.expense.create({
+        data: {
+          expenseDate: new Date('2024-01-15'),
+          category: 'Travel',
+          description: 'Flight tickets',
+          amount: 500,
+          paymentMethod: 'CARD',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/expenses?dateFrom=2024-01-01&dateTo=2024-01-31')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Phase 4.4: Purchases Module', () => {
+    let tenantAVendorId: string;
+    let tenantBVendorId: string;
+
+    beforeEach(async () => {
+      const vendorA = await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+      tenantAVendorId = vendorA.id;
+
+      const vendorB = await prisma.vendor.create({
+        data: {
+          name: 'Tenant B Vendor',
+          tenantId: testData.tenantB.id,
+        },
+      });
+      tenantBVendorId = vendorB.id;
+    });
+
+    afterEach(async () => {
+      await prisma.purchase.deleteMany({
+        where: {
+          OR: [
+            { tenantId: testData.tenantA.id },
+            { tenantId: testData.tenantB.id },
+          ],
+        },
+      });
+      await prisma.vendor.deleteMany({
+        where: {
+          OR: [
+            { tenantId: testData.tenantA.id },
+            { tenantId: testData.tenantB.id },
+          ],
+        },
+      });
+    });
+
+    it('should allow ADMIN to create purchase', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const response = await request(app.getHttpServer())
+        .post('/purchases')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          purchaseDate: '2024-01-15',
+          vendorId: tenantAVendorId,
+          referenceNo: 'PO-001',
+          description: 'Office supplies',
+          subtotal: '1000.00',
+          tax: '100.00',
+          total: '1100.00',
+          paymentMethod: 'BANK_TRANSFER',
+        })
+        .expect(201);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.vendor).toBeDefined();
+      expect(response.body.data.vendor.name).toBe('Acme Corp');
+      expect(Number(response.body.data.total)).toBe(1100);
+      expect(response.body.data.tenantId).toBe(testData.tenantA.id);
+    });
+
+    it('should allow ADMIN to list purchases', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: tenantAVendorId,
+          description: 'Office supplies',
+          subtotal: 1000,
+          tax: 100,
+          total: 1100,
+          paymentMethod: 'BANK_TRANSFER',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/purchases')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+    });
+
+    it('should allow ADMIN to get purchase by id', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const purchase = await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: tenantAVendorId,
+          description: 'Office supplies',
+          subtotal: 1000,
+          tax: 100,
+          total: 1100,
+          paymentMethod: 'BANK_TRANSFER',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/purchases/${purchase.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.id).toBe(purchase.id);
+    });
+
+    it('should allow ADMIN to update purchase', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const purchase = await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: tenantAVendorId,
+          description: 'Office supplies',
+          subtotal: 1000,
+          tax: 100,
+          total: 1100,
+          paymentMethod: 'BANK_TRANSFER',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .patch(`/purchases/${purchase.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ total: '1200.00' })
+        .expect(200);
+
+      expect(Number(response.body.data.total)).toBe(1200);
+    });
+
+    it('should allow ADMIN to delete purchase', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const purchase = await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: tenantAVendorId,
+          description: 'Office supplies',
+          subtotal: 1000,
+          tax: 100,
+          total: 1100,
+          paymentMethod: 'BANK_TRANSFER',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .delete(`/purchases/${purchase.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const deleted = await prisma.purchase.findUnique({
+        where: { id: purchase.id },
+      });
+      expect(deleted).toBeNull();
+    });
+
+    it('should reject unauthenticated access to purchases', async () => {
+      await request(app.getHttpServer())
+        .get('/purchases')
+        .expect(401);
+    });
+
+    it('should block EMPLOYEE role from purchases', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .get('/purchases')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+
+    it('should block CLIENT role from purchases', async () => {
+      const clientUser = await prisma.user.create({
+        data: {
+          fullName: 'Tenant A Client',
+          email: 'client-purchase@tenant-a.com',
+          password: '$2b$10$dummy.hash.for.testing',
+          role: 'CLIENT',
+          isActive: true,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(clientUser);
+
+      await request(app.getHttpServer())
+        .get('/purchases')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+
+      await prisma.user.delete({ where: { id: clientUser.id } });
+    });
+
+    it('should reject cross-tenant purchase access', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      const purchaseB = await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: tenantBVendorId,
+          description: 'Tenant B purchase',
+          subtotal: 500,
+          tax: 50,
+          total: 550,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .get(`/purchases/${purchaseB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .patch(`/purchases/${purchaseB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ total: '600' })
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .delete(`/purchases/${purchaseB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
+    });
+
+    it('should only return purchases for the current tenant', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: tenantAVendorId,
+          description: 'Tenant A purchase',
+          subtotal: 300,
+          tax: 30,
+          total: 330,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: tenantBVendorId,
+          description: 'Tenant B purchase',
+          subtotal: 200,
+          tax: 20,
+          total: 220,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      const responseA = await request(app.getHttpServer())
+        .get('/purchases')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+
+      const responseB = await request(app.getHttpServer())
+        .get('/purchases')
+        .set('Authorization', `Bearer ${tokenB}`)
+        .expect(200);
+
+      expect(responseA.body.data.data).toBeDefined();
+      expect(responseB.body.data.data).toBeDefined();
+      responseA.body.data.data.forEach((purchase: any) => {
+        expect(purchase.tenantId).toBe(testData.tenantA.id);
+      });
+      responseB.body.data.data.forEach((purchase: any) => {
+        expect(purchase.tenantId).toBe(testData.tenantB.id);
+      });
+    });
+
+    it('should filter purchases by vendorId', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const vendorA = await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+      const vendorB = await prisma.vendor.create({
+        data: {
+          name: 'Globex Inc',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: vendorA.id,
+          description: 'Office supplies',
+          subtotal: 1000,
+          tax: 100,
+          total: 1100,
+          paymentMethod: 'CARD',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-16'),
+          vendorId: vendorB.id,
+          description: 'Equipment',
+          subtotal: 2000,
+          tax: 200,
+          total: 2200,
+          paymentMethod: 'CASH',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/purchases?vendorId=${vendorA.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+      response.body.data.data.forEach((purchase: any) => {
+        expect(purchase.vendorId).toBe(vendorA.id);
+      });
+    });
+
+    it('should filter purchases by date range', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: tenantAVendorId,
+          description: 'Office supplies',
+          subtotal: 1000,
+          tax: 100,
+          total: 1100,
+          paymentMethod: 'CARD',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/purchases?dateFrom=2024-01-01&dateTo=2024-01-31')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Phase 4.5: Vendors Module', () => {
+    afterEach(async () => {
+      await prisma.purchase.deleteMany({
+        where: {
+          OR: [
+            { tenantId: testData.tenantA.id },
+            { tenantId: testData.tenantB.id },
+          ],
+        },
+      });
+      await prisma.vendor.deleteMany({
+        where: {
+          OR: [
+            { tenantId: testData.tenantA.id },
+            { tenantId: testData.tenantB.id },
+          ],
+        },
+      });
+    });
+
+    it('should allow ADMIN to create vendor', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const response = await request(app.getHttpServer())
+        .post('/vendors')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: 'Acme Corp',
+          contactPerson: 'John Doe',
+          email: 'acme@example.com',
+          phone: '+1234567890',
+        })
+        .expect(201);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.name).toBe('Acme Corp');
+      expect(response.body.data.tenantId).toBe(testData.tenantA.id);
+    });
+
+    it('should allow ADMIN to list vendors', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/vendors')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+    });
+
+    it('should allow ADMIN to get vendor', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const vendor = await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get(`/vendors/${vendor.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.id).toBe(vendor.id);
+    });
+
+    it('should allow ADMIN to update vendor', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const vendor = await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .patch(`/vendors/${vendor.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Acme Corporation' })
+        .expect(200);
+
+      expect(response.body.data.name).toBe('Acme Corporation');
+    });
+
+    it('should allow ADMIN to deactivate vendor with purchases', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const vendor = await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await prisma.purchase.create({
+        data: {
+          purchaseDate: new Date('2024-01-15'),
+          vendorId: vendor.id,
+          description: 'Office supplies',
+          subtotal: 1000,
+          tax: 100,
+          total: 1100,
+          paymentMethod: 'BANK_TRANSFER',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .delete(`/vendors/${vendor.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data.success).toBe(true);
+      expect(response.body.data.deactivated).toBe(true);
+
+      const updatedVendor = await prisma.vendor.findUnique({
+        where: { id: vendor.id },
+      });
+      expect(updatedVendor?.isActive).toBe(false);
+    });
+
+    it('should reject unauthenticated access to vendors', async () => {
+      await request(app.getHttpServer())
+        .get('/vendors')
+        .expect(401);
+    });
+
+    it('should block EMPLOYEE role from vendors', async () => {
+      const token = generateToken(testData.tenantAEmployee);
+
+      await request(app.getHttpServer())
+        .get('/vendors')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+    });
+
+    it('should block CLIENT role from vendors', async () => {
+      const clientUser = await prisma.user.create({
+        data: {
+          fullName: 'Tenant A Client',
+          email: 'client-vendor@tenant-a.com',
+          password: '$2b$10$dummy.hash.for.testing',
+          role: 'CLIENT',
+          isActive: true,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(clientUser);
+
+      await request(app.getHttpServer())
+        .get('/vendors')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(403);
+
+      await prisma.user.delete({ where: { id: clientUser.id } });
+    });
+
+    it('should reject cross-tenant vendor access', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      const vendorB = await prisma.vendor.create({
+        data: {
+          name: 'Tenant B Vendor',
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .get(`/vendors/${vendorB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .patch(`/vendors/${vendorB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({ name: 'Hacked' })
+        .expect(403);
+
+      await request(app.getHttpServer())
+        .delete(`/vendors/${vendorB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
+    });
+
+    it('should only return vendors for the current tenant', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      await prisma.vendor.create({
+        data: {
+          name: 'Tenant A Vendor',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await prisma.vendor.create({
+        data: {
+          name: 'Tenant B Vendor',
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      const responseA = await request(app.getHttpServer())
+        .get('/vendors')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+
+      const responseB = await request(app.getHttpServer())
+        .get('/vendors')
+        .set('Authorization', `Bearer ${tokenB}`)
+        .expect(200);
+
+      expect(responseA.body.data.data).toBeDefined();
+      expect(responseB.body.data.data).toBeDefined();
+      responseA.body.data.data.forEach((vendor: any) => {
+        expect(vendor.tenantId).toBe(testData.tenantA.id);
+      });
+      responseB.body.data.data.forEach((vendor: any) => {
+        expect(vendor.tenantId).toBe(testData.tenantB.id);
+      });
+    });
+
+    it('should search vendors by name', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await prisma.vendor.create({
+        data: {
+          name: 'Globex Inc',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/vendors?search=Acme')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+      expect(response.body.data.data[0].name).toBe('Acme Corp');
+    });
+
+    it('should filter vendors by active status', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const vendor = await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/vendors/${vendor.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ isActive: false })
+        .expect(200);
+
+      const response = await request(app.getHttpServer())
+        .get('/vendors?isActive=false')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(response.body.data.data).toBeDefined();
+      expect(response.body.data.data.length).toBeGreaterThan(0);
+      expect(response.body.data.data[0].isActive).toBe(false);
+    });
+
+    it('should reject purchase with cross-tenant vendorId', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const vendorB = await prisma.vendor.create({
+        data: {
+          name: 'Tenant B Vendor',
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .post('/purchases')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          purchaseDate: '2024-01-15',
+          vendorId: vendorB.id,
+          description: 'Cross-tenant purchase',
+          subtotal: '1000.00',
+          tax: '100.00',
+          total: '1100.00',
+          paymentMethod: 'CASH',
+        })
+        .expect(403);
+    });
+
+    it('should reject purchase with inactive vendor', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const vendor = await prisma.vendor.create({
+        data: {
+          name: 'Inactive Vendor',
+          tenantId: testData.tenantA.id,
+          isActive: false,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .post('/purchases')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          purchaseDate: '2024-01-15',
+          vendorId: vendor.id,
+          description: 'Purchase with inactive vendor',
+          subtotal: '1000.00',
+          tax: '100.00',
+          total: '1100.00',
+          paymentMethod: 'CASH',
+        })
+        .expect(403);
+    });
+
+    it('should correctly display associated vendor in purchase', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const vendor = await prisma.vendor.create({
+        data: {
+          name: 'Acme Corp',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/purchases')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          purchaseDate: '2024-01-15',
+          vendorId: vendor.id,
+          description: 'Office supplies',
+          subtotal: '1000.00',
+          tax: '100.00',
+          total: '1100.00',
+          paymentMethod: 'BANK_TRANSFER',
+        })
+        .expect(201);
+
+      expect(response.body.data.vendor).toBeDefined();
+      expect(response.body.data.vendor.name).toBe('Acme Corp');
+    });
+
+    it('should allow vendor to be deleted when no purchases reference it', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const vendor = await prisma.vendor.create({
+        data: {
+          name: 'Orphan Vendor',
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .delete(`/vendors/${vendor.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      const deleted = await prisma.vendor.findUnique({
+        where: { id: vendor.id },
+      });
+      expect(deleted).toBeNull();
     });
   });
 });

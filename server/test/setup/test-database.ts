@@ -58,10 +58,17 @@ export async function cleanDatabase() {
 
   // Clean all tables in dependency order (children first)
   try {
+    await prisma.stockMovement.deleteMany();
+    await prisma.productWarehouse.deleteMany();
+    await prisma.product.deleteMany();
+    await prisma.warehouse.deleteMany();
+    await prisma.purchase.deleteMany();
+    await prisma.vendor.deleteMany();
     await prisma.attachment.deleteMany();
     await prisma.comment.deleteMany();
     await prisma.invoiceItem.deleteMany();
     await prisma.payment.deleteMany();
+    await prisma.paymentAllocation.deleteMany();
     await prisma.invoice.deleteMany();
     await prisma.task.deleteMany();
     await prisma.milestone.deleteMany();
@@ -79,6 +86,14 @@ export async function cleanDatabase() {
     await prisma.tenantMembership.deleteMany();
     await prisma.user.deleteMany();
     await prisma.tenant.deleteMany();
+
+    // Clean sales order tables if they exist (Step 4.8)
+    try {
+      await prisma.salesOrderItem.deleteMany();
+      await prisma.salesOrder.deleteMany();
+    } catch (error) {
+      // Tables may not exist if migration hasn't been applied
+    }
 
     console.log('✓ Test database cleaned');
   } catch (error) {
@@ -597,6 +612,102 @@ export async function setupTestDatabase() {
     },
   });
 
+  // Create warehouses for Tenant A
+  const tenantAWarehouse = await prisma.warehouse.create({
+    data: {
+      name: 'Tenant A Warehouse',
+      location: '123 Main St',
+      isDefault: true,
+      isActive: true,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create warehouses for Tenant B
+  const tenantBWarehouse = await prisma.warehouse.create({
+    data: {
+      name: 'Tenant B Warehouse',
+      location: '456 Oak Ave',
+      isDefault: true,
+      isActive: true,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create products for Tenant A
+  const tenantAProduct = await prisma.product.create({
+    data: {
+      sku: 'PROD-A-001',
+      name: 'Tenant A Product',
+      description: 'Test product for Tenant A',
+      unitPrice: 100.00,
+      costPrice: 50.00,
+      stockQuantity: 100,
+      minStockLevel: 10,
+      isActive: true,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create products for Tenant B
+  const tenantBProduct = await prisma.product.create({
+    data: {
+      sku: 'PROD-B-001',
+      name: 'Tenant B Product',
+      description: 'Test product for Tenant B',
+      unitPrice: 200.00,
+      costPrice: 100.00,
+      stockQuantity: 200,
+      minStockLevel: 20,
+      isActive: true,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create product warehouses for Tenant A
+  await prisma.productWarehouse.create({
+    data: {
+      productId: tenantAProduct.id,
+      warehouseId: tenantAWarehouse.id,
+      quantity: 100,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create product warehouses for Tenant B
+  await prisma.productWarehouse.create({
+    data: {
+      productId: tenantBProduct.id,
+      warehouseId: tenantBWarehouse.id,
+      quantity: 200,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create stock movements for Tenant A
+  const tenantAStockMovement = await prisma.stockMovement.create({
+    data: {
+      productId: tenantAProduct.id,
+      warehouseId: tenantAWarehouse.id,
+      type: 'IN',
+      quantity: 100,
+      notes: 'Initial stock',
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create stock movements for Tenant B
+  const tenantBStockMovement = await prisma.stockMovement.create({
+    data: {
+      productId: tenantBProduct.id,
+      warehouseId: tenantBWarehouse.id,
+      type: 'IN',
+      quantity: 200,
+      notes: 'Initial stock',
+      tenantId: tenantB.id,
+    },
+  });
+
   return {
     tenantA,
     tenantB,
@@ -638,6 +749,12 @@ export async function setupTestDatabase() {
     tenantBPayroll,
     tenantBDailyWorkReport,
     tenantBMilestone,
+    tenantAProduct,
+    tenantBProduct,
+    tenantAWarehouse,
+    tenantBWarehouse,
+    tenantAStockMovement,
+    tenantBStockMovement,
   };
 }
 

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
 import AttendanceTable from "../../components/attendance/AttendanceTable";
+import Pagination from "../../components/ui/Pagination";
 
 import {
   getAttendanceHistory,
@@ -16,113 +17,54 @@ function AttendanceHistoryPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const rowsPerPage = 10;
-
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    search,
-    statusFilter,
-    fromDate,
-    toDate,
-  ]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   const loadHistory = async () => {
     try {
-      const data = await getAttendanceHistory();
-
-      setAttendance(
-        Array.isArray(data)
-          ? data
-          : []
-      );
+      const result: any = await getAttendanceHistory(page, limit, search, statusFilter, fromDate, toDate);
+      setAttendance(result.data || []);
+      setTotalPages(result.totalPages || 1);
     } catch (err) {
       console.error(err);
-
-      toast.error(
-        "Failed to load attendance history."
-      );
+      toast.error("Failed to load attendance history.");
+      setAttendance([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredAttendance = useMemo(() => {
-    return attendance.filter((item) => {
-      const employeeName =
-        item.employee.user.fullName.toLowerCase();
+  useEffect(() => {
+    loadHistory();
+  }, [page, limit, search, statusFilter, fromDate, toDate]);
 
-      const employeeCode =
-        item.employee.employeeCode.toLowerCase();
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
-      const matchesSearch =
-        employeeName.includes(
-          search.toLowerCase()
-        ) ||
-        employeeCode.includes(
-          search.toLowerCase()
-        );
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
+    setPage(1);
+  };
 
-      const matchesStatus =
-        statusFilter === "" ||
-        item.status === statusFilter;
+  const handleFromDateChange = (value: string) => {
+    setFromDate(value);
+    setPage(1);
+  };
 
-      const attendanceDate = new Date(
-        item.date
-      );
-
-      const matchesFromDate =
-        fromDate === "" ||
-        attendanceDate >= new Date(fromDate);
-
-      const matchesToDate =
-        toDate === "" ||
-        attendanceDate <=
-          new Date(`${toDate}T23:59:59`);
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesFromDate &&
-        matchesToDate
-      );
-    });
-  }, [
-    attendance,
-    search,
-    statusFilter,
-    fromDate,
-    toDate,
-  ]);
-
-  const totalPages = Math.ceil(
-    filteredAttendance.length /
-      rowsPerPage
-  );
-
-  const paginatedAttendance =
-    filteredAttendance.slice(
-      (currentPage - 1) *
-        rowsPerPage,
-      currentPage *
-        rowsPerPage
-    );
+  const handleToDateChange = (value: string) => {
+    setToDate(value);
+    setPage(1);
+  };
 
   const exportCSV = () => {
-    if (filteredAttendance.length === 0) {
-      toast.error(
-        "No attendance records to export."
-      );
+    if (attendance.length === 0) {
+      toast.error("No attendance records to export.");
       return;
     }
 
@@ -136,30 +78,25 @@ function AttendanceHistoryPage() {
       "Status",
     ];
 
-    const rows =
-      filteredAttendance.map((item) => [
-        item.employee.user.fullName,
-        item.employee.employeeCode,
-        new Date(item.date).toLocaleDateString(),
-        item.checkIn
-          ? new Date(
-              item.checkIn
-            ).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "-",
-        item.checkOut
-          ? new Date(
-              item.checkOut
-            ).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "-",
-        item.workingHours ?? "-",
-        item.status,
-      ]);
+    const rows = attendance.map((item) => [
+      item.employee.user.fullName,
+      item.employee.employeeCode,
+      new Date(item.date).toLocaleDateString(),
+      item.checkIn
+        ? new Date(item.checkIn).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-",
+      item.checkOut
+        ? new Date(item.checkOut).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "-",
+      item.workingHours ?? "-",
+      item.status,
+    ]);
 
     const csvContent = [
       headers,
@@ -179,23 +116,13 @@ function AttendanceHistoryPage() {
       }
     );
 
-    const url =
-      URL.createObjectURL(blob);
-
-    const link =
-      document.createElement("a");
-
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
     link.href = url;
-    link.download =
-      "attendance-history.csv";
-
+    link.download = "attendance-history.csv";
     link.click();
-
     URL.revokeObjectURL(url);
-
-    toast.success(
-      "CSV exported successfully."
-    );
+    toast.success("CSV exported successfully.");
   };
 
   return (
@@ -225,7 +152,7 @@ function AttendanceHistoryPage() {
             placeholder="Search Employee..."
             value={search}
             onChange={(e) =>
-              setSearch(e.target.value)
+              handleSearch(e.target.value)
             }
             className="border rounded-lg px-4 py-3"
           />
@@ -233,9 +160,7 @@ function AttendanceHistoryPage() {
           <select
             value={statusFilter}
             onChange={(e) =>
-              setStatusFilter(
-                e.target.value
-              )
+              handleStatusChange(e.target.value)
             }
             className="border rounded-lg px-4 py-3"
           >
@@ -265,9 +190,7 @@ function AttendanceHistoryPage() {
             type="date"
             value={fromDate}
             onChange={(e) =>
-              setFromDate(
-                e.target.value
-              )
+              handleFromDateChange(e.target.value)
             }
             className="border rounded-lg px-4 py-3"
           />
@@ -276,9 +199,7 @@ function AttendanceHistoryPage() {
             type="date"
             value={toDate}
             onChange={(e) =>
-              setToDate(
-                e.target.value
-              )
+              handleToDateChange(e.target.value)
             }
             className="border rounded-lg px-4 py-3"
           />
@@ -293,55 +214,27 @@ function AttendanceHistoryPage() {
 
           </div>
 
+        ) : attendance.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-slate-500">No attendance records found.</p>
+          </div>
         ) : (
 
           <>
             <AttendanceTable
-              attendance={paginatedAttendance}
+              attendance={attendance}
             />
 
-            {totalPages > 1 && (
-
-              <div className="flex justify-center items-center gap-2 mt-6">
-
-                <button
-                  disabled={
-                    currentPage === 1
-                  }
-                  onClick={() =>
-                    setCurrentPage(
-                      (page) =>
-                        page - 1
-                    )
-                  }
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50"
-                >
-                  Previous
-                </button>
-
-                <span className="font-medium">
-                  Page {currentPage} of {totalPages}
-                </span>
-
-                <button
-                  disabled={
-                    currentPage ===
-                    totalPages
-                  }
-                  onClick={() =>
-                    setCurrentPage(
-                      (page) =>
-                        page + 1
-                    )
-                  }
-                  className="px-4 py-2 border rounded-lg disabled:opacity-50"
-                >
-                  Next
-                </button>
-
-              </div>
-
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              limit={limit}
+              onLimitChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
 
           </>
 

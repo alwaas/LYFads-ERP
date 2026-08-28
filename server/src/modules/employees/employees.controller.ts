@@ -13,6 +13,7 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -46,9 +47,10 @@ export class EmployeesController {
   )
   findAll(
     @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.employeesService.findAll(pagination, user.tenantId);
+    return this.employeesService.findAll(pagination, search, user.tenantId, user.role);
   }
 
   @Get(':id')
@@ -59,7 +61,7 @@ export class EmployeesController {
     UserRole.EMPLOYEE,
   )
   findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.employeesService.findOne(id, user.tenantId);
+    return this.employeesService.findOne(id, user.tenantId, user.role);
   }
 
   @Patch(':id')
@@ -70,6 +72,20 @@ export class EmployeesController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.employeesService.update(id, dto, user.tenantId);
+  }
+
+  @Patch('profile/me')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.MANAGER,
+    UserRole.EMPLOYEE,
+  )
+  updateSelfProfile(
+    @Body() dto: UpdateEmployeeDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.employeesService.updateSelfProfile(user, dto);
   }
 
   @Delete(':id')

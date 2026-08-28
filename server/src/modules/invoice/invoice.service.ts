@@ -9,6 +9,8 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { Prisma } from '@prisma/client';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Injectable()
 export class InvoiceService {
@@ -88,22 +90,51 @@ export class InvoiceService {
 
     return invoice;
   }
+  async findAll(pagination: PaginationDto, search: SearchDto, status?: string, userTenantId?: string) {
+    const { skip, limit } = pagination;
 
-  findAll(userTenantId: string) {
-    return this.prisma.invoice.findMany({
-      where: {
-        tenantId: userTenantId,
-      },
-      include: {
-        client: true,
-        project: true,
-        items: true,
-        payments: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const where: Record<string, unknown> = {
+      ...(userTenantId ? { tenantId: userTenantId } : {}),
+    };
+
+    if (search.search) {
+      where.client = {
+        is: {
+          companyName: { contains: search.search, mode: 'insensitive' },
+        },
+      };
+    }
+
+    if (status && ['DRAFT', 'SENT', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED'].includes(status)) {
+      where.status = status;
+    }
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.invoice.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          client: true,
+          project: true,
+          items: true,
+          payments: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+
+      this.prisma.invoice.count({ where }),
+    ]);
+
+    return {
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
+    };
   }
 
   async findOne(id: string, userTenantId: string) {

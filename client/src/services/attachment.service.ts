@@ -43,9 +43,23 @@ export const uploadAttachment = async (
   return response.data.data;
 };
 
-export const getAttachments = async (): Promise<Attachment[]> => {
-  const response = await api.get<AttachmentListResponse>("/attachments");
+export const getAttachments = async (page = 1, limit = 10, filters?: {
+  projectId?: string;
+  taskId?: string;
+  milestoneId?: string;
+  commentId?: string;
+  mimeType?: string;
+  search?: string;
+}): Promise<any> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (filters?.projectId) params.projectId = filters.projectId;
+  if (filters?.taskId) params.taskId = filters.taskId;
+  if (filters?.milestoneId) params.milestoneId = filters.milestoneId;
+  if (filters?.commentId) params.commentId = filters.commentId;
+  if (filters?.mimeType && filters.mimeType !== 'all') params.mimeType = filters.mimeType;
+  if (filters?.search) params.search = filters.search;
 
+  const response = await api.get<AttachmentListResponse>("/attachments", { params });
   return response.data.data;
 };
 
@@ -64,7 +78,6 @@ export const updateAttachment = async (
   data: Record<string, unknown>,
 ) => {
   const response = await api.patch(`/attachments/${id}`, data);
-
   return response.data.data;
 };
 
@@ -74,6 +87,5 @@ export const deleteAttachment = async (
   const response = await api.delete(
     `/attachments/${id}`,
   );
-
   return response.data;
 };

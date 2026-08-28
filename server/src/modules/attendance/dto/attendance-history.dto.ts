@@ -19,6 +19,18 @@ export class AttendanceHistoryDto {
   @IsString()
   search?: string;
 
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  fromDate?: string;
+
+  @IsOptional()
+  @IsString()
+  toDate?: string;
+
   get skip() {
     return (this.page - 1) * this.limit;
   }

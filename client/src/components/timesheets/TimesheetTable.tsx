@@ -1,6 +1,13 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Pencil, Eye, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
 import type { Timesheet } from "../../types/timesheet";
+import {
+  submitTimesheet,
+  approveTimesheet,
+  rejectTimesheet,
+} from "../../services/timesheet.service";
 
 type Props = {
   timesheets: Timesheet[];
@@ -13,6 +20,45 @@ export default function TimesheetTable({
   onDelete,
   deletingId,
 }: Props) {
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const handleSubmit = async (id: string) => {
+    try {
+      await submitTimesheet(id);
+      toast.success("Timesheet submitted.");
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? "Failed to submit timesheet.");
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    try {
+      await approveTimesheet(id);
+      toast.success("Timesheet approved.");
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? "Failed to approve timesheet.");
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    if (!rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason.");
+      return;
+    }
+    try {
+      await rejectTimesheet(id, rejectionReason);
+      toast.success("Timesheet rejected.");
+      setRejectingId(null);
+      setRejectionReason("");
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? "Failed to reject timesheet.");
+    }
+  };
+
   if (!timesheets.length) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-10 text-center">
@@ -22,6 +68,13 @@ export default function TimesheetTable({
       </div>
     );
   }
+
+  const statusColors: Record<string, string> = {
+    DRAFT: "bg-gray-100 text-gray-700",
+    SUBMITTED: "bg-yellow-100 text-yellow-700",
+    APPROVED: "bg-green-100 text-green-700",
+    REJECTED: "bg-red-100 text-red-700",
+  };
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -47,6 +100,10 @@ export default function TimesheetTable({
 
               <th className="px-5 py-3 font-semibold text-gray-700">
                 Hours
+              </th>
+
+              <th className="px-5 py-3 font-semibold text-gray-700">
+                Status
               </th>
 
               <th className="px-5 py-3 text-right font-semibold text-gray-700">
@@ -95,6 +152,26 @@ export default function TimesheetTable({
                 </td>
 
                 <td className="px-5 py-4">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      statusColors[timesheet.status] || "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {timesheet.status}
+                  </span>
+                  {timesheet.status === "REJECTED" && timesheet.rejectionReason && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {timesheet.rejectionReason}
+                    </p>
+                  )}
+                  {timesheet.approvedBy && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      By {timesheet.approvedBy.fullName}
+                    </p>
+                  )}
+                </td>
+
+                <td className="px-5 py-4">
                   <div className="flex justify-end gap-2">
                     <Link
                       to={`/timesheets/view/${timesheet.id}`}
@@ -103,6 +180,66 @@ export default function TimesheetTable({
                     >
                       <Eye size={17} />
                     </Link>
+
+                    {timesheet.status === "DRAFT" && (
+                      <button
+                        type="button"
+                        onClick={() => handleSubmit(timesheet.id)}
+                        className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-green-600"
+                        title="Submit"
+                      >
+                        Submit
+                      </button>
+                    )}
+
+                    {timesheet.status === "SUBMITTED" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(timesheet.id)}
+                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-green-600"
+                          title="Approve"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRejectingId(timesheet.id)}
+                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-red-600"
+                          title="Reject"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+
+                    {rejectingId === timesheet.id && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          placeholder="Reason"
+                          className="border rounded px-2 py-1 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleReject(timesheet.id)}
+                          className="rounded-lg p-2 text-red-600 hover:bg-red-50"
+                          title="Confirm Reject"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setRejectingId(null); setRejectionReason(""); }}
+                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+                          title="Cancel"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
 
                     <Link
                       to={`/timesheets/edit/${timesheet.id}`}
@@ -114,9 +251,7 @@ export default function TimesheetTable({
 
                     <button
                       type="button"
-                      disabled={
-                        deletingId === timesheet.id
-                      }
+                      disabled={deletingId === timesheet.id}
                       onClick={() =>
                         onDelete(timesheet.id)
                       }

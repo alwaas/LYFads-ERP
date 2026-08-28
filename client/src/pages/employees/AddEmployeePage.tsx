@@ -1,26 +1,59 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { ArrowLeft } from "lucide-react";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
-import EmployeeForm, { type EmployeeFormData } from "../../components/employees/EmployeeForm";
-import { createEmployee } from "../../services/employee.service";
+import EmployeeForm from "../../components/employees/EmployeeForm";
+import { createEmployee, getManagers } from "../../services/employee.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
+import type { CreateEmployeeFormData, EditEmployeeFormData } from "../../features/validation/employee.schema";
+
+type Manager = {
+  id: string;
+  user: {
+    fullName: string;
+  };
+};
 
 function AddEmployeePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
+  const [managers, setManagers] = useState<Manager[]>([]);
 
-  const handleSubmit = async (values: EmployeeFormData) => {
+  useEffect(() => {
+    loadManagers();
+  }, []);
+
+  const loadManagers = async () => {
+    try {
+      const data = await getManagers();
+      setManagers(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleSubmit = async (values: CreateEmployeeFormData | EditEmployeeFormData) => {
+    setServerErrors({});
     try {
       setLoading(true);
       await createEmployee(values);
       toast.success("Employee created successfully.");
       navigate("/employees");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.response?.data?.message ?? "Failed to create employee.");
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error(
+          (error as any)?.response?.data?.message ?? "Failed to create employee."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -49,7 +82,7 @@ function AddEmployeePage() {
           </div>
 
           <div className="w-full">
-            <EmployeeForm loading={loading} onSubmit={handleSubmit} />
+            <EmployeeForm loading={loading} onSubmit={handleSubmit} serverErrors={serverErrors} managers={managers} />
           </div>
         </div>
       </PageContainer>

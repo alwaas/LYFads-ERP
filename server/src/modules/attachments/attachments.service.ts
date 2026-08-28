@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Injectable()
 export class AttachmentsService {
@@ -166,49 +168,79 @@ export class AttachmentsService {
   }
 
   async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
     userTenantId: string,
     filters?: {
       projectId?: string;
       taskId?: string;
       milestoneId?: string;
       commentId?: string;
+      mimeType?: string;
     },
   ) {
-    const where = {
+    const { skip, limit } = pagination;
+
+    const where: Record<string, unknown> = {
       tenantId: userTenantId,
       ...(filters?.projectId ? { projectId: filters.projectId } : {}),
-
       ...(filters?.taskId ? { taskId: filters.taskId } : {}),
-
       ...(filters?.milestoneId ? { milestoneId: filters.milestoneId } : {}),
-
       ...(filters?.commentId ? { commentId: filters.commentId } : {}),
     };
 
-    return this.prisma.attachment.findMany({
-      where,
+    if (search.search) {
+      where.OR = [
+        { fileName: { contains: search.search, mode: 'insensitive' } },
+        { originalName: { contains: search.search, mode: 'insensitive' } },
+      ];
+    }
 
-      include: {
-        user: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-            role: true,
-            isActive: true,
+    if (filters?.mimeType && filters.mimeType !== 'all') {
+      if (filters.mimeType === 'other') {
+        where.AND = [
+          { mimeType: { not: { startsWith: 'image/' } } },
+          { mimeType: { not: { startsWith: 'application/pdf' } } },
+        ];
+      } else {
+        where.mimeType = { startsWith: filters.mimeType };
+      }
+    }
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.attachment.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+              isActive: true,
+            },
           },
+          project: true,
+          task: true,
+          milestone: true,
+          comment: true,
         },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.attachment.count({ where }),
+    ]);
 
-        project: true,
-        task: true,
-        milestone: true,
-        comment: true,
-      },
-
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return {
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
+    };
   }
 
   async findOne(id: string, userTenantId: string) {

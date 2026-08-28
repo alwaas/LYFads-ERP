@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import MilestoneTable from "../../components/milestones/MilestoneTable";
+import Pagination from "../../components/ui/Pagination";
 import {
   deleteMilestone,
   getMilestones,
@@ -26,13 +27,18 @@ function MilestonesPage() {
   const [priorityFilter, setPriorityFilter] =
     useState("ALL");
 
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
   const loadMilestones = async () => {
     try {
       setLoading(true);
 
-      const data = await getMilestones();
+      const result: any = await getMilestones(page, limit, undefined, statusFilter, priorityFilter);
 
-      setMilestones(data ?? []);
+      setMilestones(result.data || []);
+      setTotalPages(result.totalPages || 1);
     } catch (error) {
       console.error(
         "Failed to load milestones:",
@@ -47,25 +53,7 @@ function MilestonesPage() {
 
   useEffect(() => {
     void loadMilestones();
-  }, []);
-
-  const filteredMilestones = useMemo(() => {
-    return milestones.filter((milestone) => {
-      const statusMatches =
-        statusFilter === "ALL" ||
-        milestone.status === statusFilter;
-
-      const priorityMatches =
-        priorityFilter === "ALL" ||
-        milestone.priority === priorityFilter;
-
-      return statusMatches && priorityMatches;
-    });
-  }, [
-    milestones,
-    statusFilter,
-    priorityFilter,
-  ]);
+  }, [page, limit, statusFilter, priorityFilter]);
 
   const handleDelete = async (id: string) => {
     const confirmed = window.confirm(
@@ -132,9 +120,10 @@ function MilestonesPage() {
 
             <select
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value)
-              }
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setPage(1);
+              }}
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="ALL">
@@ -166,9 +155,10 @@ function MilestonesPage() {
 
             <select
               value={priorityFilter}
-              onChange={(event) =>
-                setPriorityFilter(event.target.value)
-              }
+              onChange={(event) => {
+                setPriorityFilter(event.target.value);
+                setPage(1);
+              }}
               className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="ALL">
@@ -186,7 +176,7 @@ function MilestonesPage() {
 
       {/* Table */}
       <MilestoneTable
-        milestones={filteredMilestones}
+        milestones={milestones}
         loading={loading}
         onView={(id) =>
           navigate(
@@ -205,6 +195,17 @@ function MilestonesPage() {
           )
         }
         onDelete={handleDelete}
+      />
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        limit={limit}
+        onLimitChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
       />
     </div>
   );

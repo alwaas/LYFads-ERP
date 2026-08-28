@@ -17,6 +17,8 @@ import type { Task } from "../../types/task";
 
 import type { CreateDailyWorkReportDto } from "../../types/daily-work-report";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function AddDailyWorkReportPage() {
   const navigate = useNavigate();
 
@@ -26,6 +28,8 @@ function AddDailyWorkReportPage() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   const loadData = async () => {
     try {
@@ -59,21 +63,9 @@ function AddDailyWorkReportPage() {
   const handleSubmit = async (
     values: CreateDailyWorkReportDto
   ) => {
+    setServerErrors({});
     try {
       setSubmitting(true);
-
-      const hours = Number(values.hoursWorked);
-
-      if (
-        !Number.isFinite(hours) ||
-        hours < 0 ||
-        hours > 24
-      ) {
-        toast.error(
-          "Hours Worked must be between 0 and 24."
-        );
-        return;
-      }
 
       const payload: CreateDailyWorkReportDto = {
         employeeId: values.employeeId,
@@ -96,7 +88,6 @@ function AddDailyWorkReportPage() {
         tomorrowPlan:
           values.tomorrowPlan || undefined,
 
-
         status: values.status,
 
         managerRemarks:
@@ -113,20 +104,20 @@ function AddDailyWorkReportPage() {
     } catch (error: unknown) {
       console.error(error);
 
-      const message =
-        typeof error === "object" && error !== null &&
-        "response" in error &&
-        typeof (error as any).response === "object" &&
-        (error as any).response !== null
-          ? (error as any).response.data?.message
-          : undefined;
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        const message =
+          (error as any)?.response?.data?.message;
 
-      toast.error(
-        Array.isArray(message)
-          ? message[0]
-          : message ??
-              "Failed to create daily work report."
-      );
+        toast.error(
+          Array.isArray(message)
+            ? message[0]
+            : message ??
+                "Failed to create daily work report."
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -159,6 +150,7 @@ function AddDailyWorkReportPage() {
             tasks={tasks}
             loading={submitting}
             onSubmit={handleSubmit}
+            serverErrors={serverErrors}
           />
         )}
 

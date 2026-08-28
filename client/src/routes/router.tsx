@@ -1,6 +1,7 @@
 import PageLoader from "../components/common/PageLoader";
 import { createBrowserRouter } from "react-router-dom";
 import { lazy, Suspense } from "react";
+import { ROLES } from "../constants/roles";
 
 const LoginPage = lazy(
   () => import("../pages/auth/LoginPage")
@@ -24,6 +25,46 @@ const EditEmployeePage = lazy(
 
 const ViewEmployeePage = lazy(
   () => import("../pages/employees/ViewEmployeePage")
+);
+
+const MyProfilePage = lazy(
+  () => import("../pages/employees/MyProfilePage")
+);
+
+const UsersPage = lazy(
+  () => import("../pages/users/UsersPage")
+);
+
+const AddUserPage = lazy(
+  () => import("../pages/users/AddUserPage")
+);
+
+const EditUserPage = lazy(
+  () => import("../pages/users/EditUserPage")
+);
+
+const ViewUserPage = lazy(
+  () => import("../pages/users/ViewUserPage")
+);
+
+const KanbanPage = lazy(
+  () => import("../pages/kanban/KanbanPage")
+);
+
+const PayrollPage = lazy(
+  () => import("../pages/payroll/PayrollPage")
+);
+
+const AddPayrollPage = lazy(
+  () => import("../pages/payroll/AddPayrollPage")
+);
+
+const EditPayrollPage = lazy(
+  () => import("../pages/payroll/EditPayrollPage")
+);
+
+const ViewPayrollPage = lazy(
+  () => import("../pages/payroll/ViewPayrollPage")
 );
 
 const ProjectsPage = lazy(
@@ -155,7 +196,67 @@ const ViewLeadPage = lazy(
 );
 
 const ReportsPage = lazy(
-  () => import("../pages/reports/ReportsPage")
+  () => import("../pages/reports/ReportsDashboardPage")
+);
+
+const SalesReportPage = lazy(
+  () => import("../pages/reports/SalesReportPage")
+);
+
+const ReceivablesReportPage = lazy(
+  () => import("../pages/reports/ReceivablesReportPage")
+);
+
+const CustomerReportPage = lazy(
+  () => import("../pages/reports/CustomerReportPage")
+);
+
+const ExpenseReportPage = lazy(
+  () => import("../pages/reports/ExpenseReportPage")
+);
+
+const PurchaseReportPage = lazy(
+  () => import("../pages/reports/PurchaseReportPage")
+);
+
+const VendorReportPage = lazy(
+  () => import("../pages/reports/VendorReportPage")
+);
+
+const ProfitabilityReportPage = lazy(
+  () => import("../pages/reports/ProfitabilityReportPage")
+);
+
+const EmployeeDirectoryReportPage = lazy(
+  () => import("../pages/reports/EmployeeDirectoryReportPage")
+);
+
+const AttendanceSummaryReportPage = lazy(
+  () => import("../pages/reports/AttendanceSummaryReportPage")
+);
+
+const LeaveReportPage = lazy(
+  () => import("../pages/reports/LeaveReportPage")
+);
+
+const PayrollSummaryReportPage = lazy(
+  () => import("../pages/reports/PayrollSummaryReportPage")
+);
+
+const SalesOrdersPage = lazy(
+  () => import("../pages/sales-orders/SalesOrdersPage")
+);
+
+const AddSalesOrderPage = lazy(
+  () => import("../pages/sales-orders/AddSalesOrderPage")
+);
+
+const EditSalesOrderPage = lazy(
+  () => import("../pages/sales-orders/EditSalesOrderPage")
+);
+
+const ViewSalesOrderPage = lazy(
+  () => import("../pages/sales-orders/ViewSalesOrderPage")
 );
 
 const NotificationsPage = lazy(
@@ -230,6 +331,90 @@ const ViewPaymentPage = lazy(
   () => import("../pages/payments/ViewPaymentPage")
 );
 
+const PaymentAllocationsPage = lazy(
+  () => import("../pages/payments/allocations/PaymentAllocationsPage")
+);
+
+const AddPaymentAllocationPage = lazy(
+  () => import("../pages/payments/allocations/AddPaymentAllocationPage")
+);
+
+const ExpensesPage = lazy(
+  () => import("../pages/expenses/ExpensesPage")
+);
+
+const AddExpensePage = lazy(
+  () => import("../pages/expenses/AddExpensePage")
+);
+
+const EditExpensePage = lazy(
+  () => import("../pages/expenses/EditExpensePage")
+);
+
+const PurchasesPage = lazy(
+  () => import("../pages/purchases/PurchasesPage")
+);
+
+const AddPurchasePage = lazy(
+  () => import("../pages/purchases/AddPurchasePage")
+);
+
+const EditPurchasePage = lazy(
+  () => import("../pages/purchases/EditPurchasePage")
+);
+
+const VendorsPage = lazy(
+  () => import("../pages/vendors/VendorsPage")
+);
+
+const AddVendorPage = lazy(
+  () => import("../pages/vendors/AddVendorPage")
+);
+
+const EditVendorPage = lazy(
+  () => import("../pages/vendors/EditVendorPage")
+);
+
+const ViewVendorPage = lazy(
+  () => import("../pages/vendors/ViewVendorPage")
+);
+
+const ProductsPage = lazy(
+  () => import("../pages/products/ProductsPage")
+);
+
+const AddProductPage = lazy(
+  () => import("../pages/products/AddProductPage")
+);
+
+const EditProductPage = lazy(
+  () => import("../pages/products/EditProductPage")
+);
+
+const ViewProductPage = lazy(
+  () => import("../pages/products/ViewProductPage")
+);
+
+const WarehousesPage = lazy(
+  () => import("../pages/warehouses/WarehousesPage")
+);
+
+const AddWarehousePage = lazy(
+  () => import("../pages/warehouses/AddWarehousePage")
+);
+
+const EditWarehousePage = lazy(
+  () => import("../pages/warehouses/EditWarehousePage")
+);
+
+const ViewWarehousePage = lazy(
+  () => import("../pages/warehouses/ViewWarehousePage")
+);
+
+const StockMovementsPage = lazy(
+  () => import("../pages/stock-movements/StockMovementsPage")
+);
+
 const AttachmentsPage = lazy(
   () => import("../pages/attachments/AttachmentsPage")
 );
@@ -264,7 +449,7 @@ const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <DashboardPage />
         </Suspense>
@@ -275,7 +460,7 @@ const router = createBrowserRouter([
   {
     path: "/employees",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <EmployeesPage />
         </Suspense>
@@ -286,7 +471,7 @@ const router = createBrowserRouter([
   {
     path: "/employees/view/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ViewEmployeePage />
         </Suspense>
@@ -297,7 +482,7 @@ const router = createBrowserRouter([
   {
     path: "/employees/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
         <Suspense fallback={<PageLoader />}>
           <AddEmployeePage />
         </Suspense>
@@ -308,7 +493,7 @@ const router = createBrowserRouter([
   {
     path: "/employees/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
         <Suspense fallback={<PageLoader />}>
           <EditEmployeePage />
         </Suspense>
@@ -317,9 +502,64 @@ const router = createBrowserRouter([
   },
 
   {
+    path: "/employees/profile/me",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
+        <Suspense fallback={<PageLoader />}>
+          <MyProfilePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/users",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
+        <Suspense fallback={<PageLoader />}>
+          <UsersPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/users/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddUserPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/users/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditUserPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/users/view/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewUserPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
     path: "/clients/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
         <Suspense fallback={<PageLoader />}>
           <EditClientPage />
         </Suspense>
@@ -330,7 +570,7 @@ const router = createBrowserRouter([
   {
     path: "/clients",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ClientsPage />
         </Suspense> 
@@ -341,7 +581,7 @@ const router = createBrowserRouter([
   {
     path: "/clients/view/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ViewClientPage />
         </Suspense>
@@ -352,7 +592,7 @@ const router = createBrowserRouter([
   {
     path: "/clients/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
         <Suspense fallback={<PageLoader />}>
           <AddClientPage />
         </Suspense>
@@ -363,7 +603,7 @@ const router = createBrowserRouter([
   {
     path: "/projects",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ProjectsPage />
         </Suspense>
@@ -374,7 +614,7 @@ const router = createBrowserRouter([
   {
     path: "/projects/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <AddProjectPage />
         </Suspense>
@@ -384,7 +624,7 @@ const router = createBrowserRouter([
   {
     path: "/projects/view/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ViewProjectPage />
         </Suspense>
@@ -394,9 +634,19 @@ const router = createBrowserRouter([
   {
     path: "/projects/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <EditProjectPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/projects/:projectId/kanban",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
+        <Suspense fallback={<PageLoader />}>
+          <KanbanPage />
         </Suspense>
       </ProtectedRoute>
     ),
@@ -405,7 +655,7 @@ const router = createBrowserRouter([
   {
     path: "/milestones",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <MilestonesPage />
         </Suspense>
@@ -416,7 +666,7 @@ const router = createBrowserRouter([
   {
     path: "/timeline",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <TimelinePage />
       </ProtectedRoute>
     ),
@@ -425,7 +675,7 @@ const router = createBrowserRouter([
   {
     path: "/milestones/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <AddMilestonePage />
         </Suspense>
@@ -436,7 +686,7 @@ const router = createBrowserRouter([
   {
     path: "/milestones/view/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ViewMilestonePage />
         </Suspense>
@@ -447,7 +697,7 @@ const router = createBrowserRouter([
   {
     path: "/milestones/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <EditMilestonePage />
         </Suspense>
@@ -458,7 +708,7 @@ const router = createBrowserRouter([
   {
     path: "/tasks",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <TasksPage />
         </Suspense>
@@ -469,7 +719,7 @@ const router = createBrowserRouter([
   {
     path: "/tasks/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <AddTaskPage />
         </Suspense>
@@ -480,7 +730,7 @@ const router = createBrowserRouter([
   {
     path: "/tasks/view/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ViewTaskPage />
         </Suspense>
@@ -491,7 +741,7 @@ const router = createBrowserRouter([
   {
     path: "/tasks/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <EditTaskPage />
         </Suspense>
@@ -502,7 +752,7 @@ const router = createBrowserRouter([
   {
     path: "/timesheets",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <TimesheetsPage />
       </ProtectedRoute>
     ),
@@ -511,7 +761,7 @@ const router = createBrowserRouter([
   {
     path: "/timesheets/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <AddTimesheetPage />
       </ProtectedRoute>
     ),
@@ -520,7 +770,7 @@ const router = createBrowserRouter([
   {
     path: "/timesheets/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <EditTimesheetPage />
       </ProtectedRoute>
     ),
@@ -529,7 +779,7 @@ const router = createBrowserRouter([
   {
     path: "/timesheets/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <ViewTimesheetPage />
       </ProtectedRoute>
     ),
@@ -538,7 +788,7 @@ const router = createBrowserRouter([
   {
     path: "/project-timeline",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ProjectTimelinePage />
         </Suspense>
@@ -549,7 +799,7 @@ const router = createBrowserRouter([
   {
     path: "/invoices",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <InvoicesPage />
         </Suspense>
@@ -560,7 +810,7 @@ const router = createBrowserRouter([
   {
     path: "/invoices/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <AddInvoicePage />
         </Suspense>
@@ -571,7 +821,7 @@ const router = createBrowserRouter([
   {
     path: "/invoices/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <EditInvoicePage />
         </Suspense>
@@ -582,7 +832,7 @@ const router = createBrowserRouter([
   {
     path: "/invoices/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <ViewInvoicePage />
         </Suspense>
@@ -593,7 +843,7 @@ const router = createBrowserRouter([
   {
     path: "/payments",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <PaymentsPage />
         </Suspense>
@@ -604,7 +854,7 @@ const router = createBrowserRouter([
   {
     path: "/payments/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <AddPaymentPage />
         </Suspense>
@@ -615,7 +865,7 @@ const router = createBrowserRouter([
   {
     path: "/payments/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <EditPaymentPage />
         </Suspense>
@@ -626,7 +876,7 @@ const router = createBrowserRouter([
   {
     path: "/payments/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <ViewPaymentPage />
         </Suspense>
@@ -635,9 +885,240 @@ const router = createBrowserRouter([
   },
 
   {
+    path: "/payments/allocations",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <PaymentAllocationsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/payments/allocations/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddPaymentAllocationPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/expenses",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ExpensesPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/expenses/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddExpensePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/expenses/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditExpensePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchases",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <PurchasesPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchases/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddPurchasePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchases/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditPurchasePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendors",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <VendorsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendors/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddVendorPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendors/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditVendorPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendors/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewVendorPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/products",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ProductsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/products/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddProductPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/products/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditProductPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/products/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewProductPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/warehouses",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <WarehousesPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/warehouses/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddWarehousePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/warehouses/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditWarehousePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/warehouses/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewWarehousePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/stock-movements",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <StockMovementsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
     path: "/attachments",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <AttachmentsPage />
         </Suspense>
@@ -648,7 +1129,7 @@ const router = createBrowserRouter([
   {
     path: "/attendance",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <AttendancePage />
         </Suspense>
@@ -658,7 +1139,7 @@ const router = createBrowserRouter([
   {
     path: "/attendance/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <AddAttendancePage />
         </Suspense>
@@ -668,7 +1149,7 @@ const router = createBrowserRouter([
   {
     path: "/attendance/check-in",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <CheckInPage />
         </Suspense>
@@ -678,7 +1159,7 @@ const router = createBrowserRouter([
   {
     path: "/attendance/history",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <AttendanceHistoryPage />
         </Suspense>
@@ -689,7 +1170,7 @@ const router = createBrowserRouter([
   {
     path: "/leaves",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <LeavesPage />
         </Suspense>
@@ -699,7 +1180,7 @@ const router = createBrowserRouter([
   {
     path: "/leaves/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <AddLeavePage />
         </Suspense>
@@ -709,7 +1190,7 @@ const router = createBrowserRouter([
   {
     path: "/leaves/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <EditLeavePage />
         </Suspense>
@@ -719,7 +1200,7 @@ const router = createBrowserRouter([
   {
     path: "/leaves/view/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ViewLeavePage />
         </Suspense>
@@ -730,7 +1211,7 @@ const router = createBrowserRouter([
   {
     path: "/daily-work-reports",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <DailyWorkReportsPage />
         </Suspense>
@@ -741,7 +1222,7 @@ const router = createBrowserRouter([
   {
     path: "/daily-work-reports/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <AddDailyWorkReportPage />
         </Suspense>
@@ -752,7 +1233,7 @@ const router = createBrowserRouter([
   {
     path: "/daily-work-reports/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <EditDailyWorkReportPage />
         </Suspense>
@@ -763,7 +1244,7 @@ const router = createBrowserRouter([
   {
     path: "/daily-work-reports/view/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ViewDailyWorkReportPage />
         </Suspense>
@@ -772,9 +1253,53 @@ const router = createBrowserRouter([
   },
 
   {
+    path: "/payroll",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <PayrollPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/payroll/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddPayrollPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/payroll/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditPayrollPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/payroll/view/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewPayrollPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
     path: "/notifications",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <NotificationsPage />
         </Suspense>
@@ -785,7 +1310,7 @@ const router = createBrowserRouter([
   {
     path: "/activity-logs",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
         <Suspense fallback={<PageLoader />}>
           <ActivityLogsPage />
         </Suspense>
@@ -805,9 +1330,130 @@ const router = createBrowserRouter([
   },
 
   {
-    path: "/comments",
+    path: "/reports/sales",
     element: (
       <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <SalesReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/receivables",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ReceivablesReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/customers",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <CustomerReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/expenses",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ExpenseReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/purchases",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <PurchaseReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/vendors",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <VendorReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/profitability",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ProfitabilityReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/employees",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EmployeeDirectoryReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/attendance-summary",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AttendanceSummaryReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/leave-report",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <LeaveReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/payroll-summary",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <PayrollSummaryReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/comments",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <CommentsPage />
         </Suspense>
@@ -818,7 +1464,7 @@ const router = createBrowserRouter([
   {
     path: "/comments/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <AddCommentPage />
         </Suspense>
@@ -829,7 +1475,7 @@ const router = createBrowserRouter([
   {
     path: "/comments/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <EditCommentPage />
         </Suspense>
@@ -840,7 +1486,7 @@ const router = createBrowserRouter([
   {
     path: "/crm",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <LeadsPage />
         </Suspense>
@@ -851,7 +1497,7 @@ const router = createBrowserRouter([
   {
     path: "/crm/add",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <AddLeadPage />
         </Suspense>
@@ -862,7 +1508,7 @@ const router = createBrowserRouter([
   {
     path: "/crm/edit/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <EditLeadPage />
         </Suspense>
@@ -873,7 +1519,7 @@ const router = createBrowserRouter([
   {
     path: "/crm/view/:id",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
         <Suspense fallback={<PageLoader />}>
           <ViewLeadPage />
         </Suspense>
@@ -882,9 +1528,53 @@ const router = createBrowserRouter([
   },
 
   {
+    path: "/sales-orders",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <SalesOrdersPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/sales-orders/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddSalesOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/sales-orders/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditSalesOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/sales-orders/view/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewSalesOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
     path: "/settings",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
         <Suspense fallback={<PageLoader />}>
           <SettingsPage />
         </Suspense>

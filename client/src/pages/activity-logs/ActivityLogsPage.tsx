@@ -4,9 +4,10 @@ import { History, Search, Filter, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 
 import PageLoader from "../../components/common/PageLoader";
-import api from "../../services/api";
+import Pagination from "../../components/ui/Pagination";
+import { getTimeline } from "../../services/timeline.service";
 
-interface ActivityLog {
+type ActivityLog = {
   id: string;
   action: string;
   module: string;
@@ -21,23 +22,22 @@ interface ActivityLog {
     email: string;
     role: string;
   };
-}
+};
 
 const ActivityLogsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [moduleFilter, setModuleFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
-  const { data: logs = [], isLoading, isError, refetch } = useQuery<ActivityLog[]>({
-    queryKey: ["activity-logs"],
-    queryFn: async () => {
-      const response = await api.get("/activity-logs");
-      // Backend returns paginated response: { data: [...], total, page, limit, totalPages }
-      const logsData = response.data.data || response.data;
-      // If response is paginated object, extract the data array
-      return Array.isArray(logsData) ? logsData : (logsData.data || []);
-    },
+  const { data: result, isLoading, isError, refetch } = useQuery({
+    queryKey: ["activity-logs", page, limit],
+    queryFn: () => getTimeline(page, limit),
   });
+
+  const logs: ActivityLog[] = result?.data || [];
+  const totalPages = result?.totalPages || 1;
 
   const modules = Array.from(new Set(logs.map((log) => log.module).filter(Boolean))).sort();
   const actions = Array.from(new Set(logs.map((log) => log.action).filter(Boolean))).sort();
@@ -63,6 +63,21 @@ const ActivityLogsPage = () => {
     } catch {
       toast.error("Failed to refresh activity logs");
     }
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    setPage(1);
+  };
+
+  const handleModuleChange = (value: string) => {
+    setModuleFilter(value);
+    setPage(1);
+  };
+
+  const handleActionChange = (value: string) => {
+    setActionFilter(value);
+    setPage(1);
   };
 
   if (isLoading) {
@@ -111,7 +126,7 @@ const ActivityLogsPage = () => {
                 type="text"
                 placeholder="Search logs..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -120,7 +135,7 @@ const ActivityLogsPage = () => {
               <Filter className="h-4 w-4 text-slate-400" />
               <select
                 value={moduleFilter}
-                onChange={(e) => setModuleFilter(e.target.value)}
+                onChange={(e) => handleModuleChange(e.target.value)}
                 className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">All Modules</option>
@@ -133,7 +148,7 @@ const ActivityLogsPage = () => {
 
               <select
                 value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value)}
+                onChange={(e) => handleActionChange(e.target.value)}
                 className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">All Actions</option>
@@ -209,6 +224,17 @@ const ActivityLogsPage = () => {
           </table>
         </div>
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        limit={limit}
+        onLimitChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
+      />
     </div>
   );
 };

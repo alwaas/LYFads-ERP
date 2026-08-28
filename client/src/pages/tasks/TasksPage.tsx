@@ -7,6 +7,7 @@ import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
 import TaskTable from "../../components/tasks/TaskTable";
 import TaskStats from "../../components/tasks/TaskStats";
+import Pagination from "../../components/ui/Pagination";
 
 import { getTasks, deleteTask } from "../../services/task.service";
 import type { Task } from "../../types/task";
@@ -18,17 +19,16 @@ function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    loadTasks();
-  }, []);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   const loadTasks = async () => {
     try {
       setLoading(true);
-      const data = await getTasks();
-      // Ensure data is always an array
-      setTasks(Array.isArray(data) ? data : data?.tasks || []);
+      const result: any = await getTasks(page, limit, search);
+      setTasks(result.data || []);
+      setTotalPages(result.totalPages || 1);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load tasks.");
@@ -38,11 +38,16 @@ function TasksPage() {
     }
   };
 
+  useEffect(() => {
+    loadTasks();
+  }, [page, limit]);
+
   const refresh = async () => {
     try {
       setRefreshing(true);
-      const data = await getTasks();
-      setTasks(Array.isArray(data) ? data : data?.tasks || []);
+      const result: any = await getTasks(page, limit, search);
+      setTasks(result.data || []);
+      setTotalPages(result.totalPages || 1);
       toast.success("Tasks refreshed successfully.");
     } catch (error) {
       console.error(error);
@@ -57,7 +62,7 @@ function TasksPage() {
 
     try {
       await deleteTask(id);
-      setTasks((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []));
+      setTasks((prev) => prev.filter((x) => x.id !== id));
       toast.success("Task deleted successfully.");
     } catch (error) {
       console.error(error);
@@ -65,15 +70,27 @@ function TasksPage() {
     }
   };
 
-  // Safe filtering even if tasks is not a valid array initially
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   const safeTasks = Array.isArray(tasks) ? tasks : [];
-  const filteredTasks = safeTasks.filter((task) => {
-    const keyword = search.toLowerCase();
+
+  if (loading) {
     return (
-      (task.title ?? "").toLowerCase().includes(keyword) ||
-      (task.description ?? "").toLowerCase().includes(keyword)
+      <DashboardLayout>
+        <PageContainer>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+              <p className="mt-4 text-sm text-slate-500">Loading tasks...</p>
+            </div>
+          </div>
+        </PageContainer>
+      </DashboardLayout>
     );
-  });
+  }
 
   return (
     <DashboardLayout>
@@ -123,18 +140,14 @@ function TasksPage() {
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search by task title or description..."
               className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none shadow-2xs transition"
             />
           </div>
 
           {/* Table Content */}
-          {loading ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-2xs">
-              <p className="text-slate-500 text-base animate-pulse font-medium">Loading Tasks...</p>
-            </div>
-          ) : filteredTasks.length === 0 ? (
+          {safeTasks.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-12 sm:p-16 text-center shadow-2xs space-y-3">
               <h3 className="text-lg sm:text-xl font-bold text-slate-800">No Tasks Found</h3>
               <p className="text-slate-500 text-sm max-w-sm mx-auto">
@@ -152,11 +165,21 @@ function TasksPage() {
           ) : (
             <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
               <div className="w-full overflow-x-auto">
-                <TaskTable tasks={filteredTasks} onDelete={handleDelete} />
+                <TaskTable tasks={safeTasks} onDelete={handleDelete} />
               </div>
             </div>
           )}
 
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            limit={limit}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setPage(1);
+            }}
+          />
         </div>
       </PageContainer>
     </DashboardLayout>

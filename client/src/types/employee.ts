@@ -25,6 +25,25 @@ export type Employee = {
 
   status?: string;
 
+  managerId?: string | null;
+
+  bankName?: string | null;
+
+  bankAccountNumber?: string | null;
+
+  ifscCode?: string | null;
+
+  emergencyContactName?: string | null;
+
+  emergencyContactPhone?: string | null;
+
+  manager?: {
+    id: string;
+    user: {
+      fullName: string;
+    };
+  };
+
   user: {
     id: string;
     fullName: string;

@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { createTimesheetSchema, editTimesheetSchema, type CreateTimesheetFormData, type EditTimesheetFormData } from "../../features/validation/timesheet.schema";
+
 import type { Employee } from "../../types/employee";
 import type { Project } from "../../types/project";
 import type { Task } from "../../types/task";
@@ -12,7 +17,10 @@ type Props = {
   loading?: boolean;
   submitLabel?: string;
   onSubmit: (data: CreateTimesheetPayload) => Promise<unknown>;
+  serverErrors?: Record<string, string>;
 };
+
+type FormData = CreateTimesheetFormData | EditTimesheetFormData;
 
 const dateValue = (value?: string) =>
   value ? value.slice(0, 10) : "";
@@ -45,148 +53,111 @@ export default function TimesheetForm({
   loading = false,
   submitLabel = "Save Timesheet",
   onSubmit,
+  serverErrors,
 }: Props) {
-  const [employeeId, setEmployeeId] = useState(
-    initialData?.employeeId ?? "",
-  );
+  const schema = initialData ? editTimesheetSchema : createTimesheetSchema;
 
-  const [projectId, setProjectId] = useState(
-    initialData?.projectId ?? "",
-  );
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
+    defaultValues: {
+      employeeId: initialData?.employeeId ?? "",
+      projectId: initialData?.projectId ?? "",
+      taskId: initialData?.taskId ?? "",
+      workDate: dateValue(initialData?.workDate),
+      startTime: timeValue(initialData?.startTime),
+      endTime: timeValue(initialData?.endTime),
+      hours: initialData?.hours ? Number(initialData.hours) : undefined,
+      description: initialData?.description ?? "",
+    } as any,
+  });
 
-  const [taskId, setTaskId] = useState(
-    initialData?.taskId ?? "",
-  );
-
-  const [workDate, setWorkDate] = useState(
-    dateValue(initialData?.workDate),
-  );
-
-  const [startTime, setStartTime] = useState(
-    timeValue(initialData?.startTime),
-  );
-
-  const [endTime, setEndTime] = useState(
-    timeValue(initialData?.endTime),
-  );
-
-  const [hours, setHours] = useState(
-    initialData?.hours !== undefined
-      ? String(initialData.hours)
-      : "",
-  );
-
-  const [description, setDescription] = useState(
-    initialData?.description ?? "",
-  );
-
-  const [error, setError] = useState("");
+  const watchedProjectId = watch("projectId");
+  const watchedStartTime = watch("startTime");
+  const watchedEndTime = watch("endTime");
 
   const filteredTasks = useMemo(() => {
-    if (!projectId) return tasks;
+    if (!watchedProjectId) return tasks;
 
     return tasks.filter(
-      (task) => task.projectId === projectId,
+      (task) => task.projectId === watchedProjectId,
     );
-  }, [tasks, projectId]);
+  }, [tasks, watchedProjectId]);
 
   useEffect(() => {
+    const taskId = watch("taskId");
     if (
       taskId &&
-      projectId &&
+      watchedProjectId &&
       !filteredTasks.some(
         (task) => task.id === taskId,
       )
     ) {
-      setTaskId("");
+      reset({ ...watch(), taskId: "" } as any);
     }
-  }, [filteredTasks, projectId, taskId]);
+  }, [filteredTasks, watchedProjectId, watch, reset]);
 
-  const updateStartTime = (value: string) => {
-    setStartTime(value);
-
-    const calculated = calculateHours(
-      value,
-      endTime,
-    );
-
-    if (calculated) setHours(calculated);
-  };
-
-  const updateEndTime = (value: string) => {
-    setEndTime(value);
-
-    const calculated = calculateHours(
-      startTime,
-      value,
-    );
-
-    if (calculated) setHours(calculated);
-  };
-
-  const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-    setError("");
-
-    if (!employeeId) {
-      setError("Please select an employee.");
-      return;
+  useEffect(() => {
+    if (watchedStartTime && watchedEndTime) {
+      const calculated = calculateHours(
+        watchedStartTime,
+        watchedEndTime,
+      );
+      if (calculated) {
+        reset({ ...watch(), hours: Number(calculated) } as any);
+      }
     }
+  }, [watchedStartTime, watchedEndTime, reset, watch]);
 
-    if (!workDate) {
-      setError("Please select a work date.");
-      return;
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      clearErrors();
+      Object.entries(serverErrors).forEach(([field, message]) => {
+        setError(field as keyof FormData, { message });
+      });
     }
+  }, [serverErrors, setError, clearErrors]);
 
-    if (!hours || Number(hours) <= 0) {
-      setError("Please enter valid working hours.");
-      return;
-    }
-
+  const handleFormSubmit = async (data: FormData) => {
     const payload: CreateTimesheetPayload = {
-      employeeId,
-      workDate,
-      hours: String(hours),
+      employeeId: data.employeeId || "",
+      workDate: data.workDate || "",
+      hours: String(data.hours ?? 0),
     };
 
-    if (projectId) payload.projectId = projectId;
-    if (taskId) payload.taskId = taskId;
+    if (data.projectId) payload.projectId = data.projectId;
+    if (data.taskId) payload.taskId = data.taskId;
 
-    if (startTime) {
-      payload.startTime =
-        `${workDate}T${startTime}:00`;
+    if (data.startTime) {
+      payload.startTime = `${data.workDate}T${data.startTime}:00`;
     }
 
-    if (endTime) {
-      payload.endTime =
-        `${workDate}T${endTime}:00`;
+    if (data.endTime) {
+      payload.endTime = `${data.workDate}T${data.endTime}:00`;
     }
 
-    if (description.trim()) {
-      payload.description = description.trim();
+    if (data.description?.trim()) {
+      payload.description = data.description.trim();
     }
 
-    try {
-      await onSubmit(payload);
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to save timesheet.",
-      );
-    }
+    await onSubmit(payload);
   };
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(handleFormSubmit)}
       className="space-y-6"
     >
-      {error && (
+      {errors.root && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {errors.root.message}
         </div>
       )}
 
@@ -197,12 +168,8 @@ export default function TimesheetForm({
           </label>
 
           <select
-            required
-            value={employeeId}
+            {...register("employeeId")}
             disabled={loading}
-            onChange={(e) =>
-              setEmployeeId(e.target.value)
-            }
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
           >
             <option value="">
@@ -219,6 +186,9 @@ export default function TimesheetForm({
               </option>
             ))}
           </select>
+          {errors.employeeId && (
+            <p className="mt-1 text-xs text-red-600">{errors.employeeId.message}</p>
+          )}
         </div>
 
         <div>
@@ -227,15 +197,14 @@ export default function TimesheetForm({
           </label>
 
           <input
-            required
             type="date"
-            value={workDate}
+            {...register("workDate")}
             disabled={loading}
-            onChange={(e) =>
-              setWorkDate(e.target.value)
-            }
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
           />
+          {errors.workDate && (
+            <p className="mt-1 text-xs text-red-600">{errors.workDate.message}</p>
+          )}
         </div>
 
         <div>
@@ -244,11 +213,8 @@ export default function TimesheetForm({
           </label>
 
           <select
-            value={projectId}
+            {...register("projectId")}
             disabled={loading}
-            onChange={(e) =>
-              setProjectId(e.target.value)
-            }
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
           >
             <option value="">
@@ -272,15 +238,12 @@ export default function TimesheetForm({
           </label>
 
           <select
-            value={taskId}
-            disabled={!projectId || loading}
-            onChange={(e) =>
-              setTaskId(e.target.value)
-            }
+            {...register("taskId")}
+            disabled={!watchedProjectId || loading}
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
           >
             <option value="">
-              {projectId
+              {watchedProjectId
                 ? "Select Task"
                 : "Select Project First"}
             </option>
@@ -303,11 +266,8 @@ export default function TimesheetForm({
 
           <input
             type="time"
-            value={startTime}
+            {...register("startTime")}
             disabled={loading}
-            onChange={(e) =>
-              updateStartTime(e.target.value)
-            }
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
@@ -319,13 +279,13 @@ export default function TimesheetForm({
 
           <input
             type="time"
-            value={endTime}
+            {...register("endTime")}
             disabled={loading}
-            onChange={(e) =>
-              updateEndTime(e.target.value)
-            }
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
           />
+          {errors.endTime && (
+            <p className="mt-1 text-xs text-red-600">{errors.endTime.message}</p>
+          )}
         </div>
 
         <div>
@@ -334,18 +294,16 @@ export default function TimesheetForm({
           </label>
 
           <input
-            required
-            min="0.01"
-            step="0.01"
             type="number"
-            value={hours}
+            step="0.01"
+            {...register("hours", { valueAsNumber: true })}
             disabled={loading}
             placeholder="8.5"
-            onChange={(e) =>
-              setHours(e.target.value)
-            }
             className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
           />
+          {errors.hours && (
+            <p className="mt-1 text-xs text-red-600">{errors.hours.message}</p>
+          )}
         </div>
       </div>
 
@@ -356,12 +314,9 @@ export default function TimesheetForm({
 
         <textarea
           rows={4}
-          value={description}
+          {...register("description")}
           disabled={loading}
           placeholder="Describe the work completed..."
-          onChange={(e) =>
-            setDescription(e.target.value)
-          }
           className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
         />
       </div>

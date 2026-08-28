@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
 
 import NotificationHeader from "../../components/notifications/NotificationHeader";
 import NotificationList from "../../components/notifications/NotificationList";
+import Pagination from "../../components/ui/Pagination";
 
 import {
   getNotifications,
@@ -24,21 +25,20 @@ function NotificationsPage() {
 
   const [unread, setUnread] = useState(0);
 
-  const user = useAuthStore((state) => state.user);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
+  const user = useAuthStore((state) => state.user);
 
   const loadNotifications = async () => {
     try {
-      const data = await getNotifications();
-
-      setNotifications(data);
+      const result: any = await getNotifications(page, limit, search);
+      setNotifications(result.data || []);
+      setTotalPages(result.totalPages || 1);
 
       if (user?.id) {
         const count = await getUnreadCount(user.id);
-
         setUnread(count.unread);
       }
     } catch (error) {
@@ -49,6 +49,10 @@ function NotificationsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadNotifications();
+  }, [page, limit, search]);
 
   const handleRead = async (id: string) => {
     try {
@@ -64,19 +68,23 @@ function NotificationsPage() {
     }
   };
 
-  const filteredNotifications = useMemo(() => {
-    const keyword = search.toLowerCase();
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
-    return notifications.filter(
-      (notification) =>
-        notification.title
-          .toLowerCase()
-          .includes(keyword) ||
-        notification.message
-          .toLowerCase()
-          .includes(keyword),
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            <p className="mt-4 text-sm text-slate-500">Loading notifications...</p>
+          </div>
+        </div>
+      </DashboardLayout>
     );
-  }, [notifications, search]);
+  }
 
   return (
     <DashboardLayout>
@@ -89,19 +97,25 @@ function NotificationsPage() {
           placeholder="Search Notifications..."
           value={search}
           onChange={(e) =>
-            setSearch(e.target.value)
+            handleSearch(e.target.value)
           }
         />
 
-        {loading ? (
-          <div>Loading...</div>
-        ) : (
-          <NotificationList
-            notifications={filteredNotifications}
-            onRead={handleRead}
-          />
-        )}
+        <NotificationList
+          notifications={notifications}
+          onRead={handleRead}
+        />
 
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          limit={limit}
+          onLimitChange={(newLimit) => {
+            setLimit(newLimit);
+            setPage(1);
+          }}
+        />
       </div>
     </DashboardLayout>
   );

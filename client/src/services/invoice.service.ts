@@ -2,10 +2,12 @@ import api from "./api";
 import type { Invoice, CreateInvoiceDto, UpdateInvoiceDto } from "../types/invoice";
 
 export const invoiceService = {
-  getAllInvoices: async (): Promise<Invoice[]> => {
-    const response = await api.get("/invoice");
-    // Backend returns direct array, not wrapped in {data: []}
-    return Array.isArray(response.data) ? response.data : response.data.data || [];
+  getAllInvoices: async (page = 1, limit = 10, status?: string, search?: string) => {
+    const params: Record<string, string | number> = { page, limit };
+    if (status && status !== "all") params.status = status;
+    if (search) params.search = search;
+    const response = await api.get("/invoice", { params });
+    return response.data.data;
   },
 
   getInvoiceById: async (id: string): Promise<Invoice> => {

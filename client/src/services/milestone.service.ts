@@ -15,9 +15,12 @@ export type CreateMilestoneData = {
 export type UpdateMilestoneData =
   Partial<CreateMilestoneData>;
 
-export const getMilestones = async (): Promise<Milestone[]> => {
-  const response = await api.get("/milestones");
-
+export const getMilestones = async (page = 1, limit = 10, search?: string, status?: string, priority?: string): Promise<any> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (search) params.search = search;
+  if (status && status !== "ALL") params.status = status;
+  if (priority && priority !== "ALL") params.priority = priority;
+  const response = await api.get("/milestones", { params });
   return response.data.data;
 };
 
@@ -25,7 +28,6 @@ export const getMilestone = async (
   id: string,
 ): Promise<Milestone> => {
   const response = await api.get(`/milestones/${id}`);
-
   return response.data.data;
 };
 
@@ -33,7 +35,6 @@ export const createMilestone = async (
   data: CreateMilestoneData,
 ): Promise<Milestone> => {
   const response = await api.post("/milestones", data);
-
   return response.data.data;
 };
 
@@ -45,7 +46,6 @@ export const updateMilestone = async (
     `/milestones/${id}`,
     data,
   );
-
   return response.data.data;
 };
 
@@ -53,6 +53,5 @@ export const deleteMilestone = async (
   id: string,
 ) => {
   const response = await api.delete(`/milestones/${id}`);
-
   return response.data;
 };

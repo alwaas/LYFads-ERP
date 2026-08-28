@@ -18,6 +18,8 @@ import type { Project } from "../../types/project";
 
 import { PATHS } from "../../routes/config/paths";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function AddMilestonePage() {
   const navigate = useNavigate();
 
@@ -29,6 +31,9 @@ function AddMilestonePage() {
 
   const [projectsLoading, setProjectsLoading] =
     useState(true);
+
+  const [serverErrors, setServerErrors] =
+    useState<Record<string, string>>({});
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -56,6 +61,7 @@ function AddMilestonePage() {
   const handleSubmit = async (
     data: MilestoneFormData,
   ) => {
+    setServerErrors({});
     try {
       setLoading(true);
 
@@ -79,21 +85,26 @@ function AddMilestonePage() {
       );
 
       navigate(PATHS.MILESTONES);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         "Failed to create milestone:",
         error,
       );
 
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
       const message =
-        error?.response?.data?.message;
+        (error as any)?.response?.data?.message;
 
-      toast.error(
-        Array.isArray(message)
-          ? message[0]
-          : message ||
-              "Failed to create milestone.",
-      );
+        toast.error(
+          Array.isArray(message)
+            ? message[0]
+            : message ||
+                "Failed to create milestone.",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -121,6 +132,7 @@ function AddMilestonePage() {
             loading={loading}
             projects={projects}
             onSubmit={handleSubmit}
+            serverErrors={serverErrors}
           />
         )}
       </div>

@@ -8,19 +8,28 @@ import PageContainer from "../../components/layout/PageContainer";
 import ClientForm, { type ClientFormData } from "../../components/clients/ClientForm";
 import { createClient } from "../../services/client.service";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function AddClientPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (values: ClientFormData) => {
+    setServerErrors({});
     try {
       setLoading(true);
       await createClient(values);
       toast.success("Client created successfully.");
       navigate("/clients");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.response?.data?.message ?? "Failed to create client.");
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error((error as any)?.response?.data?.message ?? "Failed to create client.");
+      }
     } finally {
       setLoading(false);
     }
@@ -49,7 +58,7 @@ function AddClientPage() {
           </div>
 
           <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 sm:p-8">
-            <ClientForm defaultValues={undefined} loading={loading} onSubmit={handleSubmit} />
+            <ClientForm defaultValues={undefined} loading={loading} onSubmit={handleSubmit} serverErrors={serverErrors} />
           </div>
         </div>
       </PageContainer>

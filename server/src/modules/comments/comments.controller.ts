@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -19,6 +20,9 @@ import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('comments')
 @UseGuards(JwtAuthGuard)
@@ -46,8 +50,12 @@ export class CommentsController {
     UserRole.EMPLOYEE,
   )
   @Get()
-  findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.commentsService.findAll(user.tenantId);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.commentsService.findAll(pagination, search, user.tenantId);
   }
 
   @Roles(

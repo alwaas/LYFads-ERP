@@ -3,14 +3,12 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
-import LeaveForm from "../../components/leaves/LeaveForm";
+import LeaveForm, { type LeaveFormData } from "../../components/leaves/LeaveForm";
 
 import { createLeave } from "../../services/leave.service";
 import { getEmployees } from "../../services/employee.service";
 
-import type {
-  CreateLeaveDto,
-} from "../../types/leave";
+import { mapServerValidationErrors } from "../../features/validation/errors";
 
 type Employee = {
   id: string;
@@ -29,6 +27,9 @@ function AddLeavePage() {
   const [loading, setLoading] =
     useState(false);
 
+  const [serverErrors, setServerErrors] =
+    useState<Record<string, string>>({});
+
   useEffect(() => {
     loadEmployees();
   }, []);
@@ -45,26 +46,44 @@ function AddLeavePage() {
       );
     }
   };
+
   const handleSubmit = async (
-    data: CreateLeaveDto
+    data: LeaveFormData
   ) => {
+    setServerErrors({});
     try {
       setLoading(true);
 
-      await createLeave(data);
+      await createLeave({
+        employeeId: data.employeeId,
+        leaveType: data.leaveType as any,
+        startDate: new Date(
+          data.startDate
+        ).toISOString(),
+        endDate: new Date(
+          data.endDate
+        ).toISOString(),
+        reason: data.reason,
+        remarks: data.remarks,
+      });
 
       toast.success(
         "Leave request created successfully."
       );
 
       navigate("/leaves");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
 
-      toast.error(
-        error?.response?.data?.message ??
-          "Failed to create leave."
-      );
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error(
+          (error as any)?.response?.data?.message ??
+            "Failed to create leave."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -83,6 +102,7 @@ function AddLeavePage() {
           employees={employees}
           onSubmit={handleSubmit}
           loading={loading}
+          serverErrors={serverErrors}
         />
 
       </div>

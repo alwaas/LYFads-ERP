@@ -13,6 +13,8 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
 import { UpdateMilestoneDto } from './dto/update-milestone.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Injectable()
 export class MilestonesService {
@@ -106,27 +108,62 @@ export class MilestonesService {
 
     return milestone;
   }
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    status?: string,
+    priority?: string,
+    userTenantId?: string,
+  ) {
+    const { skip, limit } = pagination;
 
-  async findAll(userTenantId: string) {
-    return this.prisma.milestone.findMany({
-      where: {
-        tenantId: userTenantId,
-      },
-      include: {
-        project: {
-          select: {
-            id: true,
-            projectCode: true,
-            name: true,
-            status: true,
-            priority: true,
+    const where: Record<string, unknown> = {
+      ...(userTenantId ? { tenantId: userTenantId } : {}),
+    };
+
+    if (search.search) {
+      where.title = { contains: search.search, mode: 'insensitive' };
+    }
+
+    if (status && ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE'].includes(status)) {
+      where.status = status;
+    }
+
+    if (priority && ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(priority)) {
+      where.priority = priority;
+    }
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.milestone.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          project: {
+            select: {
+              id: true,
+              projectCode: true,
+              name: true,
+              status: true,
+              priority: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+
+      this.prisma.milestone.count({ where }),
+    ]);
+
+    return {
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
+    };
   }
 
   async findOne(id: string, userTenantId: string) {

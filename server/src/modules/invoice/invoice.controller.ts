@@ -6,19 +6,27 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
+
+import { UserRole } from '@prisma/client';
+
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { InvoiceService } from './invoice.service';
 
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/tenant.decorator';
 import type { AuthenticatedUser } from '../../common/types/auth-user.type';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('invoice')
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
@@ -31,8 +39,13 @@ export class InvoiceController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.invoiceService.findAll(user.tenantId);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('status') status?: string,
+  ) {
+    return this.invoiceService.findAll(pagination, search, status, user.tenantId);
   }
 
   @Get(':id')

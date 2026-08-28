@@ -9,6 +9,8 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Injectable()
 export class CommentsService {
@@ -105,20 +107,41 @@ export class CommentsService {
     return comment;
   }
 
-  async findAll(userTenantId: string) {
-    return this.prisma.comment.findMany({
-      where: {
-        tenantId: userTenantId,
-      },
-      include: {
-        user: true,
-        project: true,
-        task: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
+    const { skip, limit } = pagination;
+
+    const where: Record<string, unknown> = {
+      tenantId: userTenantId,
+    };
+
+    if (search.search) {
+      where.message = { contains: search.search, mode: 'insensitive' };
+    }
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.comment.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: true,
+          project: true,
+          task: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.comment.count({ where }),
+    ]);
+
+    return {
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
+    };
   }
 
   async findOne(id: string, userTenantId: string) {

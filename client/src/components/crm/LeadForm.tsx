@@ -1,5 +1,8 @@
-import { useState } from "react";
-import type { Lead } from "../../types/lead";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { createLeadSchema, editLeadSchema, type CreateLeadFormData, type EditLeadFormData } from "../../features/validation/lead.schema";
 
 export type LeadFormData = {
   companyName: string;
@@ -13,112 +16,130 @@ export type LeadFormData = {
 };
 
 type Props = {
-  initialValues?: Partial<Lead>;
+  initialValues?: Partial<LeadFormData>;
   onSubmit: (values: LeadFormData) => Promise<void>;
   loading?: boolean;
+  serverErrors?: Record<string, string>;
 };
+
+type FormData = CreateLeadFormData | EditLeadFormData;
 
 function LeadForm({
   initialValues,
   onSubmit,
   loading = false,
+  serverErrors,
 }: Props) {
-  const [form, setForm] = useState<LeadFormData>({
-    companyName: initialValues?.companyName ?? "",
-    contactPerson: initialValues?.contactPerson ?? "",
-    email: initialValues?.email ?? "",
-    phone: initialValues?.phone ?? "",
-    status: initialValues?.status ?? "NEW",
-    source: initialValues?.source ?? "",
-    estimatedValue: Number(initialValues?.estimatedValue ?? 0),
-    remarks: initialValues?.remarks ?? "",
+  const schema = initialValues ? editLeadSchema : createLeadSchema;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
+    defaultValues: {
+      companyName: "",
+      contactPerson: "",
+      email: "",
+      phone: "",
+      status: "NEW",
+      source: "OTHER",
+      estimatedValue: 0,
+      remarks: "",
+    },
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
-  ) => {
-    const { name, value } = e.target;
+  useEffect(() => {
+    if (!initialValues) return;
 
-    setForm((prev) => ({
-      ...prev,
-      [name]:
-        name === "estimatedValue"
-          ? Number(value)
-          : value,
-    }));
-  };
+    reset({
+      companyName: initialValues.companyName ?? "",
+      contactPerson: initialValues.contactPerson ?? "",
+      email: initialValues.email ?? "",
+      phone: initialValues.phone ?? "",
+      status: (initialValues.status as FormData["status"]) ?? "NEW",
+      source: (initialValues.source as FormData["source"]) ?? "OTHER",
+      estimatedValue: Number(initialValues.estimatedValue ?? 0),
+      remarks: initialValues.remarks ?? "",
+    });
+  }, [initialValues, reset]);
 
-  const submit = async (
-    e: React.FormEvent,
-  ) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      clearErrors();
+      Object.entries(serverErrors).forEach(([field, message]) => {
+        setError(field as keyof FormData, { message });
+      });
+    }
+  }, [serverErrors, setError, clearErrors]);
 
-    await onSubmit(form);
+  const handleFormSubmit = (data: FormData) => {
+    onSubmit(data as unknown as LeadFormData);
   };
 
   return (
     <form
-      onSubmit={submit}
+      onSubmit={handleSubmit(handleFormSubmit)}
       className="bg-white rounded-lg shadow p-6 space-y-5"
     >
       <div className="grid md:grid-cols-2 gap-5">
 
         <input
-          name="companyName"
+          {...register("companyName")}
           placeholder="Company Name"
-          value={form.companyName}
-          onChange={handleChange}
-          required
           className="border rounded-lg p-3"
         />
+        {errors.companyName && (
+          <p className="text-red-500 text-xs mt-1">{errors.companyName.message}</p>
+        )}
 
         <input
-          name="contactPerson"
+          {...register("contactPerson")}
           placeholder="Contact Person"
-          value={form.contactPerson}
-          onChange={handleChange}
-          required
           className="border rounded-lg p-3"
         />
+        {errors.contactPerson && (
+          <p className="text-red-500 text-xs mt-1">{errors.contactPerson.message}</p>
+        )}
 
         <input
-          name="email"
           type="email"
+          {...register("email")}
           placeholder="Email"
-          value={form.email}
-          onChange={handleChange}
           className="border rounded-lg p-3"
         />
+        {errors.email && (
+          <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+        )}
 
         <input
-          name="phone"
+          {...register("phone")}
           placeholder="Phone"
-          value={form.phone}
-          onChange={handleChange}
           className="border rounded-lg p-3"
         />
 
         <select
-          name="status"
-          value={form.status}
-          onChange={handleChange}
+          {...register("status")}
           className="border rounded-lg p-3"
         >
           <option value="NEW">NEW</option>
           <option value="CONTACTED">CONTACTED</option>
           <option value="QUALIFIED">QUALIFIED</option>
-          <option value="PROPOSAL">PROPOSAL</option>
+          <option value="PROPOSAL_SENT">PROPOSAL</option>
           <option value="NEGOTIATION">NEGOTIATION</option>
           <option value="WON">WON</option>
           <option value="LOST">LOST</option>
         </select>
+        {errors.status && (
+          <p className="text-red-500 text-xs mt-1">{errors.status.message}</p>
+        )}
 
         <select
-          name="source"
-          value={form.source}
-          onChange={handleChange}
+          {...register("source")}
           className="border rounded-lg p-3 text-slate-700"
         >
           <option value="" disabled>
@@ -132,26 +153,31 @@ function LeadForm({
           <option value="WHATSAPP">WhatsApp</option>
           <option value="OTHER">Other</option>
         </select>
+        {errors.source && (
+          <p className="text-red-500 text-xs mt-1">{errors.source.message}</p>
+        )}
 
         <input
           type="number"
-          name="estimatedValue"
+          {...register("estimatedValue", { valueAsNumber: true })}
           placeholder="Estimated Value"
-          value={form.estimatedValue}
-          onChange={handleChange}
           className="border rounded-lg p-3"
         />
+        {errors.estimatedValue && (
+          <p className="text-red-500 text-xs mt-1">{errors.estimatedValue.message}</p>
+        )}
 
       </div>
 
       <textarea
         rows={5}
-        name="remarks"
+        {...register("remarks")}
         placeholder="Remarks"
-        value={form.remarks}
-        onChange={handleChange}
         className="border rounded-lg p-3 w-full"
       />
+      {errors.remarks && (
+        <p className="text-red-500 text-xs mt-1">{errors.remarks.message}</p>
+      )}
 
       <button
         disabled={loading}

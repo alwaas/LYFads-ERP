@@ -1,15 +1,39 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import type { Leave } from "../../types/leave";
 
 type Props = {
   leaves: Leave[];
   onDelete: (id: string) => void;
+  onApprove?: (id: string) => void;
+  onReject?: (id: string, reason: string) => void;
 };
 
 function LeaveTable({
   leaves,
   onDelete,
+  onApprove,
+  onReject,
 }: Props) {
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const handleRejectClick = (id: string) => {
+    setRejectingId(id);
+    setRejectionReason("");
+  };
+
+  const confirmReject = (id: string) => {
+    if (!rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason.");
+      return;
+    }
+    onReject?.(id, rejectionReason);
+    setRejectingId(null);
+    setRejectionReason("");
+  };
+
   return (
     <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
 
@@ -127,6 +151,18 @@ function LeaveTable({
                     {leave.status}
                   </span>
 
+                  {leave.status === "REJECTED" && leave.rejectionReason && (
+                    <p className="text-xs text-red-600 mt-1">
+                      {leave.rejectionReason}
+                    </p>
+                  )}
+
+                  {leave.leaveBalance && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Balance: {leave.leaveBalance.remaining}
+                    </p>
+                  )}
+
                 </td>
 
                 <td className="px-6 py-4">
@@ -140,9 +176,51 @@ function LeaveTable({
                       View
                     </Link>
 
+                    {leave.status === "PENDING" && onApprove && (
+                      <button
+                        onClick={() => onApprove(leave.id)}
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                      >
+                        Approve
+                      </button>
+                    )}
+
+                    {leave.status === "PENDING" && onReject && rejectingId !== leave.id && (
+                      <button
+                        onClick={() => handleRejectClick(leave.id)}
+                        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Reject
+                      </button>
+                    )}
+
+                    {rejectingId === leave.id && (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          placeholder="Reason"
+                          className="border rounded px-2 py-1 text-sm"
+                        />
+                        <button
+                          onClick={() => confirmReject(leave.id)}
+                          className="px-2 py-1 bg-red-700 text-white rounded text-sm"
+                        >
+                          Confirm
+                        </button>
+                        <button
+                          onClick={() => setRejectingId(null)}
+                          className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+
                     <Link
                       to={`/leaves/edit/${leave.id}`}
-                      className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                      className="px-3 py-1 bg-amber-500 text-white rounded hover:bg-amber-600"
                     >
                       Edit
                     </Link>

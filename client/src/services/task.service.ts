@@ -3,9 +3,11 @@ import api from "./api";
 /* ===========================
    GET ALL TASKS
 =========================== */
-export const getTasks = async () => {
-  const response = await api.get("/tasks");
-  return response.data.data.data;
+export const getTasks = async (page = 1, limit = 10, search?: string): Promise<any> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (search) params.search = search;
+  const response = await api.get("/tasks", { params });
+  return response.data.data;
 };
 
 /* ===========================

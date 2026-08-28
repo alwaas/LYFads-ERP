@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../../database';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -109,14 +110,23 @@ export class ProjectsService {
   /**
    * Return only projects belonging to the authenticated tenant.
    */
-  async findAll(pagination: PaginationDto, userTenantId: string) {
+  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
     const { skip, limit } = pagination;
+
+    const where: Record<string, unknown> = {
+      tenantId: userTenantId,
+    };
+
+    if (search.search) {
+      where.OR = [
+        { name: { contains: search.search, mode: 'insensitive' } },
+        { description: { contains: search.search, mode: 'insensitive' } },
+      ];
+    }
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.project.findMany({
-        where: {
-          tenantId: userTenantId,
-        },
+        where,
         skip,
         take: limit,
         include: {
@@ -134,18 +144,14 @@ export class ProjectsService {
         },
       }),
 
-      this.prisma.project.count({
-        where: {
-          tenantId: userTenantId,
-        },
-      }),
+      this.prisma.project.count({ where }),
     ]);
 
     return {
       total,
       page: pagination.page,
       limit: pagination.limit,
-      totalPages: limit > 0 ? Math.ceil(total / limit) : 0,
+      totalPages: Math.ceil(total / pagination.limit),
       data,
     };
   }

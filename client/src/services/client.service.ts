@@ -1,17 +1,17 @@
 import api from "./api";
 import type { Client } from "../types/client";
 
-export const getClients = async (): Promise<Client[]> => {
-  const response = await api.get("/clients");
-
-  return response.data.data.data;
+export const getClients = async (page = 1, limit = 10, search?: string): Promise<any> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (search) params.search = search;
+  const response = await api.get("/clients", { params });
+  return response.data.data;
 };
 
 export const getClient = async (
   id: string
 ): Promise<Client> => {
   const response = await api.get(`/clients/${id}`);
-
   return response.data.data;
 };
 

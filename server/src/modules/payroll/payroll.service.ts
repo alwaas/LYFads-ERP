@@ -15,13 +15,20 @@ import { SearchDto } from '../../common/dto/search.dto';
 
 import { CreatePayrollDto } from './dto/create-payroll.dto';
 import { UpdatePayrollDto } from './dto/update-payroll.dto';
+import { PayrollCalculationService } from './payroll-calculation.service';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class PayrollService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly payrollCalculationService: PayrollCalculationService,
   ) {}
+
+  async calculate(tenantId: string, employeeId: string, month: number, year: number) {
+    return this.payrollCalculationService.calculatePayroll(tenantId, employeeId, month, year);
+  }
 
   async create(dto: CreatePayrollDto, userTenantId: string) {
     const employee = await this.prisma.employee.findUnique({
@@ -115,10 +122,36 @@ export class PayrollService {
     return payroll;
   }
 
+  private sanitizePayrollData(payroll: any, role: UserRole) {
+    if (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN || role === UserRole.MANAGER) {
+      return payroll;
+    }
+
+    const {
+      basicSalary,
+      hra,
+      allowances,
+      bonus,
+      incentives,
+      grossSalary,
+      overtimeAmount,
+      pf,
+      esi,
+      tds,
+      deductions,
+      totalDeduction,
+      netSalary,
+      ...rest
+    } = payroll;
+
+    return rest;
+  }
+
   async findAll(
     pagination: PaginationDto,
     search: SearchDto,
     userTenantId: string,
+    userRole?: UserRole,
   ) {
     const { skip, limit } = pagination;
 
@@ -159,16 +192,20 @@ export class PayrollService {
       }),
     ]);
 
+    const sanitizedData = userRole
+      ? data.map((payroll) => this.sanitizePayrollData(payroll, userRole))
+      : data;
+
     return {
       total,
       page: pagination.page,
       limit: pagination.limit,
       totalPages: Math.ceil(total / pagination.limit),
-      data,
+      data: sanitizedData,
     };
   }
 
-  async findOne(id: string, userTenantId: string) {
+  async findOne(id: string, userTenantId: string, userRole?: UserRole) {
     const payroll = await this.prisma.payroll.findUnique({
       where: { id },
       include: {
@@ -177,6 +214,7 @@ export class PayrollService {
             user: true,
           },
         },
+        items: true,
       },
     });
 
@@ -184,16 +222,19 @@ export class PayrollService {
       throw new NotFoundException('Payroll not found');
     }
 
-    // Verify tenant ownership
     if (payroll.tenantId !== userTenantId) {
       throw new ForbiddenException('Access denied to this payroll');
     }
 
-    return payroll;
+    return userRole ? this.sanitizePayrollData(payroll, userRole) : payroll;
   }
 
   async update(id: string, dto: UpdatePayrollDto, userTenantId: string) {
-    await this.findOne(id, userTenantId);
+    const existingPayroll = await this.findOne(id, userTenantId);
+
+    if (existingPayroll.status === 'PAID') {
+      throw new ConflictException('Paid payroll cannot be modified');
+    }
 
     const data: Prisma.PayrollUpdateInput = {};
 
@@ -229,7 +270,7 @@ export class PayrollService {
     if (dto.paidAt !== undefined)
       data.paidAt = dto.paidAt ? new Date(dto.paidAt) : null;
 
-    const payroll = await this.prisma.payroll.update({
+    const updatedPayroll = await this.prisma.payroll.update({
       where: {
         id,
       },
@@ -247,11 +288,11 @@ export class PayrollService {
       action: 'UPDATE',
       module: 'PAYROLL',
       description: 'Payroll updated successfully.',
-      userId: payroll.employee.userId,
+      userId: updatedPayroll.employee.userId,
       tenantId: userTenantId,
     });
 
-    return payroll;
+    return updatedPayroll;
   }
 
   async remove(id: string, userTenantId: string) {
@@ -275,5 +316,119 @@ export class PayrollService {
       success: true,
       message: 'Payroll deleted successfully',
     };
+  }
+
+  async process(id: string, userTenantId: string, userId: string) {
+    const payroll = await this.findOne(id, userTenantId);
+
+    if (payroll.status !== 'PENDING') {
+      throw new ConflictException('Only pending payroll can be processed');
+    }
+
+    const updated = await this.prisma.payroll.update({
+      where: { id },
+      data: {
+        status: 'PROCESSED',
+        generatedAt: new Date(),
+      },
+      include: {
+        employee: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    await this.activityLogsService.log({
+      action: 'UPDATE',
+      module: 'PAYROLL',
+      description: 'Payroll processed',
+      userId: payroll.employee.userId,
+      tenantId: userTenantId,
+    });
+
+    return updated;
+  }
+
+  async approve(id: string, userTenantId: string, userId: string) {
+    const payroll = await this.findOne(id, userTenantId);
+
+    if (payroll.status !== 'PROCESSED') {
+      throw new ConflictException('Only processed payroll can be approved');
+    }
+
+    const updated = await this.prisma.payroll.update({
+      where: { id },
+      data: {
+        status: 'APPROVED',
+        approvedById: userId,
+        approvedAt: new Date(),
+      },
+      include: {
+        employee: {
+          include: {
+            user: true,
+          },
+        },
+        approvedBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    await this.activityLogsService.log({
+      action: 'UPDATE',
+      module: 'PAYROLL',
+      description: 'Payroll approved',
+      userId: payroll.employee.userId,
+      tenantId: userTenantId,
+    });
+
+    return updated;
+  }
+
+  async markPaid(
+    id: string,
+    userTenantId: string,
+    paymentMethod: string,
+    paymentReference?: string,
+  ) {
+    const payroll = await this.findOne(id, userTenantId);
+
+    if (payroll.status !== 'APPROVED') {
+      throw new ConflictException('Only approved payroll can be marked as paid');
+    }
+
+    const updated = await this.prisma.payroll.update({
+      where: { id },
+      data: {
+        status: 'PAID',
+        paidAt: new Date(),
+        paymentMethod: paymentMethod as any,
+        paymentReference,
+      },
+      include: {
+        employee: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    await this.activityLogsService.log({
+      action: 'UPDATE',
+      module: 'PAYROLL',
+      description: 'Payroll marked as paid',
+      userId: payroll.employee.userId,
+      tenantId: userTenantId,
+    });
+
+    return updated;
   }
 }

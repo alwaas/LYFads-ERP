@@ -29,7 +29,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { MilestonesModule } from './modules/milestones/milestones.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
-import { ReportsModule } from './reports/reports.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { CrmModule } from './/modules/crm/crm.module';
 import { ProjectTimelineModule } from './modules/project-timeline/project-timeline.module';
 import { KanbanModule } from './modules/kanban/kanban.module';
@@ -38,6 +38,18 @@ import { PayrollModule } from './modules/payroll/payroll.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
 import { InvoiceItemsModule } from './modules/invoice-items/invoice-items.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
+import { PurchasesModule } from './modules/purchases/purchases.module';
+import { VendorsModule } from './modules/vendors/vendors.module';
+import { ProductsModule } from './modules/products/products.module';
+import { WarehousesModule } from './modules/warehouses/warehouses.module';
+import { StockMovementsModule } from './modules/stock-movements/stock-movements.module';
+import { LeaveBalancesModule } from './modules/leave-balances/leave-balances.module';
+import { SalaryStructuresModule } from './modules/salary-structures/salary-structures.module';
+import { PayrollItemsModule } from './modules/payroll-items/payroll-items.module';
+import { SalesOrdersModule } from './modules/sales-orders/sales-orders.module';
+import { PaymentAllocationsModule } from './modules/payment-allocations/payment-allocations.module';
 
 @Module({
   imports: [
@@ -71,6 +83,18 @@ import { PaymentsModule } from './modules/payments/payments.module';
     InvoiceModule,
     InvoiceItemsModule,
     PaymentsModule,
+    SettingsModule,
+    ExpensesModule,
+    PurchasesModule,
+    VendorsModule,
+    ProductsModule,
+    WarehousesModule,
+    StockMovementsModule,
+    LeaveBalancesModule,
+    SalaryStructuresModule,
+    PayrollItemsModule,
+    SalesOrdersModule,
+    PaymentAllocationsModule,
   ],
   providers: [
     {

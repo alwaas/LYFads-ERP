@@ -13,6 +13,7 @@ import {
   loginSchema,
   type LoginFormData,
 } from "../validation/loginSchema";
+import { mapServerValidationErrors } from "../../validation/errors";
 
 function LoginForm() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ function LoginForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
@@ -36,12 +38,18 @@ function LoginForm() {
 
       navigate("/dashboard");
     } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Login failed. Please try again.";
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field as keyof LoginFormData, { message: message as string });
+        });
+      } else {
+        const message =
+          (error as any)?.response?.data?.message ||
+          "Login failed. Please try again.";
 
-      toast.error(message);
+        toast.error(message);
+      }
     }
   };
 
@@ -68,51 +76,51 @@ function LoginForm() {
             {...register("email")}
             />
 
-        </div>
+          </div>
 
-        <div>
-          <Input
-            type={password.value ? "text" : "password"}
-            label="Password"
-            placeholder="Enter your password"
-            error={errors.password?.message}
-            rightIcon={
-                <button
-                type="button"
-                onClick={password.toggle}
-                className="cursor-pointer text-slate-500"
-                >
-                {password.value ? (
-                    <EyeOff size={18} />
-                  ) : (
-                    <Eye size={18} />
-                  )}
-                </button>
-            }
-            {...register("password")}
-          />
-        </div>
+          <div>
+            <Input
+              type={password.value ? "text" : "password"}
+              label="Password"
+              placeholder="Enter your password"
+              error={errors.password?.message}
+              rightIcon={
+                  <button
+                  type="button"
+                  onClick={password.toggle}
+                  className="cursor-pointer text-slate-500"
+                  >
+                  {password.value ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                }
+              {...register("password")}
+            />
+          </div>
 
-        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-sm">
             <label className="flex items-center gap-2">
-                <input type="checkbox" />
-                Remember Me
+              <input type="checkbox" />
+              Remember Me
             </label>
 
             <button
                 type="button"
                 className="text-blue-600 hover:underline"
-            >
-                Forgot Password?
+              >
+              Forgot Password?
             </button>
-        </div>
+          </div>
 
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Signing in..." : "Login"}
-        </Button>
-      </form>
-    </div>
-  );
-}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Signing in..." : "Login"}
+          </Button>
+        </form>
+      </div>
+    );
+  }
 
 export default LoginForm;

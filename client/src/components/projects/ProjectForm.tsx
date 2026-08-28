@@ -1,5 +1,8 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { createProjectSchema, editProjectSchema, type CreateProjectFormData, type EditProjectFormData } from "../../features/validation/project.schema";
 
 export type ProjectFormData = {
   projectCode: string;
@@ -20,7 +23,10 @@ type Props = {
   clients: any[];
   employees: any[];
   initialValues?: Partial<ProjectFormData>;
+  serverErrors?: Record<string, string>;
 };
+
+type FormData = CreateProjectFormData | EditProjectFormData;
 
 function ProjectForm({
   loading,
@@ -28,17 +34,24 @@ function ProjectForm({
   clients,
   employees,
   initialValues,
+  serverErrors,
 }: Props) {
+  const schema = initialValues ? editProjectSchema : createProjectSchema;
+
   const {
     register,
     handleSubmit,
     reset,
-  } = useForm<ProjectFormData>({
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
     defaultValues: {
       status: "PLANNING",
       priority: "MEDIUM",
       ...initialValues,
-    },
+    } as any,
   });
 
   useEffect(() => {
@@ -47,13 +60,26 @@ function ProjectForm({
         status: "PLANNING",
         priority: "MEDIUM",
         ...initialValues,
-      });
+      } as any);
     }
   }, [initialValues, reset]);
 
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      clearErrors();
+      Object.entries(serverErrors).forEach(([field, message]) => {
+        setError(field as keyof FormData, { message });
+      });
+    }
+  }, [serverErrors, setError, clearErrors]);
+
+  const handleFormSubmit = (data: FormData) => {
+    onSubmit(data as unknown as ProjectFormData);
+  };
+
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(handleFormSubmit)}
       className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 sm:p-8 space-y-6 w-full"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -63,10 +89,13 @@ function ProjectForm({
             Project Code *
           </label>
           <input
-            {...register("projectCode", { required: true })}
+            {...register("projectCode")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="Enter project code"
           />
+          {errors.projectCode && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.projectCode.message}</p>
+          )}
         </div>
 
         {/* Project Name */}
@@ -75,10 +104,13 @@ function ProjectForm({
             Project Name *
           </label>
           <input
-            {...register("name", { required: true })}
+            {...register("name")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="Enter project name"
           />
+          {errors.name && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.name.message}</p>
+          )}
         </div>
 
         {/* Description */}
@@ -92,6 +124,9 @@ function ProjectForm({
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="Enter project description"
           />
+          {errors.description && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.description.message}</p>
+          )}
         </div>
 
         {/* Client */}
@@ -100,7 +135,7 @@ function ProjectForm({
             Client *
           </label>
           <select
-            {...register("clientId", { required: true })}
+            {...register("clientId")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition bg-white"
           >
             <option value="">Select Client</option>
@@ -110,6 +145,9 @@ function ProjectForm({
               </option>
             ))}
           </select>
+          {errors.clientId && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.clientId.message}</p>
+          )}
         </div>
 
         {/* Project Manager */}
@@ -145,6 +183,9 @@ function ProjectForm({
             <option value="COMPLETED">COMPLETED</option>
             <option value="CANCELLED">CANCELLED</option>
           </select>
+          {errors.status && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.status.message}</p>
+          )}
         </div>
 
         {/* Priority */}
@@ -161,6 +202,9 @@ function ProjectForm({
             <option value="HIGH">HIGH</option>
             <option value="URGENT">URGENT</option>
           </select>
+          {errors.priority && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.priority.message}</p>
+          )}
         </div>
 
         {/* Budget */}
@@ -175,6 +219,9 @@ function ProjectForm({
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="Enter budget"
           />
+          {errors.budget && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.budget.message}</p>
+          )}
         </div>
 
         {/* Start Date */}
@@ -187,6 +234,9 @@ function ProjectForm({
             {...register("startDate")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
           />
+          {errors.startDate && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.startDate.message}</p>
+          )}
         </div>
 
         {/* End Date */}
@@ -199,6 +249,9 @@ function ProjectForm({
             {...register("endDate")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
           />
+          {errors.endDate && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.endDate.message}</p>
+          )}
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import TaskForm, { type TaskFormData } from "../../components/tasks/TaskForm";
 import { getTask, updateTask } from "../../services/task.service";
 import { getProjects } from "../../services/project.service";
 import { getEmployees } from "../../services/employee.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
 
 function EditTaskPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,7 @@ function EditTaskPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) loadTask(id);
@@ -62,6 +64,7 @@ function EditTaskPage() {
   const handleSubmit = async (values: TaskFormData) => {
     if (!id) return;
 
+    setServerErrors({});
     try {
       setSubmitting(true);
 
@@ -69,13 +72,18 @@ function EditTaskPage() {
 
       toast.success("Task updated successfully.");
       navigate("/tasks");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("UPDATE TASK ERROR:", error);
 
-      toast.error(
-        error?.response?.data?.message ??
-          "Failed to update task."
-      );
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error(
+          (error as any)?.response?.data?.message ??
+            "Failed to update task."
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -116,12 +124,13 @@ function EditTaskPage() {
           </div>
 
           <div className="w-full">
-            <TaskForm 
-              initialData={task} 
-              loading={submitting} 
-              onSubmit={handleSubmit} 
-              projects={projects} 
-              employees={employees} 
+            <TaskForm
+              initialData={task}
+              loading={submitting}
+              onSubmit={handleSubmit}
+              projects={projects}
+              employees={employees}
+              serverErrors={serverErrors}
             />
           </div>
         </div>

@@ -1,23 +1,37 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Paperclip, Search, Filter, Upload, Trash2, Download, ExternalLink } from "lucide-react";
+import { Paperclip, Search, Filter, Upload, Trash2, Download } from "lucide-react";
 import toast from "react-hot-toast";
 
 import PageLoader from "../../components/common/PageLoader";
 import AttachmentUploader from "../../components/attachments/AttachmentUploader";
+import Pagination from "../../components/ui/Pagination";
 import { getAttachments, deleteAttachment } from "../../services/attachment.service";
 import type { Attachment } from "../../types/attachment";
+
+type PagedResponse = {
+  data: Attachment[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 
 const AttachmentsPage = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [showUploader, setShowUploader] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
-  const { data: attachments = [], isLoading, isError, refetch } = useQuery<Attachment[]>({
-    queryKey: ["attachments"],
-    queryFn: () => getAttachments(),
+  const { data: result, isLoading, isError, refetch } = useQuery<PagedResponse>({
+    queryKey: ["attachments", page, limit, searchQuery, typeFilter],
+    queryFn: () => getAttachments(page, limit, { mimeType: typeFilter, search: searchQuery }),
   });
+
+  const attachments = result?.data || [];
+  const totalPages = result?.totalPages || 1;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAttachment(id),
@@ -28,16 +42,6 @@ const AttachmentsPage = () => {
     onError: () => {
       toast.error("Failed to delete attachment");
     },
-  });
-
-  const filteredAttachments = attachments.filter((attachment) => {
-    const matchesSearch =
-      attachment.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      attachment.mimeType.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesType = typeFilter === "all" || attachment.mimeType.startsWith(typeFilter);
-
-    return matchesSearch && matchesType;
   });
 
   const handleDelete = (id: string) => {
@@ -58,12 +62,6 @@ const AttachmentsPage = () => {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
-  const typeStats = {
-    image: attachments.filter(a => a.mimeType.startsWith("image/")).length,
-    pdf: attachments.filter(a => a.mimeType === "application/pdf").length,
-    other: attachments.filter(a => !a.mimeType.startsWith("image/") && a.mimeType !== "application/pdf").length,
-  };
-
   if (isLoading) {
     return <PageLoader />;
   }
@@ -79,218 +77,127 @@ const AttachmentsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <Paperclip className="h-6 w-6 text-blue-600" />
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Attachments
-            </h1>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Attachments
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Manage all files and documents
+            Manage project and task attachments
           </p>
         </div>
-
         <button
-          onClick={() => setShowUploader(!showUploader)}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+          onClick={() => setShowUploader(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          <Upload className="h-4 w-4" />
+          <Upload size={18} />
           Upload Attachment
         </button>
       </div>
 
       {showUploader && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-900">Upload New Attachment</h3>
-            <button
-              onClick={() => setShowUploader(false)}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              ✕
-            </button>
-          </div>
-          <AttachmentUploader onUploaded={handleUploadComplete} />
-        </div>
+        <AttachmentUploader onUploaded={handleUploadComplete} />
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Total Files
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {attachments.length}
-              </p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50">
-              <Paperclip className="h-5 w-5 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Images
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {typeStats.image}
-              </p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50">
-              <Paperclip className="h-5 w-5 text-emerald-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                PDFs
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {typeStats.pdf}
-              </p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-violet-50">
-              <Paperclip className="h-5 w-5 text-violet-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full md:max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search attachments..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-slate-400" />
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="all">All Types</option>
-                <option value="image">Images</option>
-                <option value="application/pdf">PDFs</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+              className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-slate-400" />
+            <select
+              value={typeFilter}
+              onChange={(e) => {
+                setTypeFilter(e.target.value);
+                setPage(1);
+              }}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            >
+              <option value="all">All Types</option>
+              <option value="image/">Images</option>
+              <option value="application/pdf">PDFs</option>
+              <option value="other">Other</option>
+            </select>
           </div>
         </div>
+      </div>
 
-        <div className="p-4">
-          {filteredAttachments.length === 0 ? (
-            <div className="text-center py-12">
-              <Paperclip className="mx-auto h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">
-                No attachments found
-              </h3>
-              <p className="mt-2 text-sm text-slate-500">
-                {searchQuery || typeFilter !== "all"
-                  ? "Try adjusting your search or filters"
-                  : "Upload your first attachment to get started"}
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredAttachments.map((attachment) => {
-                const apiUrl = (import.meta.env.VITE_API_URL ?? "http://localhost:3000").replace(/\/$/, "");
-                const fileUrl = attachment.fileUrl.startsWith("http")
-                  ? attachment.fileUrl
-                  : `${apiUrl}${attachment.fileUrl}`;
-
-                return (
-                  <div
-                    key={attachment.id}
-                    className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                  >
-                    <div className="flex h-32 items-center justify-center overflow-hidden bg-slate-100">
-                      {attachment.mimeType.startsWith("image/") ? (
-                        <img
-                          src={fileUrl}
-                          alt={attachment.originalName}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
-                          <div className="rounded-lg bg-white px-4 py-3 text-sm font-bold shadow-sm">
-                            {attachment.mimeType === "application/pdf" ? "PDF" : "FILE"}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-4">
-                      <h3
-                        className="truncate font-semibold text-slate-900 text-sm"
-                        title={attachment.originalName}
-                      >
-                        {attachment.originalName}
-                      </h3>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        {formatFileSize(attachment.fileSize)} • {attachment.mimeType}
-                      </p>
-
-                      <p className="mt-1 text-xs text-slate-400">
-                        {new Date(attachment.createdAt).toLocaleDateString()}
-                      </p>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        {attachments.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="text-sm text-slate-500">No attachments found.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
+                  <th className="px-4 py-3 font-medium">Size</th>
+                  <th className="px-4 py-3 font-medium">Uploaded By</th>
+                  <th className="px-4 py-3 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {attachments.map((attachment) => (
+                  <tr key={attachment.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Paperclip className="h-4 w-4 text-slate-400" />
+                        <span className="font-medium text-slate-900">{attachment.originalName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{attachment.mimeType}</td>
+                    <td className="px-4 py-3 text-slate-600">{formatFileSize(attachment.fileSize)}</td>
+                    <td className="px-4 py-3 text-slate-600">{attachment.user?.fullName || "-"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <a
-                          href={fileUrl}
+                          href={attachment.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                          className="text-blue-600 hover:text-blue-700"
                         >
-                          <ExternalLink className="h-3 w-3" />
-                          Open
+                          <Download size={16} />
                         </a>
-
-                        <a
-                          href={fileUrl}
-                          download={attachment.originalName}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                        >
-                          <Download className="h-3 w-3" />
-                          Download
-                        </a>
-
                         <button
                           onClick={() => handleDelete(attachment.id)}
-                          className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700"
+                          className="text-red-600 hover:text-red-700"
                         >
-                          <Trash2 className="h-3 w-3" />
-                          Delete
+                          <Trash2 size={16} />
                         </button>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        limit={limit}
+        onLimitChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
+      />
     </div>
   );
 };

@@ -9,12 +9,14 @@ import TaskForm, { type TaskFormData } from "../../components/tasks/TaskForm";
 import { createTask } from "../../services/task.service";
 import { getProjects } from "../../services/project.service";
 import { getEmployees } from "../../services/employee.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
 
 function AddTaskPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     getProjects().then(setProjects).catch(() => {});
@@ -22,14 +24,20 @@ function AddTaskPage() {
   }, []);
 
   const handleSubmit = async (values: TaskFormData) => {
+    setServerErrors({});
     try {
       setLoading(true);
       await createTask(values);
       toast.success("Task created successfully.");
       navigate("/tasks");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.response?.data?.message ?? "Failed to create task.");
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error((error as any)?.response?.data?.message ?? "Failed to create task.");
+      }
     } finally {
       setLoading(false);
     }
@@ -58,7 +66,7 @@ function AddTaskPage() {
           </div>
 
           <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 sm:p-8">
-            <TaskForm loading={loading} onSubmit={handleSubmit} projects={projects} employees={employees} />
+            <TaskForm loading={loading} onSubmit={handleSubmit} projects={projects} employees={employees} serverErrors={serverErrors} />
           </div>
         </div>
       </PageContainer>

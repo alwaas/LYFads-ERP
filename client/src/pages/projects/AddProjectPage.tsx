@@ -9,12 +9,14 @@ import ProjectForm, { type ProjectFormData } from "../../components/projects/Pro
 import { createProject } from "../../services/project.service";
 import { getClients } from "../../services/client.service";
 import { getEmployees } from "../../services/employee.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
 
 function AddProjectPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     getClients().then(setClients).catch(() => {});
@@ -22,14 +24,20 @@ function AddProjectPage() {
   }, []);
 
   const handleSubmit = async (values: ProjectFormData) => {
+    setServerErrors({});
     try {
       setLoading(true);
       await createProject(values);
       toast.success("Project created successfully.");
       navigate("/projects");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.response?.data?.message ?? "Failed to create project.");
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error((error as any)?.response?.data?.message ?? "Failed to create project.");
+      }
     } finally {
       setLoading(false);
     }
@@ -63,6 +71,7 @@ function AddProjectPage() {
               onSubmit={handleSubmit}
               clients={clients}
               employees={employees}
+              serverErrors={serverErrors}
             />
           </div>
         </div>

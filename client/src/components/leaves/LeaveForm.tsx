@@ -1,13 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-import type {
-  CreateLeaveDto,
-  Leave,
-  LeaveType,
-} from "../../types/leave";
+import { createLeaveSchema, editLeaveSchema, type CreateLeaveFormData, type EditLeaveFormData } from "../../features/validation/leave.schema";
+
+export type LeaveFormData = {
+  employeeId: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  remarks?: string;
+};
 
 type Props = {
-  initialData?: Partial<Leave>;
+  initialData?: Partial<LeaveFormData>;
   employees: {
     id: string;
     employeeCode: string;
@@ -15,79 +22,70 @@ type Props = {
       fullName: string;
     };
   }[];
-  onSubmit: (data: CreateLeaveDto) => void;
+  onSubmit: (data: LeaveFormData) => void;
   loading?: boolean;
+  serverErrors?: Record<string, string>;
 };
+
+type FormData = CreateLeaveFormData | EditLeaveFormData;
 
 function LeaveForm({
   initialData,
   employees,
   onSubmit,
   loading = false,
+  serverErrors,
 }: Props) {
-  const [formData, setFormData] = useState({
-    employeeId: "",
-    leaveType: "CASUAL" as LeaveType,
-    fromDate: "",
-    toDate: "",
-    reason: "",
-    remarks: "",
+  const schema = initialData ? editLeaveSchema : createLeaveSchema;
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
+    defaultValues: {
+      employeeId: "",
+      leaveType: "CASUAL",
+      startDate: "",
+      endDate: "",
+      reason: "",
+      remarks: "",
+    },
   });
 
   useEffect(() => {
     if (!initialData) return;
 
-    setFormData({
+    reset({
       employeeId: initialData.employeeId ?? "",
-      leaveType:
-        (initialData.leaveType as LeaveType) ??
-        "CASUAL",
-      fromDate:
-        initialData.startDate?.split("T")[0] ??
-        "",
-      toDate:
-        initialData.endDate?.split("T")[0] ??
-        "",
+      leaveType: (initialData.leaveType as FormData["leaveType"]) ?? "CASUAL",
+      startDate: initialData.startDate?.split("T")[0] ?? "",
+      endDate: initialData.endDate?.split("T")[0] ?? "",
       reason: initialData.reason ?? "",
       remarks: initialData.remarks ?? "",
     });
-  }, [initialData]);
+  }, [initialData, reset]);
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement |
-      HTMLTextAreaElement |
-      HTMLSelectElement
-    >
-  ) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      clearErrors();
+      Object.entries(serverErrors).forEach(([field, message]) => {
+        setError(field as keyof FormData, { message });
+      });
+    }
+  }, [serverErrors, setError, clearErrors]);
 
-  const handleSubmit = (
-    e: React.FormEvent
-  ) => {
-    e.preventDefault();
-
-    onSubmit({
-      employeeId: formData.employeeId,
-      leaveType: formData.leaveType,
-      startDate: new Date(
-        formData.fromDate
-      ).toISOString(),
-      endDate: new Date(
-        formData.toDate
-      ).toISOString(),
-      reason: formData.reason,
-      remarks: formData.remarks,
-    });
+  const handleFormSubmit = (data: FormData) => {
+    onSubmit(data as unknown as LeaveFormData);
   };
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(handleFormSubmit)}
       className="space-y-6"
     >
       <div>
@@ -96,11 +94,9 @@ function LeaveForm({
         </label>
 
         <select
-          name="employeeId"
-          value={formData.employeeId}
-          onChange={handleChange}
+          {...register("employeeId")}
           className="w-full border rounded-lg px-4 py-3"
-          required
+          disabled={loading}
         >
           <option value="">
             Select Employee
@@ -116,6 +112,11 @@ function LeaveForm({
             </option>
           ))}
         </select>
+        {errors.employeeId && (
+          <p className="mt-1 text-sm text-red-600">
+            {errors.employeeId.message}
+          </p>
+        )}
       </div>
 
       <div>
@@ -124,10 +125,9 @@ function LeaveForm({
         </label>
 
         <select
-          name="leaveType"
-          value={formData.leaveType}
-          onChange={handleChange}
+          {...register("leaveType")}
           className="w-full border rounded-lg px-4 py-3"
+          disabled={loading}
         >
           <option value="CASUAL">
             Casual Leave
@@ -148,6 +148,11 @@ function LeaveForm({
             Paternity Leave
           </option>
         </select>
+        {errors.leaveType && (
+          <p className="mt-1 text-sm text-red-600">
+            {errors.leaveType.message}
+          </p>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-5">
@@ -158,12 +163,15 @@ function LeaveForm({
 
           <input
             type="date"
-            name="fromDate"
-            value={formData.fromDate}
-            onChange={handleChange}
+            {...register("startDate")}
             className="w-full border rounded-lg px-4 py-3"
-            required
+            disabled={loading}
           />
+          {errors.startDate && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.startDate.message}
+            </p>
+          )}
         </div>
 
         <div>
@@ -173,12 +181,15 @@ function LeaveForm({
 
           <input
             type="date"
-            name="toDate"
-            value={formData.toDate}
-            onChange={handleChange}
+            {...register("endDate")}
             className="w-full border rounded-lg px-4 py-3"
-            required
+            disabled={loading}
           />
+          {errors.endDate && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.endDate.message}
+            </p>
+          )}
         </div>
       </div>
 
@@ -188,13 +199,16 @@ function LeaveForm({
         </label>
 
         <textarea
-          name="reason"
-          value={formData.reason}
-          onChange={handleChange}
+          {...register("reason")}
           rows={5}
           className="w-full border rounded-lg px-4 py-3"
-          required
+          disabled={loading}
         />
+        {errors.reason && (
+          <p className="mt-1 text-sm text-red-600">
+            {errors.reason.message}
+          </p>
+        )}
       </div>
 
       <div>
@@ -203,12 +217,16 @@ function LeaveForm({
         </label>
 
         <textarea
-          name="remarks"
-          value={formData.remarks}
-          onChange={handleChange}
+          {...register("remarks")}
           rows={3}
           className="w-full border rounded-lg px-4 py-3"
+          disabled={loading}
         />
+        {errors.remarks && (
+          <p className="mt-1 text-sm text-red-600">
+            {errors.remarks.message}
+          </p>
+        )}
       </div>
 
       <button
