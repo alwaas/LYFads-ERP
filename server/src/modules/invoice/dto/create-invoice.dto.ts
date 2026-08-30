@@ -8,10 +8,30 @@ import {
 
 import { InvoiceStatus } from '@prisma/client';
 
-export class CreateInvoiceDto {
+export class CreateInvoiceItemDto {
   @IsString()
-  invoiceNumber: string;
+  description: string;
 
+  @IsDecimal()
+  quantity: string;
+
+  @IsDecimal()
+  unitPrice: string;
+
+  @IsOptional()
+  @IsDecimal()
+  taxRate?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  taxAmount?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  discount?: string;
+}
+
+export class CreateInvoiceDto {
   @IsString()
   clientId: string;
 
@@ -25,27 +45,6 @@ export class CreateInvoiceDto {
   @IsDateString()
   dueDate: string;
 
-  @IsDecimal()
-  subtotal: string;
-
-  @IsOptional()
-  @IsDecimal()
-  tax?: string;
-
-  @IsOptional()
-  @IsDecimal()
-  discount?: string;
-
-  @IsDecimal()
-  total: string;
-
-  @IsOptional()
-  @IsDecimal()
-  paidAmount?: string;
-
-  @IsDecimal()
-  balanceAmount: string;
-
   @IsOptional()
   @IsEnum(InvoiceStatus)
   status?: InvoiceStatus;
@@ -54,6 +53,5 @@ export class CreateInvoiceDto {
   @IsString()
   notes?: string;
 
-  @IsString()
-  tenantId!: string;
+  items: CreateInvoiceItemDto[];
 }

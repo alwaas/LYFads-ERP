@@ -182,6 +182,10 @@ const SettingsPage = lazy(
   () => import("../pages/settings/SettingsPage")
 );
 
+const ARDashboardPage = lazy(
+  () => import("../pages/ar/ARDashboardPage")
+);
+
 const NotFoundPage = lazy(
   () => import("../pages/NotFoundPage")
 );
@@ -228,6 +232,94 @@ const EditPaymentPage = lazy(
 
 const ViewPaymentPage = lazy(
   () => import("../pages/payments/ViewPaymentPage")
+);
+
+const VendorsPage = lazy(
+  () => import("../pages/vendors/VendorsPage")
+);
+
+const AddVendorPage = lazy(
+  () => import("../pages/vendors/AddVendorPage")
+);
+
+const EditVendorPage = lazy(
+  () => import("../pages/vendors/EditVendorPage")
+);
+
+const ViewVendorPage = lazy(
+  () => import("../pages/vendors/ViewVendorPage")
+);
+
+const PurchaseOrdersPage = lazy(
+  () => import("../pages/purchase-orders/PurchaseOrdersPage")
+);
+
+const AddPurchaseOrderPage = lazy(
+  () => import("../pages/purchase-orders/AddPurchaseOrderPage")
+);
+
+const EditPurchaseOrderPage = lazy(
+  () => import("../pages/purchase-orders/EditPurchaseOrderPage")
+);
+
+const ViewPurchaseOrderPage = lazy(
+  () => import("../pages/purchase-orders/ViewPurchaseOrderPage")
+);
+
+const ProductsPage = lazy(
+  () => import("../pages/products/ProductsPage")
+);
+
+const AddProductPage = lazy(
+  () => import("../pages/products/AddProductPage")
+);
+
+const EditProductPage = lazy(
+  () => import("../pages/products/EditProductPage")
+);
+
+const ViewProductPage = lazy(
+  () => import("../pages/products/ViewProductPage")
+);
+
+const InventoryPage = lazy(
+  () => import("../pages/inventory/InventoryPage")
+);
+
+const ViewInventoryPage = lazy(
+  () => import("../pages/inventory/ViewInventoryPage")
+);
+
+const SalesOrdersPage = lazy(
+  () => import("../pages/sales-orders/SalesOrdersPage")
+);
+
+const AddSalesOrderPage = lazy(
+  () => import("../pages/sales-orders/AddSalesOrderPage")
+);
+
+const EditSalesOrderPage = lazy(
+  () => import("../pages/sales-orders/EditSalesOrderPage")
+);
+
+const ViewSalesOrderPage = lazy(
+  () => import("../pages/sales-orders/ViewSalesOrderPage")
+);
+
+const ExpensesPage = lazy(
+  () => import("../pages/expenses/ExpensesPage")
+);
+
+const AddExpensePage = lazy(
+  () => import("../pages/expenses/AddExpensePage")
+);
+
+const EditExpensePage = lazy(
+  () => import("../pages/expenses/EditExpensePage")
+);
+
+const ViewExpensePage = lazy(
+  () => import("../pages/expenses/ViewExpensePage")
 );
 
 const AttachmentsPage = lazy(
@@ -635,6 +727,248 @@ const router = createBrowserRouter([
   },
 
   {
+    path: "/vendors",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <VendorsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendors/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddVendorPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendors/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EditVendorPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendors/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewVendorPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <PurchaseOrdersPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddPurchaseOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EditPurchaseOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewPurchaseOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/products",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ProductsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/products/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddProductPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/products/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EditProductPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/products/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewProductPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <InventoryPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory/:productId",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewInventoryPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/sales-orders",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <SalesOrdersPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/sales-orders/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddSalesOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/sales-orders/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EditSalesOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/sales-orders/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewSalesOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/expenses",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ExpensesPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/expenses/add",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <AddExpensePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/expenses/edit/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <EditExpensePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/expenses/:id",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ViewExpensePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
     path: "/attachments",
     element: (
       <ProtectedRoute>
@@ -892,7 +1226,16 @@ const router = createBrowserRouter([
     ),
   },
 
-  
+  {
+    path: "/ar",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <ARDashboardPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
 
   {
     path: "*",

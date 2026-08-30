@@ -20,6 +20,12 @@ import {
   Paperclip,
   GitBranch,
   Receipt,
+  Wallet,
+  Store,
+  ShoppingCart,
+  Package,
+  Warehouse,
+  ShoppingBag,
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -243,6 +249,75 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Payments",
     path: "/payments",
     icon: CreditCard,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Vendors",
+    path: "/vendors",
+    icon: Store,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Purchase Orders",
+    path: "/purchase-orders",
+    icon: ShoppingCart,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Products",
+    path: "/products",
+    icon: Package,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
+    ],
+  },
+
+  {
+    title: "Inventory",
+    path: "/inventory",
+    icon: Warehouse,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
+    ],
+  },
+
+  {
+    title: "Sales Orders",
+    path: "/sales-orders",
+    icon: ShoppingBag,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
+    ],
+  },
+
+  {
+    title: "Expenses",
+    path: "/expenses",
+    icon: Wallet,
     roles: [
       "SUPER_ADMIN",
       "ADMIN",

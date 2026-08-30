@@ -8,11 +8,11 @@ import type { Invoice, InvoiceStatus } from "../../types/invoice";
 
 const statusColors: Record<InvoiceStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-800",
-  SENT: "bg-blue-100 text-blue-800",
+  ISSUED: "bg-blue-100 text-blue-800",
   PARTIALLY_PAID: "bg-yellow-100 text-yellow-800",
   PAID: "bg-green-100 text-green-800",
   OVERDUE: "bg-red-100 text-red-800",
-  CANCELLED: "bg-gray-100 text-gray-800",
+  VOID: "bg-gray-100 text-gray-800",
 };
 
 const ViewInvoicePage = () => {
@@ -154,7 +154,7 @@ const ViewInvoicePage = () => {
                         <td className="px-4 py-2 text-sm text-slate-900">{item.description}</td>
                         <td className="px-4 py-2 text-sm text-slate-600 text-right">{item.quantity}</td>
                         <td className="px-4 py-2 text-sm text-slate-600 text-right">${Number(item.unitPrice).toFixed(2)}</td>
-                        <td className="px-4 py-2 text-sm font-medium text-slate-900 text-right">${Number(item.amount).toFixed(2)}</td>
+                        <td className="px-4 py-2 text-sm font-medium text-slate-900 text-right">${Number(item.lineTotal).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -7,6 +7,7 @@ import { PrismaService } from '../../database/prisma.service';
 
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
 import { UpdateInvoiceItemDto } from './dto/update-invoice-item.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InvoiceItemsService {
@@ -22,7 +23,6 @@ export class InvoiceItemsService {
       throw new NotFoundException('Invoice not found');
     }
 
-    // Verify invoice belongs to the same tenant
     if (invoice.tenantId !== userTenantId) {
       throw new ForbiddenException('Access denied to this invoice');
     }
@@ -30,9 +30,12 @@ export class InvoiceItemsService {
     return this.prisma.invoiceItem.create({
       data: {
         description: dto.description,
-        quantity: dto.quantity,
-        unitPrice: dto.unitPrice,
-        amount: dto.amount,
+        quantity: new Prisma.Decimal(dto.quantity),
+        unitPrice: new Prisma.Decimal(dto.unitPrice),
+        taxRate: dto.taxRate ? new Prisma.Decimal(dto.taxRate) : undefined,
+        taxAmount: dto.taxAmount ? new Prisma.Decimal(dto.taxAmount) : undefined,
+        discount: dto.discount ? new Prisma.Decimal(dto.discount) : undefined,
+        lineTotal: new Prisma.Decimal(dto.lineTotal),
         invoiceId: dto.invoiceId,
         tenantId: userTenantId,
       },
@@ -62,7 +65,6 @@ export class InvoiceItemsService {
       throw new NotFoundException('Invoice item not found');
     }
 
-    // Verify tenant ownership
     if (invoiceItem.tenantId !== userTenantId) {
       throw new ForbiddenException('Access denied to this invoice item');
     }
@@ -73,14 +75,19 @@ export class InvoiceItemsService {
   async update(id: string, dto: UpdateInvoiceItemDto, userTenantId: string) {
     await this.findOne(id, userTenantId);
 
+    const data: Prisma.InvoiceItemUpdateInput = {};
+
+    if (dto.description !== undefined) data.description = dto.description;
+    if (dto.quantity !== undefined) data.quantity = new Prisma.Decimal(dto.quantity);
+    if (dto.unitPrice !== undefined) data.unitPrice = new Prisma.Decimal(dto.unitPrice);
+    if (dto.taxRate !== undefined) data.taxRate = dto.taxRate ? new Prisma.Decimal(dto.taxRate) : undefined;
+    if (dto.taxAmount !== undefined) data.taxAmount = dto.taxAmount ? new Prisma.Decimal(dto.taxAmount) : undefined;
+    if (dto.discount !== undefined) data.discount = dto.discount ? new Prisma.Decimal(dto.discount) : undefined;
+    if (dto.lineTotal !== undefined) data.lineTotal = new Prisma.Decimal(dto.lineTotal);
+
     return this.prisma.invoiceItem.update({
       where: { id },
-      data: {
-        description: dto.description,
-        quantity: dto.quantity,
-        unitPrice: dto.unitPrice,
-        amount: dto.amount,
-      },
+      data,
     });
   }
 

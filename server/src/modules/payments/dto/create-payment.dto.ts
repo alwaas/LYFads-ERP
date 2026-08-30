@@ -9,8 +9,13 @@ import {
 import { PaymentMethod } from '@prisma/client';
 
 export class CreatePaymentDto {
+  @IsOptional()
   @IsString()
-  invoiceId: string;
+  invoiceId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientId?: string;
 
   @IsDecimal()
   amount: string;

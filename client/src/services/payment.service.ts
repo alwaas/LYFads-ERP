@@ -73,4 +73,9 @@ export const paymentService = {
       limit: items.length,
     };
   },
+
+  allocatePayment: async (paymentId: string, dto: { invoiceId: string; amount: string }): Promise<any> => {
+    const response = await api.post(`/payments/${paymentId}/allocate`, dto);
+    return response.data.data || response.data;
+  },
 };

@@ -15,7 +15,7 @@ interface InvoiceItem {
   description: string;
   quantity: string;
   unitPrice: string;
-  amount: string;
+  lineTotal: string;
 }
 
 const EditInvoicePage = () => {
@@ -34,17 +34,10 @@ const EditInvoicePage = () => {
   useEffect(() => {
     if (invoice) {
       setFormData({
-        invoiceNumber: invoice.invoiceNumber,
         clientId: invoice.clientId,
         projectId: invoice.projectId || "",
         issueDate: invoice.issueDate.split("T")[0],
         dueDate: invoice.dueDate.split("T")[0],
-        subtotal: invoice.subtotal.toString(),
-        tax: invoice.tax.toString(),
-        discount: invoice.discount.toString(),
-        total: invoice.total.toString(),
-        paidAmount: invoice.paidAmount.toString(),
-        balanceAmount: invoice.balanceAmount.toString(),
         status: (invoice.status || "DRAFT") as InvoiceStatus,
         notes: invoice.notes || "",
       });
@@ -54,7 +47,7 @@ const EditInvoicePage = () => {
             description: item.description,
             quantity: item.quantity.toString(),
             unitPrice: item.unitPrice.toString(),
-            amount: item.amount.toString(),
+            lineTotal: item.lineTotal.toString(),
           }))
         );
       }
@@ -85,51 +78,19 @@ const EditInvoicePage = () => {
     },
   });
 
-  const calculateTotals = () => {
-    const subtotal = items.reduce((sum, item) => sum + Number(item.amount), 0);
-    const tax = Number(formData.tax) || 0;
-    const discount = Number(formData.discount) || 0;
-    const total = subtotal + tax - discount;
-    return { subtotal, total };
-  };
-
   const updateItem = (index: number, field: keyof InvoiceItem, value: string) => {
     const newItems = [...items];
     newItems[index][field] = value;
-    
-    if (field === "quantity" || field === "unitPrice") {
-      const quantity = Number(newItems[index].quantity) || 0;
-      const unitPrice = Number(newItems[index].unitPrice) || 0;
-      newItems[index].amount = (quantity * unitPrice).toFixed(2);
-    }
-    
     setItems(newItems);
-    
-    const { subtotal, total } = calculateTotals();
-    setFormData((prev) => ({
-      ...prev,
-      subtotal: subtotal.toFixed(2),
-      total: total.toFixed(2),
-      balanceAmount: total.toFixed(2),
-    }));
   };
 
   const addItem = () => {
-    setItems([...items, { description: "", quantity: "1", unitPrice: "0", amount: "0" }]);
+    setItems([...items, { description: "", quantity: "1", unitPrice: "0", lineTotal: "0" }]);
   };
 
   const removeItem = (index: number) => {
     if (items.length === 1) return;
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
-    
-    const { subtotal, total } = calculateTotals();
-    setFormData((prev) => ({
-      ...prev,
-      subtotal: subtotal.toFixed(2),
-      total: total.toFixed(2),
-      balanceAmount: total.toFixed(2),
-    }));
+    setItems(items.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -187,21 +148,6 @@ const EditInvoicePage = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
-              <label htmlFor="invoiceNumber" className="block text-sm font-medium text-slate-700 mb-2">
-                Invoice Number *
-              </label>
-              <input
-                type="text"
-                id="invoiceNumber"
-                name="invoiceNumber"
-                value={formData.invoiceNumber || ""}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
               <label htmlFor="clientId" className="block text-sm font-medium text-slate-700 mb-2">
                 Client *
               </label>
@@ -256,11 +202,11 @@ const EditInvoicePage = () => {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="DRAFT">Draft</option>
-                <option value="SENT">Sent</option>
+                <option value="ISSUED">Issued</option>
                 <option value="PARTIALLY_PAID">Partially Paid</option>
                 <option value="PAID">Paid</option>
                 <option value="OVERDUE">Overdue</option>
-                <option value="CANCELLED">Cancelled</option>
+                <option value="VOID">Void</option>
               </select>
             </div>
 
@@ -336,8 +282,9 @@ const EditInvoicePage = () => {
                   <div className="col-span-2">
                     <input
                       type="text"
-                      placeholder="Amount"
-                      value={item.amount}
+                      placeholder="Line Total"
+                      value={item.lineTotal}
+                      onChange={(e) => updateItem(index, "lineTotal", e.target.value)}
                       readOnly
                       className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
                     />
@@ -363,57 +310,6 @@ const EditInvoicePage = () => {
               <Plus className="h-4 w-4" />
               Add Item
             </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div>
-              <label htmlFor="tax" className="block text-sm font-medium text-slate-700 mb-2">
-                Tax
-              </label>
-              <input
-                type="number"
-                id="tax"
-                name="tax"
-                value={formData.tax || "0"}
-                onChange={handleChange}
-                step="0.01"
-                min="0"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="discount" className="block text-sm font-medium text-slate-700 mb-2">
-                Discount
-              </label>
-              <input
-                type="number"
-                id="discount"
-                name="discount"
-                value={formData.discount || "0"}
-                onChange={handleChange}
-                step="0.01"
-                min="0"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="total" className="block text-sm font-medium text-slate-700 mb-2">
-                Total *
-              </label>
-              <input
-                type="number"
-                id="total"
-                name="total"
-                value={formData.total || "0"}
-                onChange={handleChange}
-                required
-                step="0.01"
-                min="0"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
           </div>
 
           <div>

@@ -38,6 +38,13 @@ import { PayrollModule } from './modules/payroll/payroll.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
 import { InvoiceItemsModule } from './modules/invoice-items/invoice-items.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { TenantsModule } from './modules/tenants/tenants.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
+import { VendorsModule } from './modules/vendors/vendors.module';
+import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.module';
+import { ProductsModule } from './modules/products/products.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { SalesOrdersModule } from './modules/sales-orders/sales-orders.module';
 
 @Module({
   imports: [
@@ -71,6 +78,13 @@ import { PaymentsModule } from './modules/payments/payments.module';
     InvoiceModule,
     InvoiceItemsModule,
     PaymentsModule,
+    TenantsModule,
+    ExpensesModule,
+    VendorsModule,
+    PurchaseOrdersModule,
+    ProductsModule,
+    InventoryModule,
+    SalesOrdersModule,
   ],
   providers: [
     {
