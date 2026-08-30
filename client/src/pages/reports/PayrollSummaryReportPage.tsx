@@ -3,6 +3,7 @@ import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
 
 import { getPayrollSummaryReport } from "../../services/report.service";
+import ExportButton from "../../components/reports/ExportButton";
 import type { PayrollSummaryReport } from "../../types/report";
 
 function PayrollSummaryReportPage() {
@@ -50,9 +51,12 @@ function PayrollSummaryReportPage() {
     <DashboardLayout>
       <PageContainer>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Payroll Summary Report</h1>
-            <p className="text-sm text-slate-500">Total Payrolls: {report.totalPayrolls}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Payroll Summary Report</h1>
+              <p className="text-sm text-slate-500">Total Payrolls: {report.totalPayrolls}</p>
+            </div>
+            <ExportButton reportType="payroll-summary" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

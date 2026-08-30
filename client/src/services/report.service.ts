@@ -59,3 +59,11 @@ export const getPayrollSummaryReport = async (params?: { month?: string; year?: 
   const { data } = await api.get("/reports/payroll-summary", { params });
   return data.data;
 };
+
+export const exportReport = async (reportType: string, format: 'csv' | 'excel' | 'pdf', params?: any) => {
+  const response = await api.get(`/reports/export/${reportType}/${format}`, {
+    params,
+    responseType: 'blob',
+  });
+  return response.data;
+};

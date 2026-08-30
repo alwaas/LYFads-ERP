@@ -58,21 +58,21 @@ export class PaymentAllocationsService {
     });
 
     const totalAllocated = existingAllocations.reduce(
-      (sum, alloc) => sum + Number(alloc.amount),
-      0,
+      (sum, alloc) => sum.plus(new Prisma.Decimal(alloc.amount)),
+      new Prisma.Decimal(0),
     );
 
     const paymentAmount = payment.invoiceId === dto.invoiceId
       ? await this.getDirectPaymentAmount(dto.paymentId, dto.invoiceId)
       : 0;
 
-    const remainingPaymentAmount = Number(payment.invoiceId === dto.invoiceId
+    const remainingPaymentAmount = new Prisma.Decimal(payment.invoiceId === dto.invoiceId
       ? await this.getDirectPaymentAmount(dto.paymentId, dto.invoiceId)
-      : 0) + totalAllocated;
+      : 0).plus(totalAllocated);
 
     const paymentTotal = await this.getPaymentTotal(dto.paymentId);
 
-    if (totalAllocated + allocationAmount.toNumber() > paymentTotal) {
+    if (totalAllocated.plus(allocationAmount).gt(paymentTotal)) {
       throw new ConflictException('Allocation exceeds remaining payment amount');
     }
 
@@ -82,8 +82,8 @@ export class PaymentAllocationsService {
     });
 
     const totalInvoiceAllocated = invoiceAllocations.reduce(
-      (sum, alloc) => sum + Number(alloc.amount),
-      0,
+      (sum, alloc) => sum.plus(new Prisma.Decimal(alloc.amount)),
+      new Prisma.Decimal(0),
     );
 
     const directPayments = await this.prisma.payment.findMany({
@@ -96,13 +96,13 @@ export class PaymentAllocationsService {
     });
 
     const totalDirectPayments = directPayments.reduce(
-      (sum, p) => sum + Number(p.amount),
-      0,
+      (sum, p) => sum.plus(new Prisma.Decimal(p.amount)),
+      new Prisma.Decimal(0),
     );
 
-    const remainingBalance = Number(invoice.total) - (totalInvoiceAllocated + totalDirectPayments);
+    const remainingBalance = new Prisma.Decimal(invoice.total).minus(totalInvoiceAllocated).minus(totalDirectPayments);
 
-    if (allocationAmount.toNumber() > remainingBalance) {
+    if (allocationAmount.gt(remainingBalance)) {
       throw new ConflictException('Allocation exceeds remaining invoice balance');
     }
 
@@ -229,7 +229,7 @@ export class PaymentAllocationsService {
     };
   }
 
-  private async getPaymentTotal(paymentId: string): Promise<number> {
+  private async getPaymentTotal(paymentId: string): Promise<Prisma.Decimal> {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
       select: { amount: true },
@@ -239,7 +239,7 @@ export class PaymentAllocationsService {
       throw new NotFoundException('Payment not found');
     }
 
-    return Number(payment.amount);
+    return new Prisma.Decimal(payment.amount);
   }
 
   private async getDirectPaymentAmount(paymentId: string, invoiceId: string): Promise<number> {
@@ -277,23 +277,23 @@ export class PaymentAllocationsService {
 
     const paidFromDirectPayments = invoice.payments
       .filter((p) => p.status === PaymentStatus.ACTIVE && p.invoiceId === invoiceId)
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+      .reduce((sum, p) => sum.plus(new Prisma.Decimal(p.amount)), new Prisma.Decimal(0));
 
     const paidFromAllocations = invoice.allocations
       .filter((alloc) => alloc.payment.status === PaymentStatus.ACTIVE)
-      .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
+      .reduce((sum, alloc) => sum.plus(new Prisma.Decimal(alloc.amount)), new Prisma.Decimal(0));
 
-    const paidAmount = paidFromDirectPayments + paidFromAllocations;
+    const paidAmount = paidFromDirectPayments.plus(paidFromAllocations);
 
-    const total = Number(invoice.total);
+    const total = new Prisma.Decimal(invoice.total);
 
-    const balance = total - paidAmount;
+    const balance = total.minus(paidAmount);
 
     let status: InvoiceStatus = InvoiceStatus.SENT;
 
-    if (paidAmount <= 0) {
+    if (paidAmount.lte(0)) {
       status = InvoiceStatus.SENT;
-    } else if (balance <= 0) {
+    } else if (balance.lte(0)) {
       status = InvoiceStatus.PAID;
     } else {
       status = InvoiceStatus.PARTIALLY_PAID;
@@ -302,8 +302,8 @@ export class PaymentAllocationsService {
     await prismaClient.invoice.update({
       where: { id: invoiceId },
       data: {
-        paidAmount: new Prisma.Decimal(paidAmount),
-        balanceAmount: new Prisma.Decimal(balance),
+        paidAmount,
+        balanceAmount: balance,
         status,
       },
     });

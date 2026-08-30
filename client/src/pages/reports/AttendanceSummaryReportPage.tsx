@@ -3,6 +3,7 @@ import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
 
 import { getAttendanceSummaryReport } from "../../services/report.service";
+import ExportButton from "../../components/reports/ExportButton";
 import type { AttendanceSummaryReport } from "../../types/report";
 
 function AttendanceSummaryReportPage() {
@@ -50,11 +51,14 @@ function AttendanceSummaryReportPage() {
     <DashboardLayout>
       <PageContainer>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Attendance Summary Report</h1>
-            <p className="text-sm text-slate-500">
-              {new Date(report.dateFrom).toLocaleDateString()} - {new Date(report.dateTo).toLocaleDateString()}
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Attendance Summary Report</h1>
+              <p className="text-sm text-slate-500">
+                {new Date(report.dateFrom).toLocaleDateString()} - {new Date(report.dateTo).toLocaleDateString()}
+              </p>
+            </div>
+            <ExportButton reportType="attendance-summary" />
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">

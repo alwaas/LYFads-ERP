@@ -228,22 +228,22 @@ export class PaymentsService {
 
     const paidFromDirectPayments = invoice.payments
       .filter((p) => p.status === PaymentStatus.ACTIVE && p.invoiceId === invoiceId)
-      .reduce((sum, p) => sum + Number(p.amount), 0);
+      .reduce((sum, p) => sum.plus(new Prisma.Decimal(p.amount)), new Prisma.Decimal(0));
 
     const paidFromAllocations = invoice.allocations
-      .reduce((sum, alloc) => sum + Number(alloc.amount), 0);
+      .reduce((sum, alloc) => sum.plus(new Prisma.Decimal(alloc.amount)), new Prisma.Decimal(0));
 
-    const paidAmount = paidFromDirectPayments + paidFromAllocations;
+    const paidAmount = paidFromDirectPayments.plus(paidFromAllocations);
 
-    const total = Number(invoice.total);
+    const total = new Prisma.Decimal(invoice.total);
 
-    const balance = total - paidAmount;
+    const balance = total.minus(paidAmount);
 
     let status: InvoiceStatus = InvoiceStatus.SENT;
 
-    if (paidAmount <= 0) {
+    if (paidAmount.lte(0)) {
       status = InvoiceStatus.SENT;
-    } else if (balance <= 0) {
+    } else if (balance.lte(0)) {
       status = InvoiceStatus.PAID;
     } else {
       status = InvoiceStatus.PARTIALLY_PAID;
@@ -252,8 +252,8 @@ export class PaymentsService {
     await prismaClient.invoice.update({
       where: { id: invoiceId },
       data: {
-        paidAmount: new Prisma.Decimal(paidAmount),
-        balanceAmount: new Prisma.Decimal(balance),
+        paidAmount,
+        balanceAmount: balance,
         status,
       },
     });

@@ -294,7 +294,7 @@ export class ReportsService {
 
     topOutstanding.sort((a, b) => b.balanceAmount - a.balanceAmount);
 
-    const totalReceivables = receivables.reduce((sum, inv) => sum + toNumber(inv.balanceAmount), 0);
+    const totalReceivables = receivables.reduce((sum, inv) => sum.plus(new Prisma.Decimal(inv.balanceAmount)), new Prisma.Decimal(0)).toNumber();
 
     return {
       totalReceivables,
@@ -445,9 +445,9 @@ export class ReportsService {
     });
 
     const customerData = clients.map((client) => {
-      const sales = client.invoices.reduce((sum, inv) => sum + toNumber(inv.total), 0);
-      const outstanding = client.invoices.reduce((sum, inv) => sum + toNumber(inv.balanceAmount), 0);
-      const paid = client.invoices.reduce((sum, inv) => sum + toNumber(inv.paidAmount), 0);
+      const sales = client.invoices.reduce((sum, inv) => sum.plus(new Prisma.Decimal(inv.total)), new Prisma.Decimal(0)).toNumber();
+      const outstanding = client.invoices.reduce((sum, inv) => sum.plus(new Prisma.Decimal(inv.balanceAmount)), new Prisma.Decimal(0)).toNumber();
+      const paid = client.invoices.reduce((sum, inv) => sum.plus(new Prisma.Decimal(inv.paidAmount)), new Prisma.Decimal(0)).toNumber();
 
       return {
         clientId: client.id,
@@ -823,8 +823,8 @@ export class ReportsService {
       return acc;
     }, {} as Record<string, number>);
 
-    const totalNetSalary = payrolls.reduce((sum, p) => sum + Number(p.netSalary), 0);
-    const totalBasicSalary = payrolls.reduce((sum, p) => sum + Number(p.basicSalary), 0);
+    const totalNetSalary = payrolls.reduce((sum, p) => sum.plus(new Prisma.Decimal(p.netSalary)), new Prisma.Decimal(0)).toNumber();
+    const totalBasicSalary = payrolls.reduce((sum, p) => sum.plus(new Prisma.Decimal(p.basicSalary)), new Prisma.Decimal(0)).toNumber();
 
     return {
       totalPayrolls: payrolls.length,
@@ -879,7 +879,7 @@ export class ReportsService {
       this.prisma.salesOrder.count({ where }),
     ]);
 
-    const totalValue = orders.reduce((sum, order) => sum + Number(order.total), 0);
+    const totalValue = orders.reduce((sum, order) => sum.plus(new Prisma.Decimal(order.total)), new Prisma.Decimal(0)).toNumber();
 
     const byStatus = orders.reduce((acc, order) => {
       acc[order.status] = (acc[order.status] || 0) + 1;

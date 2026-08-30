@@ -3,6 +3,7 @@ import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
 
 import { getEmployeeDirectoryReport } from "../../services/report.service";
+import ExportButton from "../../components/reports/ExportButton";
 import type { EmployeeDirectoryReport } from "../../types/report";
 
 function EmployeeDirectoryReportPage() {
@@ -50,9 +51,12 @@ function EmployeeDirectoryReportPage() {
     <DashboardLayout>
       <PageContainer>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Employee Directory Report</h1>
-            <p className="text-sm text-slate-500">Total Employees: {report.total}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Employee Directory Report</h1>
+              <p className="text-sm text-slate-500">Total Employees: {report.total}</p>
+            </div>
+            <ExportButton reportType="employees" />
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-x-auto">

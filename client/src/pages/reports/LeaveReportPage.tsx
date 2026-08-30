@@ -3,6 +3,7 @@ import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
 
 import { getLeaveReport } from "../../services/report.service";
+import ExportButton from "../../components/reports/ExportButton";
 import type { LeaveReport } from "../../types/report";
 
 function LeaveReportPage() {
@@ -50,12 +51,15 @@ function LeaveReportPage() {
     <DashboardLayout>
       <PageContainer>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Leave Report</h1>
-            <p className="text-sm text-slate-500">
-              {new Date(report.dateFrom).toLocaleDateString()} - {new Date(report.dateTo).toLocaleDateString()}
-            </p>
-            <p className="text-sm text-slate-500">Total Leaves: {report.totalLeaves}</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Leave Report</h1>
+              <p className="text-sm text-slate-500">
+                {new Date(report.dateFrom).toLocaleDateString()} - {new Date(report.dateTo).toLocaleDateString()}
+              </p>
+              <p className="text-sm text-slate-500">Total Leaves: {report.totalLeaves}</p>
+            </div>
+            <ExportButton reportType="leave-report" />
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

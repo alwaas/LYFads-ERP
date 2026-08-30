@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "../../layouts/DashboardLayout";
 
 import DateRangeSelector from "../../components/reports/DateRangeSelector";
+import ExportButton from "../../components/reports/ExportButton";
 
 import {
   getCustomerReport,
@@ -49,14 +50,17 @@ function CustomerReportPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold">Customer Report</h1>
-          <DateRangeSelector
-            preset={preset}
-            onPresetChange={setPreset}
-            customFrom={customFrom}
-            customTo={customTo}
-            onCustomFromChange={setCustomFrom}
-            onCustomToChange={setCustomTo}
-          />
+          <div className="flex items-center gap-2">
+            <DateRangeSelector
+              preset={preset}
+              onPresetChange={setPreset}
+              customFrom={customFrom}
+              customTo={customTo}
+              onCustomFromChange={setCustomFrom}
+              onCustomToChange={setCustomTo}
+            />
+            <ExportButton reportType="customers" params={preset === "custom" ? { dateFrom: customFrom, dateTo: customTo } : undefined} />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
