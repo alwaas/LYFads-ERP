@@ -85,7 +85,17 @@ export async function cleanDatabase() {
     await prisma.notification.deleteMany();
     await prisma.tenantMembership.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.tenantSubscription.deleteMany();
     await prisma.tenant.deleteMany();
+
+    // Clean SaaS tables
+    try {
+      await prisma.planFeature.deleteMany();
+      await prisma.planLimit.deleteMany();
+      await prisma.plan.deleteMany();
+    } catch (error) {
+      // Tables may not exist if migration hasn't been applied
+    }
 
     // Clean sales order tables if they exist (Step 4.8)
     try {
@@ -708,6 +718,67 @@ export async function setupTestDatabase() {
     },
   });
 
+  // Create SUPER_ADMIN user for platform administration
+  const superAdmin = await prisma.user.create({
+    data: {
+      fullName: 'Platform Super Admin',
+      email: 'superadmin@platform.com',
+      password: '$2b$10$dummy.hash.for.testing',
+      role: 'SUPER_ADMIN',
+      isActive: true,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create default SaaS plan
+  const defaultPlan = await prisma.plan.create({
+    data: {
+      name: 'Professional',
+      code: 'PRO',
+      description: 'Professional plan with standard features',
+      price: 29.99,
+      billingInterval: 'MONTHLY',
+      isActive: true,
+      features: {
+        create: [
+          { featureCode: 'PROJECTS', description: 'Project management' },
+          { featureCode: 'PAYROLL', description: 'Payroll processing' },
+          { featureCode: 'REPORTS', description: 'Advanced reports' },
+        ],
+      },
+      limits: {
+        create: [
+          { resourceCode: 'MAX_USERS', limitValue: 50 },
+          { resourceCode: 'MAX_PRODUCTS', limitValue: 1000 },
+          { resourceCode: 'MAX_PROJECTS', limitValue: 100 },
+        ],
+      },
+    },
+  });
+
+  // Create subscription for Tenant A
+  const tenantASubscription = await prisma.tenantSubscription.create({
+    data: {
+      tenantId: tenantA.id,
+      planId: defaultPlan.id,
+      status: 'ACTIVE',
+      startDate: new Date('2024-01-01'),
+      autoRenew: true,
+    },
+  });
+
+  // Create subscription for Tenant B (TRIAL)
+  const tenantBSubscription = await prisma.tenantSubscription.create({
+    data: {
+      tenantId: tenantB.id,
+      planId: defaultPlan.id,
+      status: 'TRIAL',
+      startDate: new Date('2024-01-01'),
+      trialEndDate: new Date('2024-02-01'),
+      autoRenew: true,
+    },
+  });
+
   return {
     tenantA,
     tenantB,
@@ -755,6 +826,10 @@ export async function setupTestDatabase() {
     tenantBWarehouse,
     tenantAStockMovement,
     tenantBStockMovement,
+    superAdmin,
+    defaultPlan,
+    tenantASubscription,
+    tenantBSubscription,
   };
 }
 

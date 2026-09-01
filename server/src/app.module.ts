@@ -50,6 +50,9 @@ import { SalaryStructuresModule } from './modules/salary-structures/salary-struc
 import { PayrollItemsModule } from './modules/payroll-items/payroll-items.module';
 import { SalesOrdersModule } from './modules/sales-orders/sales-orders.module';
 import { PaymentAllocationsModule } from './modules/payment-allocations/payment-allocations.module';
+import { TenantManagementModule } from './modules/tenant-management/tenant-management.module';
+import { PlansModule } from './modules/plans/plans.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -95,6 +98,9 @@ import { PaymentAllocationsModule } from './modules/payment-allocations/payment-
     PayrollItemsModule,
     SalesOrdersModule,
     PaymentAllocationsModule,
+    TenantManagementModule,
+    PlansModule,
+    SubscriptionsModule,
   ],
   providers: [
     {

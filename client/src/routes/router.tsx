@@ -283,6 +283,34 @@ const SettingsPage = lazy(
   () => import("../pages/settings/SettingsPage")
 );
 
+const TenantsPage = lazy(
+  () => import("../pages/tenants/TenantsPage")
+);
+
+const AddTenantPage = lazy(
+  () => import("../pages/tenants/AddTenantPage")
+);
+
+const TenantDetailsPage = lazy(
+  () => import("../pages/tenants/TenantDetailsPage")
+);
+
+const PlansPage = lazy(
+  () => import("../pages/plans/PlansPage")
+);
+
+const AddPlanPage = lazy(
+  () => import("../pages/plans/AddPlanPage")
+);
+
+const TenantSubscriptionPage = lazy(
+  () => import("../pages/subscriptions/TenantSubscriptionPage")
+);
+
+const MyPlanPage = lazy(
+  () => import("../pages/subscriptions/MyPlanPage")
+);
+
 const NotFoundPage = lazy(
   () => import("../pages/NotFoundPage")
 );
@@ -1582,7 +1610,82 @@ const router = createBrowserRouter([
     ),
   },
 
-  
+  {
+    path: "/tenants",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+        <Suspense fallback={<PageLoader />}>
+          <TenantsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/tenants/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddTenantPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/tenants/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+        <Suspense fallback={<PageLoader />}>
+          <TenantDetailsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/tenants/:id/subscription",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+        <Suspense fallback={<PageLoader />}>
+          <TenantSubscriptionPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/plans",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+        <Suspense fallback={<PageLoader />}>
+          <PlansPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/plans/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddPlanPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/my-plan",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+        <Suspense fallback={<PageLoader />}>
+          <MyPlanPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
 
   {
     path: "*",

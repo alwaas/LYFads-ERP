@@ -28,6 +28,8 @@ import {
   Warehouse,
   ArrowLeftRight,
   ShoppingBag,
+  Building2,
+  Tag,
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -430,6 +432,34 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: Settings,
     roles: [
       "SUPER_ADMIN",
+    ],
+  },
+
+  {
+    title: "Tenant Management",
+    path: "/tenants",
+    icon: Building2,
+    roles: [
+      "SUPER_ADMIN",
+    ],
+  },
+
+  {
+    title: "Plan Management",
+    path: "/plans",
+    icon: Tag,
+    roles: [
+      "SUPER_ADMIN",
+    ],
+  },
+
+  {
+    title: "My Plan",
+    path: "/my-plan",
+    icon: CreditCard,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
     ],
   },
 ];

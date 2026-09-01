@@ -8,28 +8,28 @@ datasource db {
 }
 
 model User {
-  id              String             @id @default(cuid())
-  fullName        String
-  email           String             @unique
-  password        String
-  role            UserRole           @default(EMPLOYEE)
-  isActive        Boolean            @default(true)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  tenantId        String
-  attachments     Attachment[]
-  comments        Comment[]
-  activityLogs    ActivityLog[]
-  clients         Client[]
-  employee        Employee?
-  Lead            Lead[]
-  notifications   Notification[]
-  managedProjects Project[]          @relation("ProjectManager")
-  memberships     TenantMembership[]
-  tenant          Tenant             @relation(fields: [tenantId], references: [id])
-  approvedLeaves  Leave[]
-  approvedPayrolls Payroll[]
+  id                 String             @id @default(cuid())
+  fullName           String
+  email              String             @unique
+  password           String
+  role               UserRole           @default(EMPLOYEE)
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  tenantId           String
+  attachments        Attachment[]
+  comments           Comment[]
+  approvedPayrolls   Payroll[]
   approvedTimesheets Timesheet[]
+  activityLogs       ActivityLog[]
+  clients            Client[]
+  employee           Employee?
+  Lead               Lead[]
+  approvedLeaves     Leave[]
+  notifications      Notification[]
+  managedProjects    Project[]          @relation("ProjectManager")
+  memberships        TenantMembership[]
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
 
   @@map("users")
 }
@@ -62,14 +62,14 @@ model Employee {
   timesheets            Timesheet[]
   attendances           Attendance[]
   dailyWorkReports      DailyWorkReport[]
+  manager               Employee?         @relation("ManagerRelation", fields: [managerId], references: [id])
+  managedEmployees      Employee[]        @relation("ManagerRelation")
   tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leaveBalances         LeaveBalance[]
   leaves                Leave[]
+  salaryStructures      SalaryStructure[]
   task                  Task[]
-  managedEmployees       Employee[]          @relation("ManagerRelation")
-  manager                Employee?           @relation("ManagerRelation", fields: [managerId], references: [id])
-  salaryStructures       SalaryStructure[]
-  leaveBalances          LeaveBalance[]
 
   @@index([userId, tenantId])
   @@index([tenantId])
@@ -77,10 +77,10 @@ model Employee {
 }
 
 model Client {
-  id               String    @id @default(cuid())
+  id               String       @id @default(cuid())
   companyName      String
   contactPerson    String
-  email            String    @unique
+  email            String       @unique
   phone            String?
   gstNumber        String?
   website          String?
@@ -89,16 +89,16 @@ model Client {
   state            String?
   country          String?
   pincode          String?
-  isActive         Boolean   @default(true)
+  isActive         Boolean      @default(true)
   accountManagerId String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
   tenantId         String
   invoices         Invoice[]
-  salesOrders      SalesOrder[]
-  accountManager   User?     @relation(fields: [accountManagerId], references: [id])
-  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  accountManager   User?        @relation(fields: [accountManagerId], references: [id])
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   projects         Project[]
+  salesOrders      SalesOrder[]
 
   @@map("clients")
 }
@@ -186,23 +186,23 @@ model Attendance {
 }
 
 model Leave {
-  id                String      @id @default(cuid())
-  reason            String
-  startDate         DateTime
-  endDate           DateTime
-  status            LeaveStatus @default(PENDING)
-  remarks           String?
-  rejectionReason   String?
-  approvedById      String?
-  approvedAt        DateTime?
-  employeeId        String
-  tenantId          String
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  leaveType         LeaveType   @default(CASUAL)
-  employee          Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  tenant            Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  approvedBy        User?       @relation(fields: [approvedById], references: [id])
+  id              String      @id @default(cuid())
+  reason          String
+  startDate       DateTime
+  endDate         DateTime
+  status          LeaveStatus @default(PENDING)
+  remarks         String?
+  employeeId      String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  leaveType       LeaveType   @default(CASUAL)
+  tenantId        String
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectionReason String?
+  approvedBy      User?       @relation(fields: [approvedById], references: [id])
+  employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([employeeId, tenantId])
   @@index([status, tenantId])
@@ -211,18 +211,18 @@ model Leave {
 }
 
 model LeaveBalance {
-  id          String    @id @default(cuid())
-  employeeId  String
-  leaveType   LeaveType
-  year        Int
-  allocated   Int       @default(0)
-  used        Int       @default(0)
-  remaining   Int       @default(0)
-  tenantId    String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  employeeId String
+  leaveType  LeaveType
+  year       Int
+  allocated  Int       @default(0)
+  used       Int       @default(0)
+  remaining  Int       @default(0)
+  tenantId   String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, leaveType, year, tenantId])
   @@index([employeeId, tenantId])
@@ -295,27 +295,27 @@ model DailyWorkReport {
 }
 
 model Timesheet {
-  id          String    @id @default(cuid())
-  employeeId  String
-  projectId   String?
-  taskId      String?
-  workDate    DateTime
-  startTime   DateTime?
-  endTime     DateTime?
-  hours       Decimal   @db.Decimal(4, 2)
-  description String?
-  status      TimesheetStatus @default(DRAFT)
-  approvedById String?
-  approvedAt  DateTime?
+  id              String          @id @default(cuid())
+  employeeId      String
+  projectId       String?
+  taskId          String?
+  workDate        DateTime
+  startTime       DateTime?
+  endTime         DateTime?
+  hours           Decimal         @db.Decimal(4, 2)
+  description     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  tenantId        String
+  approvedAt      DateTime?
+  approvedById    String?
   rejectionReason String?
-  tenantId    String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  project     Project?  @relation(fields: [projectId], references: [id])
-  task        Task?     @relation(fields: [taskId], references: [id])
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  approvedBy  User?     @relation(fields: [approvedById], references: [id])
+  status          TimesheetStatus @default(DRAFT)
+  approvedBy      User?           @relation(fields: [approvedById], references: [id])
+  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  project         Project?        @relation(fields: [projectId], references: [id])
+  task            Task?           @relation(fields: [taskId], references: [id])
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([employeeId, tenantId])
   @@index([workDate, tenantId])
@@ -461,9 +461,9 @@ model Payroll {
   approvedById     String?
   paymentMethod    PaymentMethod?
   paymentReference String?
+  approvedBy       User?          @relation(fields: [approvedById], references: [id])
   employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  approvedBy       User?          @relation(fields: [approvedById], references: [id])
   items            PayrollItem[]
 
   @@unique([employeeId, month, year, tenantId])
@@ -500,7 +500,7 @@ model PayrollItem {
   id          String          @id @default(cuid())
   payrollId   String
   type        PayrollItemType
-  category     String
+  category    String
   description String?
   amount      Decimal         @db.Decimal(12, 2)
   sequence    Int             @default(0)
@@ -515,26 +515,26 @@ model PayrollItem {
 }
 
 model Invoice {
-  id            String        @id @default(cuid())
-  invoiceNumber String        @unique
+  id            String              @id @default(cuid())
+  invoiceNumber String              @unique
   clientId      String
   projectId     String?
   issueDate     DateTime
   dueDate       DateTime
-  subtotal      Decimal       @db.Decimal(12, 2)
-  tax           Decimal       @default(0) @db.Decimal(12, 2)
-  discount      Decimal       @default(0) @db.Decimal(12, 2)
-  total         Decimal       @db.Decimal(12, 2)
-  paidAmount    Decimal       @default(0) @db.Decimal(12, 2)
-  balanceAmount Decimal       @db.Decimal(12, 2)
-  status        InvoiceStatus @default(DRAFT)
+  subtotal      Decimal             @db.Decimal(12, 2)
+  tax           Decimal             @default(0) @db.Decimal(12, 2)
+  discount      Decimal             @default(0) @db.Decimal(12, 2)
+  total         Decimal             @db.Decimal(12, 2)
+  paidAmount    Decimal             @default(0) @db.Decimal(12, 2)
+  balanceAmount Decimal             @db.Decimal(12, 2)
+  status        InvoiceStatus       @default(DRAFT)
   notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
   tenantId      String
-  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  project       Project?      @relation(fields: [projectId], references: [id])
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client        Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project       Project?            @relation(fields: [projectId], references: [id])
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items         InvoiceItem[]
   payments      Payment[]
   allocations   PaymentAllocation[]
@@ -560,21 +560,21 @@ model InvoiceItem {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
+  id          String              @id @default(cuid())
   invoiceId   String
-  amount      Decimal       @db.Decimal(12, 2)
+  amount      Decimal             @db.Decimal(12, 2)
   paymentDate DateTime
   method      PaymentMethod
   referenceNo String?
   remarks     String?
-  status      PaymentStatus @default(ACTIVE)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  tenantId    String
+  status      PaymentStatus       @default(ACTIVE)
   voidedAt    DateTime?
   voidedById  String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  tenantId    String
-  invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice     Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   allocations PaymentAllocation[]
 
   @@index([invoiceId, tenantId])
@@ -584,16 +584,16 @@ model Payment {
 }
 
 model PaymentAllocation {
-  id            String    @id @default(cuid())
-  paymentId     String
-  invoiceId     String
-  amount        Decimal   @db.Decimal(12, 2)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  tenantId      String
-  payment       Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  paymentId String
+  invoiceId String
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenantId  String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([paymentId, invoiceId])
   @@index([paymentId, tenantId])
@@ -668,51 +668,52 @@ model Vendor {
 }
 
 model Tenant {
-  id                String             @id @default(cuid())
-  name              String
-  slug              String             @unique
-  status            TenantStatus       @default(ACTIVE)
-  maxUsers          Int                @default(10)
-  maxStorage        Int                @default(1024)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  email             String?
-  phone             String?
-  address           String?
-  logo              String?
-  timezone          String             @default("UTC")
-  currency          String             @default("USD")
-  attachments       Attachment[]
-  comments          Comment[]
-  invoices          Invoice[]
-  invoiceItems      InvoiceItem[]
-  milestones        Milestone[]
-  payments          Payment[]
-  payrolls          Payroll[]
-  timesheets        Timesheet[]
-  activityLogs      ActivityLog[]
-  attendances       Attendance[]
-  clients           Client[]
-  dailyWorkReports  DailyWorkReport[]
-  employees         Employee[]
-  followUps         FollowUp[]
-  leads             Lead[]
-  leaves            Leave[]
-  notifications     Notification[]
-  productWarehouses ProductWarehouse[]
-  products          Product[]
-  projects          Project[]
-  stockMovements    StockMovement[]
-  tasks             Task[]
-  memberships       TenantMembership[]
-  users             User[]
-  warehouses        Warehouse[]
-  salaryStructures SalaryStructure[]
-  payrollItems     PayrollItem[]
-  leaveBalances    LeaveBalance[]
-  salesOrders      SalesOrder[]
-  salesOrderItems  SalesOrderItem[]
+  id                 String              @id @default(cuid())
+  name               String
+  slug               String              @unique
+  status             TenantStatus        @default(ACTIVE)
+  maxUsers           Int                 @default(10)
+  maxStorage         Int                 @default(1024)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  email              String?
+  phone              String?
+  address            String?
+  logo               String?
+  timezone           String              @default("UTC")
+  currency           String              @default("USD")
+  attachments        Attachment[]
+  comments           Comment[]
+  invoices           Invoice[]
+  invoiceItems       InvoiceItem[]
+  milestones         Milestone[]
+  payments           Payment[]
   paymentAllocations PaymentAllocation[]
+  payrolls           Payroll[]
+  timesheets         Timesheet[]
+  activityLogs       ActivityLog[]
+  attendances        Attendance[]
+  clients            Client[]
+  dailyWorkReports   DailyWorkReport[]
+  employees          Employee[]
+  followUps          FollowUp[]
+  leads              Lead[]
+  leaveBalances      LeaveBalance[]
+  leaves             Leave[]
+  notifications      Notification[]
+  payrollItems       PayrollItem[]
+  productWarehouses  ProductWarehouse[]
+  products           Product[]
+  projects           Project[]
+  salaryStructures   SalaryStructure[]
+  salesOrderItems    SalesOrderItem[]
+  salesOrders        SalesOrder[]
+  stockMovements     StockMovement[]
+  tasks              Task[]
+  memberships        TenantMembership[]
+  users              User[]
+  warehouses         Warehouse[]
+  subscription       TenantSubscription?
 
   @@map("tenants")
 }
@@ -733,6 +734,70 @@ model TenantMembership {
   @@map("tenant_memberships")
 }
 
+model Plan {
+  id              String              @id @default(cuid())
+  name            String
+  code            String              @unique
+  description     String?
+  price           Decimal             @db.Decimal(12, 2) @default(0)
+  billingInterval BillingInterval     @default(MONTHLY)
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  features        PlanFeature[]
+  limits          PlanLimit[]
+  subscriptions   TenantSubscription[]
+
+  @@map("plans")
+}
+
+model PlanFeature {
+  id          String   @id @default(cuid())
+  planId      String
+  featureCode String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  plan        Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureCode])
+  @@index([planId])
+  @@map("plan_features")
+}
+
+model PlanLimit {
+  id           String   @id @default(cuid())
+  planId       String
+  resourceCode String
+  limitValue   Int      @default(-1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  plan         Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, resourceCode])
+  @@index([planId])
+  @@map("plan_limits")
+}
+
+model TenantSubscription {
+  id            String              @id @default(cuid())
+  tenantId      String              @unique
+  planId        String
+  status        SubscriptionStatus  @default(ACTIVE)
+  startDate     DateTime            @default(now())
+  endDate       DateTime?
+  trialEndDate  DateTime?
+  autoRenew     Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan          Plan                @relation(fields: [planId], references: [id])
+
+  @@index([planId])
+  @@index([status])
+  @@map("tenant_subscriptions")
+}
+
 model Product {
   id              String             @id @default(cuid())
   tenantId        String
@@ -748,8 +813,8 @@ model Product {
   updatedAt       DateTime           @updatedAt
   warehouseStocks ProductWarehouse[]
   tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  stockMovements  StockMovement[]
   salesOrderItems SalesOrderItem[]
+  stockMovements  StockMovement[]
 
   @@unique([sku, tenantId])
   @@index([tenantId])
@@ -758,19 +823,19 @@ model Product {
 }
 
 model Warehouse {
-  id                      String             @id @default(cuid())
-  tenantId                String
-  name                    String
-  location                String?
-  isDefault               Boolean            @default(false)
-  isActive                Boolean            @default(true)
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
-  warehouseStocks         ProductWarehouse[]
-  stockMovements          StockMovement[]    @relation("StockMovements")
-  sourceStockMovements    StockMovement[]    @relation("SourceStockMovements")
-  destinationStockMovements StockMovement[]  @relation("DestinationStockMovements")
-  tenant                  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                        String             @id @default(cuid())
+  tenantId                  String
+  name                      String
+  location                  String?
+  isDefault                 Boolean            @default(false)
+  isActive                  Boolean            @default(true)
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  warehouseStocks           ProductWarehouse[]
+  destinationStockMovements StockMovement[]    @relation("DestinationStockMovements")
+  sourceStockMovements      StockMovement[]    @relation("SourceStockMovements")
+  stockMovements            StockMovement[]    @relation("StockMovements")
+  tenant                    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([tenantId, isDefault])
@@ -809,16 +874,64 @@ model StockMovement {
   referenceId            String?
   notes                  String?
   createdAt              DateTime          @default(now())
+  destinationWarehouse   Warehouse?        @relation("DestinationStockMovements", fields: [destinationWarehouseId], references: [id])
   product                Product           @relation(fields: [productId], references: [id])
+  sourceWarehouse        Warehouse?        @relation("SourceStockMovements", fields: [sourceWarehouseId], references: [id])
   tenant                 Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   warehouse              Warehouse?        @relation("StockMovements", fields: [warehouseId], references: [id])
-  sourceWarehouse        Warehouse?        @relation("SourceStockMovements", fields: [sourceWarehouseId], references: [id])
-  destinationWarehouse   Warehouse?        @relation("DestinationStockMovements", fields: [destinationWarehouseId], references: [id])
 
   @@index([tenantId, productId])
   @@index([tenantId, warehouseId])
   @@index([tenantId, createdAt])
   @@map("stock_movements")
+}
+
+model SalesOrder {
+  id                   String           @id @default(cuid())
+  orderNumber          String
+  clientId             String
+  orderDate            DateTime         @default(now())
+  expectedDeliveryDate DateTime?
+  status               SalesOrderStatus @default(DRAFT)
+  subtotal             Decimal          @db.Decimal(12, 2)
+  discount             Decimal          @default(0) @db.Decimal(12, 2)
+  tax                  Decimal          @default(0) @db.Decimal(12, 2)
+  total                Decimal          @db.Decimal(12, 2)
+  notes                String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  tenantId             String
+  items                SalesOrderItem[]
+  client               Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([orderNumber, tenantId])
+  @@index([tenantId])
+  @@index([clientId, tenantId])
+  @@index([status, tenantId])
+  @@index([orderDate, tenantId])
+  @@map("sales_orders")
+}
+
+model SalesOrderItem {
+  id           String     @id @default(cuid())
+  salesOrderId String
+  productId    String
+  quantity     Decimal    @db.Decimal(8, 2)
+  unitPrice    Decimal    @db.Decimal(12, 2)
+  discount     Decimal    @default(0) @db.Decimal(12, 2)
+  tax          Decimal    @default(0) @db.Decimal(12, 2)
+  lineTotal    Decimal    @db.Decimal(12, 2)
+  sequence     Int        @default(0)
+  createdAt    DateTime   @default(now())
+  tenantId     String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: NoAction)
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([salesOrderId, tenantId])
+  @@index([tenantId])
+  @@map("sales_order_items")
 }
 
 enum StockMovementType {
@@ -988,57 +1101,23 @@ enum SalesOrderStatus {
   CANCELLED
 }
 
-model SalesOrder {
-  id                  String            @id @default(cuid())
-  orderNumber         String
-  clientId            String
-  orderDate           DateTime          @default(now())
-  expectedDeliveryDate DateTime?
-  status              SalesOrderStatus  @default(DRAFT)
-  subtotal            Decimal           @db.Decimal(12, 2)
-  discount            Decimal           @default(0) @db.Decimal(12, 2)
-  tax                 Decimal           @default(0) @db.Decimal(12, 2)
-  total               Decimal           @db.Decimal(12, 2)
-  notes               String?
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  tenantId            String
-  client              Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  items               SalesOrderItem[]
-
-  @@unique([orderNumber, tenantId])
-  @@index([tenantId])
-  @@index([clientId, tenantId])
-  @@index([status, tenantId])
-  @@index([orderDate, tenantId])
-  @@map("sales_orders")
-}
-
-model SalesOrderItem {
-  id             String    @id @default(cuid())
-  salesOrderId   String
-  productId      String
-  quantity       Decimal   @db.Decimal(8, 2)
-  unitPrice      Decimal   @db.Decimal(12, 2)
-  discount       Decimal   @default(0) @db.Decimal(12, 2)
-  tax            Decimal   @default(0) @db.Decimal(12, 2)
-  lineTotal      Decimal   @db.Decimal(12, 2)
-  sequence       Int       @default(0)
-  createdAt      DateTime  @default(now())
-  tenantId       String
-  salesOrder     SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
-  product        Product    @relation(fields: [productId], references: [id])
-  tenant         Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([salesOrderId, tenantId])
-  @@index([tenantId])
-  @@map("sales_order_items")
-}
-
 enum TenantStatus {
   ACTIVE
   SUSPENDED
+  INACTIVE
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
 }
 
 enum MembershipStatus {
