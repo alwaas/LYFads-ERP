@@ -52,6 +52,7 @@ import { SalaryStructuresModule } from './modules/salary-structures/salary-struc
 import { PayrollItemsModule } from './modules/payroll-items/payroll-items.module';
 import { SalesOrdersModule } from './modules/sales-orders/sales-orders.module';
 import { PaymentAllocationsModule } from './modules/payment-allocations/payment-allocations.module';
+import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.module';
 import { TenantManagementModule } from './modules/tenant-management/tenant-management.module';
 import { PlansModule } from './modules/plans/plans.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
@@ -102,6 +103,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
     PayrollItemsModule,
     SalesOrdersModule,
     PaymentAllocationsModule,
+    PurchaseOrdersModule,
     TenantManagementModule,
     PlansModule,
     SubscriptionsModule,

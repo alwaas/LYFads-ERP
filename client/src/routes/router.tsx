@@ -391,6 +391,26 @@ const EditPurchasePage = lazy(
   () => import("../pages/purchases/EditPurchasePage")
 );
 
+const PurchaseOrdersPage = lazy(
+  () => import("../pages/purchase-orders/PurchaseOrdersPage")
+);
+
+const AddPurchaseOrderPage = lazy(
+  () => import("../pages/purchase-orders/AddPurchaseOrderPage")
+);
+
+const EditPurchaseOrderPage = lazy(
+  () => import("../pages/purchase-orders/EditPurchaseOrderPage")
+);
+
+const ViewPurchaseOrderPage = lazy(
+  () => import("../pages/purchase-orders/ViewPurchaseOrderPage")
+);
+
+const ReceivePurchaseOrderPage = lazy(
+  () => import("../pages/purchase-orders/ReceivePurchaseOrderPage")
+);
+
 const VendorsPage = lazy(
   () => import("../pages/vendors/VendorsPage")
 );
@@ -1019,6 +1039,61 @@ const router = createBrowserRouter([
       <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <EditPurchasePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <PurchaseOrdersPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddPurchaseOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders/edit/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditPurchaseOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewPurchaseOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/purchase-orders/:id/receive",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ReceivePurchaseOrderPage />
         </Suspense>
       </ProtectedRoute>
     ),

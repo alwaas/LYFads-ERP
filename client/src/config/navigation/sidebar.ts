@@ -246,6 +246,17 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
 
   {
+    title: "Purchase Orders",
+    path: "/purchase-orders",
+    icon: ShoppingCart,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
     title: "Vendors",
     path: "/vendors",
     icon: Store,
