@@ -1690,6 +1690,28 @@ const router = createBrowserRouter([
   },
 
   {
+    path: "/sales-orders/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewSalesOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/sales-orders/:id/edit",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditSalesOrderPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
     path: "/settings",
     element: (
       <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]}>

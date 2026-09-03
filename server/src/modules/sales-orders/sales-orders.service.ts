@@ -13,6 +13,7 @@ import { SearchDto } from '../../common/dto/search.dto';
 import { CreateSalesOrderDto } from './dto/create-sales-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
 import { SalesOrderQueryDto } from './dto/sales-order-query.dto';
+import { AddItemsDto, SalesOrderItemInputDto } from './dto/add-items.dto';
 import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
 
 @Injectable()
@@ -23,9 +24,42 @@ export class SalesOrdersService {
     private readonly valuation: InventoryValuationService,
   ) {}
 
+  private toMoney(value?: string | null): Prisma.Decimal {
+    if (value === undefined || value === null || value === '') {
+      return new Prisma.Decimal(0);
+    }
+    return new Prisma.Decimal(value);
+  }
+
+  private computeLineTotal(item: SalesOrderItemInputDto): Prisma.Decimal {
+    const qty = this.toMoney(item.quantity);
+    const price = this.toMoney(item.unitPrice);
+    const discount = this.toMoney(item.discount);
+    const tax = this.toMoney(item.tax);
+    return qty.mul(price).minus(discount).plus(tax);
+  }
+
+  private async assertProductsBelongToTenant(
+    tx: Prisma.TransactionClient | PrismaService,
+    productIds: string[],
+    tenantId: string,
+  ) {
+    if (productIds.length === 0) return;
+    const products = await (tx as PrismaService).product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, tenantId: true },
+    });
+    const valid = new Set(products.filter((p) => p.tenantId === tenantId).map((p) => p.id));
+    for (const id of productIds) {
+      if (!valid.has(id)) {
+        throw new ForbiddenException(`Product ${id} does not belong to tenant`);
+      }
+    }
+  }
+
   async create(dto: CreateSalesOrderDto, userTenantId: string, userId?: string) {
-    if (dto.tenantId && dto.tenantId !== userTenantId) {
-      throw new ForbiddenException('Cannot create sales order for a different tenant');
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('At least one item is required to create a sales order');
     }
 
     const client = await this.prisma.client.findFirst({
@@ -45,32 +79,59 @@ export class SalesOrdersService {
       throw new ConflictException('Sales order number already exists for this tenant');
     }
 
-    const salesOrder = await this.prisma.salesOrder.create({
-      data: {
-        orderNumber: dto.orderNumber,
-        clientId: dto.clientId,
-        orderDate: new Date(dto.orderDate),
-        expectedDeliveryDate: dto.expectedDeliveryDate
-          ? new Date(dto.expectedDeliveryDate)
-          : undefined,
-        status: dto.status || SalesOrderStatus.DRAFT,
-        subtotal: new Prisma.Decimal(dto.subtotal),
-        discount: dto.discount ? new Prisma.Decimal(dto.discount) : undefined,
-        tax: dto.tax ? new Prisma.Decimal(dto.tax) : undefined,
-        total: new Prisma.Decimal(dto.total),
-        notes: dto.notes,
+    await this.assertProductsBelongToTenant(this.prisma, dto.items.map((i) => i.productId), userTenantId);
+
+    const subtotal = this.toMoney(dto.subtotal);
+    const discount = this.toMoney(dto.discount);
+    const tax = this.toMoney(dto.tax);
+    const total = this.toMoney(dto.total);
+
+    const salesOrder = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.salesOrder.create({
+        data: {
+          orderNumber: dto.orderNumber,
+          clientId: dto.clientId,
+          orderDate: new Date(dto.orderDate),
+          expectedDeliveryDate: dto.expectedDeliveryDate
+            ? new Date(dto.expectedDeliveryDate)
+            : null,
+          status: SalesOrderStatus.DRAFT,
+          subtotal,
+          discount,
+          tax,
+          total,
+          notes: dto.notes,
+          tenantId: userTenantId,
+        },
+      });
+
+      const itemsData = dto.items.map((item, index) => ({
+        salesOrderId: created.id,
+        productId: item.productId,
+        quantity: this.toMoney(item.quantity),
+        unitPrice: this.toMoney(item.unitPrice),
+        discount: this.toMoney(item.discount),
+        tax: this.toMoney(item.tax),
+        lineTotal: item.lineTotal ? this.toMoney(item.lineTotal) : this.computeLineTotal(item),
+        sequence: typeof item.sequence === 'number' ? item.sequence : index,
         tenantId: userTenantId,
-      },
-      include: {
-        client: true,
-        items: { include: { product: true } },
-      },
+      }));
+
+      await tx.salesOrderItem.createMany({ data: itemsData });
+
+      return tx.salesOrder.findUnique({
+        where: { id: created.id },
+        include: {
+          client: true,
+          items: { include: { product: true } },
+        },
+      });
     });
 
     await this.activityLogsService.log({
       action: 'CREATE',
       module: 'SALES_ORDER',
-      description: `Sales order ${salesOrder.orderNumber} created.`,
+      description: `Sales order ${salesOrder!.orderNumber} created with ${dto.items.length} item(s).`,
       userId: userId,
       tenantId: userTenantId,
     });
@@ -184,11 +245,10 @@ export class SalesOrdersService {
     if (dto.orderDate !== undefined) data.orderDate = new Date(dto.orderDate);
     if (dto.expectedDeliveryDate !== undefined)
       data.expectedDeliveryDate = dto.expectedDeliveryDate ? new Date(dto.expectedDeliveryDate) : null;
-    if (dto.status !== undefined) data.status = dto.status;
-    if (dto.subtotal !== undefined) data.subtotal = new Prisma.Decimal(dto.subtotal);
-    if (dto.discount !== undefined) data.discount = new Prisma.Decimal(dto.discount);
-    if (dto.tax !== undefined) data.tax = new Prisma.Decimal(dto.tax);
-    if (dto.total !== undefined) data.total = new Prisma.Decimal(dto.total);
+    if (dto.subtotal !== undefined) data.subtotal = this.toMoney(dto.subtotal);
+    if (dto.discount !== undefined) data.discount = this.toMoney(dto.discount);
+    if (dto.tax !== undefined) data.tax = this.toMoney(dto.tax);
+    if (dto.total !== undefined) data.total = this.toMoney(dto.total);
     if (dto.notes !== undefined) data.notes = dto.notes;
 
     const updated = await this.prisma.salesOrder.update({
@@ -209,6 +269,75 @@ export class SalesOrdersService {
     });
 
     return updated;
+  }
+
+  async addItems(id: string, dto: AddItemsDto, userTenantId: string, userId?: string) {
+    const salesOrder = await this.findOne(id, userTenantId);
+
+    if (salesOrder.status !== SalesOrderStatus.DRAFT) {
+      throw new ConflictException('Items can only be added while the order is in DRAFT');
+    }
+
+    await this.assertProductsBelongToTenant(this.prisma, dto.items.map((i) => i.productId), userTenantId);
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const startSeq = salesOrder.items.length;
+      await tx.salesOrderItem.createMany({
+        data: dto.items.map((item, idx) => ({
+          salesOrderId: id,
+          productId: item.productId,
+          quantity: this.toMoney(item.quantity),
+          unitPrice: this.toMoney(item.unitPrice),
+          discount: this.toMoney(item.discount),
+          tax: this.toMoney(item.tax),
+          lineTotal: item.lineTotal ? this.toMoney(item.lineTotal) : this.computeLineTotal(item),
+          sequence: startSeq + idx,
+          tenantId: userTenantId,
+        })),
+      });
+      return tx.salesOrder.findUnique({
+        where: { id },
+        include: { client: true, items: { include: { product: true } } },
+      });
+    });
+
+    await this.activityLogsService.log({
+      action: 'ADD_ITEMS',
+      module: 'SALES_ORDER',
+      description: `Added ${dto.items.length} item(s) to sales order ${updated!.orderNumber}.`,
+      userId,
+      tenantId: userTenantId,
+    });
+
+    return updated;
+  }
+
+  async removeItem(id: string, itemId: string, userTenantId: string, userId?: string) {
+    const salesOrder = await this.findOne(id, userTenantId);
+
+    if (salesOrder.status !== SalesOrderStatus.DRAFT) {
+      throw new ConflictException('Items can only be removed while the order is in DRAFT');
+    }
+
+    const item = await this.prisma.salesOrderItem.findFirst({
+      where: { id: itemId, salesOrderId: id, tenantId: userTenantId },
+      select: { id: true },
+    });
+    if (!item) {
+      throw new NotFoundException('Sales order item not found');
+    }
+
+    await this.prisma.salesOrderItem.delete({ where: { id: itemId } });
+
+    await this.activityLogsService.log({
+      action: 'REMOVE_ITEM',
+      module: 'SALES_ORDER',
+      description: `Removed item ${itemId} from sales order ${salesOrder.orderNumber}.`,
+      userId,
+      tenantId: userTenantId,
+    });
+
+    return this.findOne(id, userTenantId);
   }
 
   async remove(id: string, userTenantId: string, userId?: string) {
@@ -245,6 +374,12 @@ export class SalesOrdersService {
     const currentStatus = salesOrder.status;
     if (!validTransitions[currentStatus]?.includes(status)) {
       throw new ConflictException(`Invalid transition from ${currentStatus} to ${status}`);
+    }
+
+    if (status === SalesOrderStatus.FULFILLED) {
+      throw new ConflictException(
+        'Use POST /sales-orders/:id/fulfill-with-inventory to fulfill an order',
+      );
     }
 
     const updated = await this.prisma.salesOrder.update({
@@ -284,15 +419,10 @@ export class SalesOrdersService {
       throw new ConflictException('Cannot fulfill a cancelled sales order');
     }
     if (salesOrder.status === SalesOrderStatus.FULFILLED) {
-      // Idempotency: ensure movements exist (if items were added), else return.
-      const existing = await this.prisma.stockMovement.count({
+      const existingCount = await this.prisma.stockMovement.count({
         where: { tenantId: userTenantId, referenceType: 'SALES_ORDER', referenceId: id },
       });
-      if (existing > 0) {
-        return { alreadyFulfilled: true, movements: existing };
-      }
-      // No items and no movements — nothing to do.
-      return { alreadyFulfilled: true, movements: 0 };
+      return { alreadyFulfilled: true, movements: existingCount };
     }
 
     if (salesOrder.items.length === 0) {
@@ -301,12 +431,11 @@ export class SalesOrdersService {
       );
     }
 
-    // Use the tenant default warehouse. If none, fail safely.
-    const warehouse = await this.prisma.warehouse.findFirst({
+    const defaultWarehouse = await this.prisma.warehouse.findFirst({
       where: { tenantId: userTenantId, isActive: true, isDefault: true },
       select: { id: true },
     });
-    if (!warehouse) {
+    if (!defaultWarehouse) {
       throw new BadRequestException('No active default warehouse configured for inventory fulfillment');
     }
 
@@ -326,6 +455,21 @@ export class SalesOrdersService {
           throw new ForbiddenException('Product does not belong to tenant');
         }
 
+        const productWarehouse = await tx.productWarehouse.findFirst({
+          where: {
+            tenantId: userTenantId,
+            productId: item.productId,
+            quantity: { gt: 0 },
+          },
+          orderBy: [{ warehouseId: defaultWarehouse.id ? 'asc' : 'asc' }],
+          select: { id: true, warehouseId: true, quantity: true },
+        });
+
+        const sourceWarehouseId =
+          productWarehouse && productWarehouse.quantity >= qty
+            ? productWarehouse.warehouseId
+            : defaultWarehouse.id;
+
         const { totalCost, unitCost } = await this.valuation.applyMovement(
           tx,
           userTenantId,
@@ -334,7 +478,7 @@ export class SalesOrdersService {
           {
             productId: item.productId,
             quantity: qty,
-            warehouseId: warehouse.id,
+            warehouseId: sourceWarehouseId,
           },
         );
 
@@ -342,13 +486,13 @@ export class SalesOrdersService {
           where: {
             productId_warehouseId: {
               productId: item.productId,
-              warehouseId: warehouse.id,
+              warehouseId: sourceWarehouseId,
             },
           },
           update: { quantity: { decrement: qty } },
           create: {
             productId: item.productId,
-            warehouseId: warehouse.id,
+            warehouseId: sourceWarehouseId,
             quantity: -qty,
             tenantId: userTenantId,
           },
@@ -364,7 +508,7 @@ export class SalesOrdersService {
           data: {
             tenantId: userTenantId,
             productId: item.productId,
-            warehouseId: warehouse.id,
+            warehouseId: sourceWarehouseId,
             type: 'OUT',
             quantity: qty,
             unitCost: unitCost as unknown as Prisma.Decimal,

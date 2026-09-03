@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { PackagePlus, ArrowLeft, Trash2 } from "lucide-react";
+import { PackagePlus, ArrowLeft, Trash2, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { salesOrderService } from "../../services/sales-order.service";
@@ -13,7 +13,6 @@ import { mapServerValidationErrors } from "../../features/validation/errors";
 import { createSalesOrderSchema, type CreateSalesOrderFormData } from "../../features/validation/sales-order.schema";
 import type { CreateSalesOrderDto } from "../../types/sales-order";
 import type { Client } from "../../types/client";
-import type { Product } from "../../types/product";
 
 interface SalesOrderItem {
   productId: string;
@@ -24,19 +23,36 @@ interface SalesOrderItem {
   lineTotal: string;
 }
 
+const blankItem = (): SalesOrderItem => ({
+  productId: "",
+  quantity: "1",
+  unitPrice: "0",
+  discount: "0",
+  tax: "0",
+  lineTotal: "0",
+});
+
+const computeLine = (it: SalesOrderItem): string => {
+  const qty = Number(it.quantity) || 0;
+  const price = Number(it.unitPrice) || 0;
+  const disc = Number(it.discount) || 0;
+  const tax = Number(it.tax) || 0;
+  return (qty * price - disc + tax).toFixed(2);
+};
+
 const AddSalesOrderPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [items, setItems] = useState<SalesOrderItem[]>([
-    { productId: "", quantity: "1", unitPrice: "0", discount: "0", tax: "0", lineTotal: "0" },
-  ]);
+  const [items, setItems] = useState<SalesOrderItem[]>([blankItem()]);
+  const [headerDiscount, setHeaderDiscount] = useState("0");
+  const [headerTax, setHeaderTax] = useState("0");
 
   const { data: clients = [], isLoading: isLoadingClients } = useQuery<Client[]>({
     queryKey: ["clients"],
     queryFn: () => getClients(),
   });
 
-  const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
+  const { data: products = [], isLoading: isLoadingProducts } = useQuery<any[]>({
     queryKey: ["products"],
     queryFn: () => productService.getAllProducts(),
   });
@@ -46,7 +62,6 @@ const AddSalesOrderPage = () => {
     handleSubmit,
     formState: { errors },
     setError,
-    watch,
   } = useForm<CreateSalesOrderFormData>({
     resolver: zodResolver(createSalesOrderSchema) as any,
     defaultValues: {
@@ -54,13 +69,12 @@ const AddSalesOrderPage = () => {
       clientId: "",
       orderDate: new Date().toISOString().split("T")[0],
       expectedDeliveryDate: "",
-      status: "DRAFT",
       notes: "",
+      items: [],
+      subtotal: "0",
+      total: "0",
     },
   });
-
-  const discount = watch("discount");
-  const tax = watch("tax");
 
   const createMutation = useMutation({
     mutationFn: (dto: CreateSalesOrderDto) => salesOrderService.createSalesOrder(dto),
@@ -76,11 +90,34 @@ const AddSalesOrderPage = () => {
           setError(field as keyof CreateSalesOrderFormData, { message });
         });
       } else {
-        const message = (error as any)?.response?.data?.message || (error as any)?.message || "Failed to create sales order";
+        const message =
+          (error as any)?.response?.data?.message ||
+          (error as any)?.message ||
+          "Failed to create sales order";
         toast.error(message);
       }
     },
   });
+
+  const updateItem = (index: number, field: keyof SalesOrderItem, value: string) => {
+    setItems((prev) => {
+      const next = [...prev];
+      const cur = { ...next[index], [field]: value };
+      if (field === "productId") {
+        const p = products.find((p) => p.id === value);
+        if (p) cur.unitPrice = p.unitPrice?.toString() ?? cur.unitPrice;
+      }
+      cur.lineTotal = computeLine(cur);
+      next[index] = cur;
+      return next;
+    });
+  };
+
+  const addItem = () => setItems((prev) => [...prev, blankItem()]);
+
+  const removeItem = (index: number) => {
+    setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+  };
 
   const calculateTotals = () => {
     const itemsSubtotal = items.reduce((sum, item) => {
@@ -89,8 +126,8 @@ const AddSalesOrderPage = () => {
       const disc = Number(item.discount) || 0;
       return sum + (qty * price - disc);
     }, 0);
-    const disc = Number(discount) || 0;
-    const taxVal = Number(tax) || 0;
+    const disc = Number(headerDiscount) || 0;
+    const taxVal = Number(headerTax) || 0;
     const totalVal = itemsSubtotal - disc + taxVal;
     return {
       subtotal: itemsSubtotal.toFixed(2),
@@ -98,49 +135,14 @@ const AddSalesOrderPage = () => {
     };
   };
 
-  const updateItem = (index: number, field: keyof SalesOrderItem, value: string) => {
-    const newItems = [...items];
-    newItems[index][field] = value;
-
-    if (field === "productId") {
-      const product = products.find((p) => p.id === value);
-      if (product) {
-        newItems[index].unitPrice = product.unitPrice.toString();
-      }
-    }
-
-    const qty = Number(newItems[index].quantity) || 0;
-    const price = Number(newItems[index].unitPrice) || 0;
-    const disc = Number(newItems[index].discount) || 0;
-    newItems[index].lineTotal = (qty * price - disc).toFixed(2);
-
-    setItems(newItems);
-  };
-
-  const addItem = () => {
-    setItems([...items, { productId: "", quantity: "1", unitPrice: "0", discount: "0", tax: "0", lineTotal: "0" }]);
-  };
-
-  const removeItem = (index: number) => {
-    if (items.length === 1) return;
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
-  };
-
   const validateItems = (): boolean => {
     const errors: string[] = [];
     items.forEach((item, index) => {
-      if (!item.productId) {
-        errors.push(`Item ${index + 1}: Product is required`);
-      }
+      if (!item.productId) errors.push(`Item ${index + 1}: Product is required`);
       const qty = Number(item.quantity);
-      if (Number.isNaN(qty) || qty <= 0) {
-        errors.push(`Item ${index + 1}: Quantity must be greater than 0`);
-      }
+      if (Number.isNaN(qty) || qty <= 0) errors.push(`Item ${index + 1}: Quantity must be greater than 0`);
       const price = Number(item.unitPrice);
-      if (Number.isNaN(price) || price < 0) {
-        errors.push(`Item ${index + 1}: Unit price must be 0 or greater`);
-      }
+      if (Number.isNaN(price) || price < 0) errors.push(`Item ${index + 1}: Unit price must be 0 or greater`);
     });
     if (errors.length > 0) {
       toast.error(errors[0]);
@@ -150,15 +152,14 @@ const AddSalesOrderPage = () => {
   };
 
   const onSubmit = async (data: CreateSalesOrderFormData) => {
-    if (!validateItems()) {
-      return;
-    }
-
+    if (!validateItems()) return;
     const { subtotal: calcSubtotal, total: calcTotal } = calculateTotals();
-    const payload = {
-      ...data,
-      subtotal: calcSubtotal,
-      total: calcTotal,
+    const payload: CreateSalesOrderDto = {
+      orderNumber: data.orderNumber,
+      clientId: data.clientId,
+      orderDate: data.orderDate,
+      expectedDeliveryDate: data.expectedDeliveryDate,
+      notes: data.notes,
       items: items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -167,10 +168,15 @@ const AddSalesOrderPage = () => {
         tax: item.tax,
         lineTotal: item.lineTotal,
       })),
-    } as any;
-
+      subtotal: calcSubtotal,
+      discount: headerDiscount || "0",
+      tax: headerTax || "0",
+      total: calcTotal,
+    };
     createMutation.mutate(payload);
   };
+
+  const { subtotal: displaySubtotal, total: displayTotal } = calculateTotals();
 
   return (
     <div className="space-y-6">
@@ -188,9 +194,7 @@ const AddSalesOrderPage = () => {
               Add Sales Order
             </h1>
           </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Create a new sales order
-          </p>
+          <p className="mt-1 text-sm text-slate-500">Create a new sales order</p>
         </div>
       </div>
 
@@ -263,32 +267,15 @@ const AddSalesOrderPage = () => {
             </div>
 
             <div>
-              <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-2">
-                Status
-              </label>
-              <select
-                id="status"
-                {...register("status")}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="DRAFT">Draft</option>
-                <option value="CONFIRMED">Confirmed</option>
-                <option value="PROCESSING">Processing</option>
-                <option value="FULFILLED">Fulfilled</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-            </div>
-
-            <div>
               <label htmlFor="subtotal" className="block text-sm font-medium text-slate-700 mb-2">
                 Subtotal
               </label>
               <input
                 type="number"
                 id="subtotal"
-                {...register("subtotal")}
+                value={displaySubtotal}
                 readOnly
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50"
               />
             </div>
 
@@ -299,8 +286,9 @@ const AddSalesOrderPage = () => {
               <input
                 type="number"
                 id="discount"
-                {...register("discount")}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={headerDiscount}
+                onChange={(e) => setHeaderDiscount(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 placeholder="0.00"
               />
             </div>
@@ -312,8 +300,9 @@ const AddSalesOrderPage = () => {
               <input
                 type="number"
                 id="tax"
-                {...register("tax")}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={headerTax}
+                onChange={(e) => setHeaderTax(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 placeholder="0.00"
               />
             </div>
@@ -325,9 +314,9 @@ const AddSalesOrderPage = () => {
               <input
                 type="number"
                 id="total"
-                {...register("total")}
+                value={displayTotal}
                 readOnly
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50"
               />
             </div>
 
@@ -353,7 +342,7 @@ const AddSalesOrderPage = () => {
                 onClick={addItem}
                 className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
               >
-                Add Item
+                <Plus className="h-4 w-4" /> Add Item
               </button>
             </div>
 
@@ -383,7 +372,7 @@ const AddSalesOrderPage = () => {
                       type="number"
                       value={item.quantity}
                       onChange={(e) => updateItem(index, "quantity", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                       placeholder="1"
                     />
                   </div>
@@ -394,7 +383,7 @@ const AddSalesOrderPage = () => {
                       type="number"
                       value={item.unitPrice}
                       onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                       placeholder="0.00"
                     />
                   </div>
@@ -405,7 +394,7 @@ const AddSalesOrderPage = () => {
                       type="number"
                       value={item.discount}
                       onChange={(e) => updateItem(index, "discount", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                       placeholder="0.00"
                     />
                   </div>

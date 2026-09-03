@@ -24,13 +24,13 @@ export interface SalesOrder {
   orderNumber: string;
   clientId: string;
   orderDate: string;
-  expectedDeliveryDate?: string;
+  expectedDeliveryDate?: string | null;
   status: SalesOrderStatus;
-  subtotal: number;
-  discount: number;
-  tax: number;
-  total: number;
-  notes?: string;
+  subtotal: number | string;
+  discount: number | string;
+  tax: number | string;
+  total: number | string;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
   tenantId: string;
@@ -43,18 +43,27 @@ export interface SalesOrder {
   items: SalesOrderItem[];
 }
 
+export interface CreateSalesOrderItemDto {
+  productId: string;
+  quantity: string | number;
+  unitPrice: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  lineTotal?: string | number;
+  sequence?: number;
+}
+
 export interface CreateSalesOrderDto {
   orderNumber: string;
   clientId: string;
   orderDate: string;
   expectedDeliveryDate?: string;
-  status?: SalesOrderStatus;
-  subtotal: number | string;
-  discount?: number | string;
-  tax?: number | string;
-  total: number | string;
+  items: CreateSalesOrderItemDto[];
+  subtotal: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  total: string | number;
   notes?: string;
-  tenantId?: string;
 }
 
 export interface UpdateSalesOrderDto {
@@ -62,10 +71,9 @@ export interface UpdateSalesOrderDto {
   clientId?: string;
   orderDate?: string;
   expectedDeliveryDate?: string;
-  status?: SalesOrderStatus;
-  subtotal?: number | string;
-  discount?: number | string;
-  tax?: number | string;
-  total?: number | string;
+  subtotal?: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  total?: string | number;
   notes?: string;
 }

@@ -1,6 +1,4 @@
-import { IsDateString, IsDecimal, IsEnum, IsOptional, IsString } from 'class-validator';
-
-import { SalesOrderStatus } from '@prisma/client';
+import { IsDateString, IsDecimal, IsOptional, IsString } from 'class-validator';
 
 export class UpdateSalesOrderDto {
   @IsOptional()
@@ -18,10 +16,6 @@ export class UpdateSalesOrderDto {
   @IsOptional()
   @IsDateString()
   expectedDeliveryDate?: string;
-
-  @IsOptional()
-  @IsEnum(SalesOrderStatus)
-  status?: SalesOrderStatus;
 
   @IsOptional()
   @IsDecimal()

@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import { PackagePlus, ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { PackagePlus, ArrowLeft, Edit, Trash2, Layers, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { salesOrderService } from "../../services/sales-order.service";
@@ -16,12 +17,37 @@ const statusColors: Record<SalesOrderStatus, string> = {
 
 const ViewSalesOrderPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
+  const [confirmingFulfill, setConfirmingFulfill] = useState(false);
 
   const { data: salesOrder, isLoading, isError } = useQuery<SalesOrder>({
     queryKey: ["sales-order", id],
     queryFn: () => salesOrderService.getSalesOrderById(id!),
     enabled: !!id,
+  });
+
+  const fulfillWithInventoryMutation = useMutation({
+    mutationFn: () => salesOrderService.fulfillWithInventory(id!),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["sales-order", id] });
+      queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-movements"] });
+      if (data?.alreadyFulfilled) {
+        toast.success("Order already fulfilled with inventory");
+      } else {
+        toast.success(`Fulfilled with ${data.movements} stock movement(s)`);
+      }
+      setConfirmingFulfill(false);
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to fulfill with inventory",
+      );
+      setConfirmingFulfill(false);
+    },
   });
 
   const handleDelete = async () => {
@@ -55,6 +81,11 @@ const ViewSalesOrderPage = () => {
     );
   }
 
+  const canFulfillWithInventory =
+    salesOrder.status === "DRAFT" ||
+    salesOrder.status === "CONFIRMED" ||
+    salesOrder.status === "PROCESSING";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -70,12 +101,25 @@ const ViewSalesOrderPage = () => {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               {salesOrder.orderNumber}
             </h1>
+            <span
+              className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusColors[salesOrder.status]}`}
+            >
+              {salesOrder.status}
+            </span>
           </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Sales Order Details
-          </p>
+          <p className="mt-1 text-sm text-slate-500">Sales Order Details</p>
         </div>
         <div className="flex items-center gap-2">
+          {canFulfillWithInventory && (
+            <button
+              onClick={() => setConfirmingFulfill(true)}
+              disabled={fulfillWithInventoryMutation.isPending}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-green-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50"
+            >
+              <Layers className="h-4 w-4" />
+              Fulfill with inventory
+            </button>
+          )}
           <a
             href={`/sales-orders/${salesOrder.id}/edit`}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
@@ -94,6 +138,44 @@ const ViewSalesOrderPage = () => {
           )}
         </div>
       </div>
+
+      {confirmingFulfill && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-amber-800">
+              Fulfill with inventory?
+            </p>
+            <p className="text-xs text-amber-700 mt-1">
+              This will deduct stock from your warehouse and mark the order as
+              FULFILLED. This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setConfirmingFulfill(false)}
+              className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => fulfillWithInventoryMutation.mutate()}
+              disabled={fulfillWithInventoryMutation.isPending}
+              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-green-700 disabled:opacity-50"
+            >
+              {fulfillWithInventoryMutation.isPending ? "Fulfilling..." : "Confirm"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {salesOrder.status === "CANCELLED" && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex items-center gap-3">
+          <XCircle className="h-5 w-5 text-red-600" />
+          <p className="text-sm font-medium text-red-800">
+            This order is cancelled and cannot be fulfilled.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">

@@ -1,12 +1,49 @@
-import { IsDateString, IsDecimal, IsEnum, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsDateString,
+  IsDecimal,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 
-import { SalesOrderStatus } from '@prisma/client';
+export class CreateSalesOrderItemDto {
+  @IsString()
+  @IsNotEmpty()
+  productId: string;
+
+  @IsDecimal()
+  quantity: string;
+
+  @IsDecimal()
+  unitPrice: string;
+
+  @IsOptional()
+  @IsDecimal()
+  discount?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  tax?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  lineTotal?: string;
+
+  @IsOptional()
+  sequence?: number;
+}
 
 export class CreateSalesOrderDto {
   @IsString()
+  @IsNotEmpty()
   orderNumber: string;
 
   @IsString()
+  @IsNotEmpty()
   clientId: string;
 
   @IsDateString()
@@ -16,9 +53,11 @@ export class CreateSalesOrderDto {
   @IsDateString()
   expectedDeliveryDate?: string;
 
-  @IsOptional()
-  @IsEnum(SalesOrderStatus)
-  status?: SalesOrderStatus;
+  @IsArray()
+  @ArrayMinSize(1, { message: 'At least one item is required' })
+  @ValidateNested({ each: true })
+  @Type(() => CreateSalesOrderItemDto)
+  items!: CreateSalesOrderItemDto[];
 
   @IsDecimal()
   subtotal: string;
@@ -37,7 +76,4 @@ export class CreateSalesOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
-
-  @IsString()
-  tenantId!: string;
 }

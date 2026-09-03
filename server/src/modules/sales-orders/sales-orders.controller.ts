@@ -19,6 +19,7 @@ import { SalesOrdersService } from './sales-orders.service';
 
 import { CreateSalesOrderDto } from './dto/create-sales-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
+import { AddItemsDto } from './dto/add-items.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -61,6 +62,24 @@ export class SalesOrdersController {
     @GetUser() user: AuthenticatedUser,
   ) {
     return this.salesOrdersService.update(id, dto, user.tenantId, user.userId);
+  }
+
+  @Post(':id/items')
+  addItems(
+    @Param('id') id: string,
+    @Body() dto: AddItemsDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.salesOrdersService.addItems(id, dto, user.tenantId, user.userId);
+  }
+
+  @Delete(':id/items/:itemId')
+  removeItem(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.salesOrdersService.removeItem(id, itemId, user.tenantId, user.userId);
   }
 
   @Delete(':id')

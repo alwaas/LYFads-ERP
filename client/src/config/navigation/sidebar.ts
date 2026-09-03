@@ -27,7 +27,6 @@ import {
   Package,
   Warehouse,
   ArrowLeftRight,
-  ShoppingBag,
   Building2,
   Tag,
 } from "lucide-react";
@@ -348,17 +347,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Invoices",
     path: "/invoices",
     icon: Receipt,
-    roles: [
-      "SUPER_ADMIN",
-      "ADMIN",
-      "MANAGER",
-    ],
-  },
-
-  {
-    title: "Sales Orders",
-    path: "/sales-orders",
-    icon: ShoppingBag,
     roles: [
       "SUPER_ADMIN",
       "ADMIN",
