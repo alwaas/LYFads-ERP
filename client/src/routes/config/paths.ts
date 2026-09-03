@@ -69,6 +69,16 @@ export const PATHS = {
   VIEW_WAREHOUSE: "/warehouses/:id",
 
   STOCK_MOVEMENTS: "/stock-movements",
+  ADD_STOCK_MOVEMENT: "/stock-movements/add",
+  VIEW_STOCK_MOVEMENT: "/stock-movements/:id",
+
+  STOCK_COUNTS: "/stock-counts",
+  ADD_STOCK_COUNT: "/stock-counts/add",
+  VIEW_STOCK_COUNT: "/stock-counts/:id",
+
+  INVENTORY_REPORT: "/reports/inventory",
+
+  INVENTORY_SETTINGS: "/inventory-settings",
 
   USERS: "/users",
   ADD_USER: "/users/add",

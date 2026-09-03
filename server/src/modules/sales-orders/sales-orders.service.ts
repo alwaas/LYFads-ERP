@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -12,12 +13,14 @@ import { SearchDto } from '../../common/dto/search.dto';
 import { CreateSalesOrderDto } from './dto/create-sales-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
 import { SalesOrderQueryDto } from './dto/sales-order-query.dto';
+import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
 
 @Injectable()
 export class SalesOrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly valuation: InventoryValuationService,
   ) {}
 
   async create(dto: CreateSalesOrderDto, userTenantId: string, userId?: string) {
@@ -262,5 +265,133 @@ export class SalesOrdersService {
     });
 
     return updated;
+  }
+
+  /**
+   * Explicit, idempotent inventory fulfillment.
+   * Only callable from a non-finalized state, and only for orders that have line items.
+   * Creates a per-item OUT stock movement referenced to this sales order.
+   * If an OUT movement already exists for the same order, the call is a no-op (idempotent).
+   */
+  async fulfillWithInventory(
+    id: string,
+    userTenantId: string,
+    userId?: string,
+  ) {
+    const salesOrder = await this.findOne(id, userTenantId);
+
+    if (salesOrder.status === SalesOrderStatus.CANCELLED) {
+      throw new ConflictException('Cannot fulfill a cancelled sales order');
+    }
+    if (salesOrder.status === SalesOrderStatus.FULFILLED) {
+      // Idempotency: ensure movements exist (if items were added), else return.
+      const existing = await this.prisma.stockMovement.count({
+        where: { tenantId: userTenantId, referenceType: 'SALES_ORDER', referenceId: id },
+      });
+      if (existing > 0) {
+        return { alreadyFulfilled: true, movements: existing };
+      }
+      // No items and no movements — nothing to do.
+      return { alreadyFulfilled: true, movements: 0 };
+    }
+
+    if (salesOrder.items.length === 0) {
+      throw new BadRequestException(
+        'Sales order has no items; add items before fulfilling with inventory',
+      );
+    }
+
+    // Use the tenant default warehouse. If none, fail safely.
+    const warehouse = await this.prisma.warehouse.findFirst({
+      where: { tenantId: userTenantId, isActive: true, isDefault: true },
+      select: { id: true },
+    });
+    if (!warehouse) {
+      throw new BadRequestException('No active default warehouse configured for inventory fulfillment');
+    }
+
+    const method = await this.valuation.getTenantValuationMethod(userTenantId);
+
+    const movementCount = await this.prisma.$transaction(async (tx) => {
+      let count = 0;
+      for (const item of salesOrder.items) {
+        const qty = Number(item.quantity);
+        if (qty <= 0) continue;
+
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { id: true, tenantId: true },
+        });
+        if (!product || product.tenantId !== userTenantId) {
+          throw new ForbiddenException('Product does not belong to tenant');
+        }
+
+        const { totalCost, unitCost } = await this.valuation.applyMovement(
+          tx,
+          userTenantId,
+          method,
+          'OUT' as any,
+          {
+            productId: item.productId,
+            quantity: qty,
+            warehouseId: warehouse.id,
+          },
+        );
+
+        const pw = await tx.productWarehouse.upsert({
+          where: {
+            productId_warehouseId: {
+              productId: item.productId,
+              warehouseId: warehouse.id,
+            },
+          },
+          update: { quantity: { decrement: qty } },
+          create: {
+            productId: item.productId,
+            warehouseId: warehouse.id,
+            quantity: -qty,
+            tenantId: userTenantId,
+          },
+        });
+        void pw;
+
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { decrement: qty } },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            tenantId: userTenantId,
+            productId: item.productId,
+            warehouseId: warehouse.id,
+            type: 'OUT',
+            quantity: qty,
+            unitCost: unitCost as unknown as Prisma.Decimal,
+            totalCost: totalCost as unknown as Prisma.Decimal,
+            referenceType: 'SALES_ORDER',
+            referenceId: salesOrder.id,
+            notes: `Sales order ${salesOrder.orderNumber} fulfillment`,
+          },
+        });
+        count++;
+      }
+
+      await tx.salesOrder.update({
+        where: { id: salesOrder.id },
+        data: { status: SalesOrderStatus.FULFILLED },
+      });
+      return count;
+    });
+
+    await this.activityLogsService.log({
+      action: 'INVENTORY_FULFILLMENT',
+      module: 'SALES_ORDER',
+      description: `Sales order ${salesOrder.orderNumber} fulfilled with ${movementCount} OUT movement(s).`,
+      userId,
+      tenantId: userTenantId,
+    });
+
+    return { alreadyFulfilled: false, movements: movementCount };
   }
 }

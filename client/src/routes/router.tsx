@@ -443,6 +443,30 @@ const StockMovementsPage = lazy(
   () => import("../pages/stock-movements/StockMovementsPage")
 );
 
+const AddStockMovementPage = lazy(
+  () => import("../pages/stock-movements/AddStockMovementPage")
+);
+
+const ViewStockMovementPage = lazy(
+  () => import("../pages/stock-movements/ViewStockMovementPage")
+);
+
+const StockCountsPage = lazy(
+  () => import("../pages/stock-counts/StockCountsPage")
+);
+
+const AddStockCountPage = lazy(
+  () => import("../pages/stock-counts/AddStockCountPage")
+);
+
+const InventoryReportPage = lazy(
+  () => import("../pages/reports/InventoryReportPage")
+);
+
+const InventorySettingsPage = lazy(
+  () => import("../pages/settings/InventorySettingsPage")
+);
+
 const AttachmentsPage = lazy(
   () => import("../pages/attachments/AttachmentsPage")
 );
@@ -1138,6 +1162,72 @@ const router = createBrowserRouter([
       <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <StockMovementsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/stock-movements/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddStockMovementPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/stock-movements/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewStockMovementPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/stock-counts",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <StockCountsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/stock-counts/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddStockCountPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/inventory",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <InventoryReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/inventory-settings",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
+        <Suspense fallback={<PageLoader />}>
+          <InventorySettingsPage />
         </Suspense>
       </ProtectedRoute>
     ),

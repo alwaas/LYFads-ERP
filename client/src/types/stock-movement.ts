@@ -7,6 +7,8 @@ export interface StockMovement {
   destinationWarehouseId?: string;
   type: StockMovementType;
   quantity: number;
+  unitCost?: number;
+  totalCost?: number;
   referenceType?: string;
   referenceId?: string;
   notes?: string;
@@ -46,6 +48,7 @@ export interface CreateStockMovementDto {
   destinationWarehouseId?: string;
   type: StockMovementType;
   quantity: number;
+  unitCost?: number;
   referenceType?: string;
   referenceId?: string;
   notes?: string;

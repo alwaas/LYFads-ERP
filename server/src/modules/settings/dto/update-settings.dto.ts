@@ -1,10 +1,12 @@
 import {
   IsEmail,
+  IsEnum,
   IsOptional,
   IsString,
   IsUrl,
   Length,
 } from 'class-validator';
+import { InventoryValuationMethod } from '@prisma/client';
 
 export class UpdateSettingsDto {
   @IsOptional()
@@ -40,4 +42,10 @@ export class UpdateSettingsDto {
   @IsString()
   @Length(3, 3)
   currency?: string;
+
+  @IsOptional()
+  @IsEnum(InventoryValuationMethod, {
+    message: 'inventoryValuationMethod must be FIFO or WEIGHTED_AVERAGE',
+  })
+  inventoryValuationMethod?: InventoryValuationMethod;
 }

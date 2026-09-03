@@ -1,4 +1,15 @@
 import api from "./api";
+import type { InventoryReport, ProfitabilityReport } from "../types/report";
+
+export const getInventoryReport = async (): Promise<InventoryReport> => {
+  const { data } = await api.get("/reports/inventory");
+  return data.data as InventoryReport;
+};
+
+export const getProfitabilityReport = async (params?: { dateFrom?: string; dateTo?: string }): Promise<ProfitabilityReport> => {
+  const { data } = await api.get("/reports/profitability", { params });
+  return data.data as ProfitabilityReport;
+};
 
 export const getDashboardReport = async (params?: { dateFrom?: string; dateTo?: string }) => {
   const { data } = await api.get("/reports/dashboard", { params });
@@ -32,11 +43,6 @@ export const getPurchaseReport = async (params?: { dateFrom?: string; dateTo?: s
 
 export const getVendorReport = async (params?: { dateFrom?: string; dateTo?: string }) => {
   const { data } = await api.get("/reports/vendors", { params });
-  return data.data;
-};
-
-export const getProfitabilityReport = async (params?: { dateFrom?: string; dateTo?: string }) => {
-  const { data } = await api.get("/reports/profitability", { params });
   return data.data;
 };
 

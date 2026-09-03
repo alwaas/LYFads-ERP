@@ -1,10 +1,10 @@
 import {
   IsEnum,
   IsInt,
+  IsNumberString,
   IsOptional,
   IsString,
   Min,
-  IsIn,
 } from 'class-validator';
 
 export enum MovementType {
@@ -36,6 +36,10 @@ export class CreateStockMovementDto {
   @IsInt()
   @Min(1)
   quantity: number;
+
+  @IsOptional()
+  @IsNumberString()
+  unitCost?: string;
 
   @IsOptional()
   @IsString()

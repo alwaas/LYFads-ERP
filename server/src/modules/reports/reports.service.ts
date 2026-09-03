@@ -12,6 +12,7 @@ import type {
   CustomerQueryDto,
   InventoryQueryDto,
 } from './dto/report-query.dto';
+import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
 
 type DateRange = {
   dateFrom?: Date;
@@ -58,7 +59,10 @@ function countId(obj: any): number {
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly valuation: InventoryValuationService,
+  ) {}
 
   async getDashboard(tenantId: string, query: DashboardQueryDto) {
     const range = buildDateRange(query);
@@ -78,8 +82,9 @@ export class ReportsService {
       orderCount,
       productCount,
       lowStockCountResult,
-      stockValueResult,
-    ] = await this.prisma.$transaction([
+      lowStockItemsResult,
+      valuationInfo,
+    ] = await Promise.all([
       this.prisma.invoice.aggregate({
         where: buildInvoiceWhere(tenantId, range),
         _sum: { total: true },
@@ -115,11 +120,14 @@ export class ReportsService {
         SELECT COUNT(*) as count FROM products
         WHERE "tenantId" = ${tenantId} AND "isActive" = true AND "stockQuantity" <= "minStockLevel"
       `,
-      this.prisma.$queryRaw<[{ sum: string }]>`
-        SELECT COALESCE(SUM("costPrice" * "stockQuantity"), 0) as sum
+      this.prisma.$queryRaw<Array<{ id: string; sku: string; name: string; stockQuantity: number; minStockLevel: number }>>`
+        SELECT id, sku, name, "stockQuantity", "minStockLevel"
         FROM products
-        WHERE "tenantId" = ${tenantId} AND "isActive" = true
+        WHERE "tenantId" = ${tenantId} AND "isActive" = true AND "stockQuantity" <= "minStockLevel"
+        ORDER BY "stockQuantity" ASC
+        LIMIT 10
       `,
+      this.valuation.computeInventoryValue(tenantId),
     ]);
 
     const cashIn = toNumber(totalPayments._sum!.amount);
@@ -139,7 +147,15 @@ export class ReportsService {
       orderCount,
       totalProducts: productCount,
       lowStockCount: Number(lowStockCountResult[0]?.count || 0),
-      totalStockValue: toNumber(stockValueResult[0]?.sum || 0),
+      totalStockValue: toNumber(valuationInfo.totalValue),
+      valuationMethod: valuationInfo.method,
+      lowStockItems: (lowStockItemsResult as Array<{ id: string; sku: string; name: string; stockQuantity: number; minStockLevel: number }>).map((p) => ({
+        id: p.id,
+        sku: p.sku,
+        name: p.name,
+        stockQuantity: p.stockQuantity,
+        minStockLevel: p.minStockLevel,
+      })),
     };
   }
 
@@ -545,56 +561,47 @@ export class ReportsService {
       ];
     }
 
-    const [
-      products,
-      totalProducts,
-      totalStockQuantity,
-      totalStockValue,
-      lowStockCount,
-      warehouseBreakdown,
-    ] = await this.prisma.$transaction([
-      this.prisma.product.findMany({
-        where,
-        include: {
-          warehouseStocks: {
-            include: {
-              warehouse: {
-                select: { id: true, name: true, location: true, isActive: true },
+    const [products, totalProducts, totalStockQuantity, lowStockCount, warehouseBreakdown, valuationInfo] =
+      await Promise.all([
+        this.prisma.product.findMany({
+          where,
+          include: {
+            warehouseStocks: {
+              include: {
+                warehouse: {
+                  select: { id: true, name: true, location: true, isActive: true },
+                },
               },
             },
           },
-        },
-        orderBy: { name: 'asc' },
-      }),
-      this.prisma.product.count({ where }),
-      this.prisma.product.aggregate({
-        where: { tenantId, isActive: true },
-        _sum: { stockQuantity: true },
-      }),
-      this.prisma.$queryRaw<[{ sum: string }]>`
-        SELECT COALESCE(SUM("costPrice" * "stockQuantity"), 0) as sum
-        FROM products
-        WHERE "tenantId" = ${tenantId} AND "isActive" = true
-      `,
-      this.prisma.$queryRaw<[{ count: bigint }]>`
-        SELECT COUNT(*) as count FROM products
-        WHERE "tenantId" = ${tenantId} AND "isActive" = true AND "stockQuantity" <= "minStockLevel"
-      `,
-      this.prisma.$queryRaw<[{ warehouseId: string; warehouseName: string; productCount: bigint; totalQuantity: bigint; totalValue: string }[]]>`
-        SELECT 
-          w.id as "warehouseId",
-          w.name as "warehouseName",
-          COUNT(DISTINCT pw."productId") as "productCount",
-          COALESCE(SUM(pw.quantity), 0) as "totalQuantity",
-          COALESCE(SUM(p."costPrice" * pw.quantity), 0) as "totalValue"
-        FROM warehouses w
-        LEFT JOIN product_warehouses pw ON pw."warehouseId" = w.id AND pw."tenantId" = w."tenantId"
-        LEFT JOIN products p ON p.id = pw."productId" AND p."tenantId" = w."tenantId"
-        WHERE w."tenantId" = ${tenantId} AND w."isActive" = true
-        GROUP BY w.id, w.name
-        ORDER BY w.name ASC
-      `,
-    ]);
+          orderBy: { name: 'asc' },
+        }),
+        this.prisma.product.count({ where }),
+        this.prisma.product.aggregate({
+          where: { tenantId, isActive: true },
+          _sum: { stockQuantity: true },
+        }),
+        this.prisma.$queryRaw<[{ count: bigint }]>`
+          SELECT COUNT(*) as count FROM products
+          WHERE "tenantId" = ${tenantId} AND "isActive" = true AND "stockQuantity" <= "minStockLevel"
+        `,
+        this.prisma.$queryRaw<[{ warehouseId: string; warehouseName: string; productCount: bigint; totalQuantity: bigint }[]]>`
+          SELECT
+            w.id as "warehouseId",
+            w.name as "warehouseName",
+            COUNT(DISTINCT pw."productId") as "productCount",
+            COALESCE(SUM(pw.quantity), 0) as "totalQuantity"
+          FROM warehouses w
+          LEFT JOIN product_warehouses pw ON pw."warehouseId" = w.id AND pw."tenantId" = w."tenantId"
+          WHERE w."tenantId" = ${tenantId} AND w."isActive" = true
+          GROUP BY w.id, w.name
+          ORDER BY w.name ASC
+        `,
+        this.valuation.computeInventoryValue(tenantId),
+      ]);
+
+    const method = valuationInfo.method;
+    const totalValue = toNumber(valuationInfo.totalValue);
 
     const byStatus = {
       active: products.filter((p) => p.isActive).length,
@@ -603,46 +610,76 @@ export class ReportsService {
 
     return {
       available: true,
+      valuationMethod: method,
       totalProducts,
       totalStockQuantity: toNumber(totalStockQuantity._sum!.stockQuantity),
-      totalStockValue: toNumber(totalStockValue[0]?.sum || 0),
+      totalStockValue: totalValue,
       lowStockCount: Number(lowStockCount[0]?.count || 0),
       byStatus,
-      products: products.map((p) => ({
-        id: p.id,
-        sku: p.sku,
-        name: p.name,
-        stockQuantity: p.stockQuantity,
-        minStockLevel: p.minStockLevel,
-        unitPrice: toNumber(p.unitPrice),
-        costPrice: toNumber(p.costPrice),
-        isActive: p.isActive,
-        warehouseStocks: p.warehouseStocks.map((ws) => ({
+      products: products.map((p) => {
+        const warehouseStocks = p.warehouseStocks.map((ws) => ({
           warehouseId: ws.warehouse.id,
           warehouseName: ws.warehouse.name,
           quantity: ws.quantity,
-        })),
-      })),
+          averageCost: toNumber(ws.averageCost),
+        }));
+        const productValue = warehouseStocks.reduce(
+          (acc, ws) => acc + ws.quantity * (ws.averageCost || toNumber(p.costPrice)),
+          0,
+        );
+        return {
+          id: p.id,
+          sku: p.sku,
+          name: p.name,
+          stockQuantity: p.stockQuantity,
+          minStockLevel: p.minStockLevel,
+          unitPrice: toNumber(p.unitPrice),
+          costPrice: toNumber(p.costPrice),
+          isActive: p.isActive,
+          isLowStock: p.stockQuantity <= p.minStockLevel,
+          totalValue: productValue,
+          warehouseStocks,
+        };
+      }),
       warehouseBreakdown: (warehouseBreakdown as unknown as Array<{
         warehouseId: string;
         warehouseName: string;
         productCount: bigint;
         totalQuantity: bigint;
-        totalValue: string;
       }>).map((w) => ({
         warehouseId: w.warehouseId,
         warehouseName: w.warehouseName,
         productCount: Number(w.productCount),
         totalQuantity: Number(w.totalQuantity),
-        totalValue: toNumber(w.totalValue),
       })),
     };
   }
 
-  async getProfitabilityReport(tenantId: string, _query: ProfitabilityQueryDto) {
+  async getProfitabilityReport(tenantId: string, query: ProfitabilityQueryDto) {
+    const range = buildDateRange(query);
+    const cogs = await this.valuation.computeCogs(tenantId, range.dateFrom, range.dateTo);
+
+    const totalSalesResult = await this.prisma.invoice.aggregate({
+      where: {
+        ...buildInvoiceWhere(tenantId, range),
+        status: { in: [InvoiceStatus.PAID, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.SENT, InvoiceStatus.OVERDUE] as InvoiceStatus[] },
+      },
+      _sum: { total: true },
+    });
+    const totalSales = toNumber(totalSalesResult._sum!.total);
+
     return {
-      available: false,
-      reason: 'COGS and inventory valuation are not yet authoritative. Profitability reporting requires Purchase, Expense, and Inventory valuation modules.',
+      available: true,
+      method: cogs.method,
+      dateFrom: range.dateFrom,
+      dateTo: range.dateTo,
+      totalRevenue: totalSales,
+      totalCogs: toNumber(cogs.totalCogs),
+      grossProfit: totalSales - toNumber(cogs.totalCogs),
+      cogsByProduct: cogs.breakdown.map((b) => ({
+        productId: b.productId,
+        totalCogs: toNumber(b.totalCogs),
+      })),
     };
   }
 

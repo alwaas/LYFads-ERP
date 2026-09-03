@@ -291,6 +291,38 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
 
   {
+    title: "Stock Counts",
+    path: "/stock-counts",
+    icon: ClipboardList,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Inventory Report",
+    path: "/reports/inventory",
+    icon: Package,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Inventory Settings",
+    path: "/inventory-settings",
+    icon: Settings,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+    ],
+  },
+
+  {
     title: "Profitability",
     path: "/reports/profitability",
     icon: TrendingUp,

@@ -9,16 +9,20 @@ import { PrismaService } from '../../database/prisma.service';
 import { MovementType, CreateStockMovementDto } from './dto/create-stock-movement.dto';
 import { StockMovementQueryDto } from './dto/stock-movement-query.dto';
 import { SearchDto } from '../../common/dto/search.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, StockMovementType } from '@prisma/client';
+import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
 
 @Injectable()
 export class StockMovementsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly valuation: InventoryValuationService,
+  ) {}
 
-  async create(dto: CreateStockMovementDto, userTenantId: string) {
+  async create(dto: CreateStockMovementDto, userTenantId: string, userId?: string) {
     const product = await this.prisma.product.findUnique({
       where: { id: dto.productId },
-      select: { id: true, tenantId: true, name: true, sku: true },
+      select: { id: true, tenantId: true, name: true, sku: true, costPrice: true },
     });
 
     if (!product || product.tenantId !== userTenantId) {
@@ -59,7 +63,24 @@ export class StockMovementsService {
       }
 
       return this.prisma.$transaction(async (tx) => {
-        const sourceStock = await tx.productWarehouse.findUnique({
+        const method = await this.valuation.getTenantValuationMethod(userTenantId);
+
+        const { totalCost, unitCost } = await this.valuation.applyMovement(
+          tx,
+          userTenantId,
+          method,
+          StockMovementType.TRANSFER,
+          {
+            productId: dto.productId,
+            quantity: dto.quantity,
+            sourceWarehouseId: dto.sourceWarehouseId,
+            destinationWarehouseId: dto.destinationWarehouseId,
+          },
+        );
+
+        // Update per-warehouse quantities (applyTransfer has already applied costing
+        // but we still need to update the quantity columns in product_warehouses).
+        const sourcePw = await tx.productWarehouse.findUnique({
           where: {
             productId_warehouseId: {
               productId: dto.productId,
@@ -67,39 +88,27 @@ export class StockMovementsService {
             },
           },
         });
-
-        const availableStock = sourceStock?.quantity ?? 0;
-
-        if (availableStock < dto.quantity) {
-          throw new BadRequestException(
-            `Insufficient stock in source warehouse. Available: ${availableStock}, requested: ${dto.quantity}`,
-          );
-        }
-
-        const [sourceUpdated, destinationUpdated] = await Promise.all([
-          tx.productWarehouse.update({
-            where: {
-              productId_warehouseId: {
-                 productId: dto.productId,
-                 warehouseId: dto.sourceWarehouseId!,
-              },
-            },
-            data: { quantity: { decrement: dto.quantity } },
-          }),
-          tx.productWarehouse.upsert({
-            where: {
-              productId_warehouseId: {
-                 productId: dto.productId,
-                 warehouseId: dto.destinationWarehouseId!,
-              },
-            },
-            update: { quantity: { increment: dto.quantity } },
-            create: {
+        const destPw = await tx.productWarehouse.findUnique({
+          where: {
+            productId_warehouseId: {
               productId: dto.productId,
               warehouseId: dto.destinationWarehouseId!,
-              quantity: dto.quantity,
-              tenantId: userTenantId,
             },
+          },
+        });
+
+        if (!sourcePw || !destPw) {
+          throw new BadRequestException('Source or destination product stock not found');
+        }
+
+        const [updatedSource, updatedDest] = await Promise.all([
+          tx.productWarehouse.update({
+            where: { id: sourcePw.id },
+            data: { quantity: { decrement: dto.quantity } },
+          }),
+          tx.productWarehouse.update({
+            where: { id: destPw.id },
+            data: { quantity: { increment: dto.quantity } },
           }),
         ]);
 
@@ -110,6 +119,8 @@ export class StockMovementsService {
             destinationWarehouseId: dto.destinationWarehouseId,
             type: MovementType.TRANSFER,
             quantity: dto.quantity,
+            unitCost: unitCost as unknown as Prisma.Decimal,
+            totalCost: totalCost as unknown as Prisma.Decimal,
             referenceType: dto.referenceType,
             referenceId: dto.referenceId,
             notes: dto.notes,
@@ -122,6 +133,9 @@ export class StockMovementsService {
           },
         });
 
+        // Suppress unused var lint
+        void updatedSource;
+        void updatedDest;
         return movement;
       });
     }
@@ -142,70 +156,72 @@ export class StockMovementsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      if (dto.type === MovementType.OUT || dto.type === MovementType.ADJUST) {
-        const stock = await tx.productWarehouse.findUnique({
-          where: {
-            productId_warehouseId: {
-              productId: dto.productId,
-              warehouseId: dto.warehouseId!,
-            },
-          },
-        });
+      const method = await this.valuation.getTenantValuationMethod(userTenantId);
 
-        const availableStock = stock?.quantity ?? 0;
+      // For ADJUST, allow signed adjustment. The DTO uses positive quantity and
+      // we need to derive the sign from the requested stock direction.
+      // Convention: ADJUST keeps the existing positive-quantity semantics. Users
+      // can reconcile by setting new system stock via the physical-count endpoint.
+      // For raw ADJUST (positive qty), we add stock.
+      const movementType =
+        dto.type === MovementType.OUT
+          ? StockMovementType.OUT
+          : dto.type === MovementType.ADJUST
+            ? StockMovementType.ADJUST
+            : StockMovementType.IN;
 
-        if (dto.type === MovementType.OUT && availableStock < dto.quantity) {
-          throw new BadRequestException(
-            `Insufficient stock. Available: ${availableStock}, requested: ${dto.quantity}`,
-          );
-        }
+      const inboundUnitCost =
+        movementType === StockMovementType.IN && dto.unitCost
+          ? new Prisma.Decimal(dto.unitCost)
+          : null;
 
-        if (dto.type === MovementType.ADJUST) {
-          const adjustedStock = availableStock + dto.quantity;
-          if (adjustedStock < 0) {
-            throw new BadRequestException(
-              `Adjustment would result in negative stock. Current: ${availableStock}, adjustment: ${dto.quantity}`,
-            );
-          }
-        }
-      }
+      const { totalCost, unitCost } = await this.valuation.applyMovement(
+        tx,
+        userTenantId,
+        method,
+        movementType,
+        {
+          productId: dto.productId,
+          quantity: dto.quantity,
+          unitCostInput: inboundUnitCost,
+          warehouseId: dto.warehouseId!,
+        },
+      );
 
+      // Update the per-warehouse quantity column.
       const quantityDelta =
-        dto.type === MovementType.OUT ? -dto.quantity : dto.quantity;
+        movementType === StockMovementType.OUT ? -dto.quantity : dto.quantity;
 
-      const warehouseId = dto.warehouseId!;
-      const [productWarehouse, product] = await Promise.all([
-        tx.productWarehouse.upsert({
-          where: {
-            productId_warehouseId: {
-              productId: dto.productId,
-              warehouseId,
-            },
-          },
-          update: { quantity: { increment: quantityDelta } },
-          create: {
+      const productWarehouse = await tx.productWarehouse.upsert({
+        where: {
+          productId_warehouseId: {
             productId: dto.productId,
-            warehouseId,
-            quantity: quantityDelta,
-            tenantId: userTenantId,
+            warehouseId: dto.warehouseId!,
           },
-        }),
-        tx.product.update({
-          where: { id: dto.productId },
-          data: {
-            stockQuantity: {
-              increment: quantityDelta,
-            },
-          },
-        }),
-      ]);
+        },
+        update: { quantity: { increment: quantityDelta } },
+        create: {
+          productId: dto.productId,
+          warehouseId: dto.warehouseId!,
+          quantity: quantityDelta,
+          tenantId: userTenantId,
+        },
+      });
+
+      // Keep product aggregate stockQuantity in sync.
+      await tx.product.update({
+        where: { id: dto.productId },
+        data: { stockQuantity: { increment: quantityDelta } },
+      });
 
       const movement = await tx.stockMovement.create({
         data: {
           productId: dto.productId,
-          warehouseId,
+          warehouseId: dto.warehouseId,
           type: dto.type,
           quantity: dto.quantity,
+          unitCost: unitCost as unknown as Prisma.Decimal,
+          totalCost: totalCost as unknown as Prisma.Decimal,
           referenceType: dto.referenceType,
           referenceId: dto.referenceId,
           notes: dto.notes,
@@ -217,6 +233,8 @@ export class StockMovementsService {
         },
       });
 
+      // Suppress unused var lint
+      void productWarehouse;
       return movement;
     });
   }

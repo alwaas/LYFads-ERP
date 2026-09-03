@@ -10,11 +10,15 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, StockMovementType } from '@prisma/client';
+import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly valuation: InventoryValuationService,
+  ) {}
 
   async create(dto: CreateProductDto, userTenantId: string) {
     const existing = await this.prisma.product.findFirst({
@@ -30,18 +34,76 @@ export class ProductsService {
       );
     }
 
-    const product = await this.prisma.product.create({
-      data: {
-        sku: dto.sku,
-        name: dto.name,
-        description: dto.description,
-        unitPrice: new Prisma.Decimal(dto.unitPrice),
-        costPrice: new Prisma.Decimal(dto.costPrice),
-        stockQuantity: dto.stockQuantity ?? 0,
-        minStockLevel: dto.minStockLevel ?? 0,
-        isActive: dto.isActive ?? true,
-        tenantId: userTenantId,
-      },
+    const product = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          sku: dto.sku,
+          name: dto.name,
+          description: dto.description,
+          unitPrice: new Prisma.Decimal(dto.unitPrice),
+          costPrice: new Prisma.Decimal(dto.costPrice),
+          stockQuantity: dto.stockQuantity ?? 0,
+          minStockLevel: dto.minStockLevel ?? 0,
+          isActive: dto.isActive ?? true,
+          tenantId: userTenantId,
+        },
+      });
+
+      // If a default warehouse exists and an initial stockQuantity is provided,
+      // seed the per-warehouse stock and valuation layer so reports and COGS are consistent.
+      const initialQty = dto.stockQuantity ?? 0;
+      if (initialQty > 0) {
+        const defaultWarehouse = await tx.warehouse.findFirst({
+          where: { tenantId: userTenantId, isDefault: true, isActive: true },
+          select: { id: true },
+        });
+        if (defaultWarehouse) {
+          const method = await this.valuation.getTenantValuationMethod(userTenantId);
+          const { totalCost, unitCost } = await this.valuation.applyMovement(
+            tx,
+            userTenantId,
+            method,
+            StockMovementType.IN,
+            {
+              productId: created.id,
+              quantity: initialQty,
+              unitCostInput: new Prisma.Decimal(dto.costPrice),
+              warehouseId: defaultWarehouse.id,
+            },
+          );
+          const pw = await tx.productWarehouse.upsert({
+            where: {
+              productId_warehouseId: {
+                productId: created.id,
+                warehouseId: defaultWarehouse.id,
+              },
+            },
+            update: { quantity: { increment: initialQty } },
+            create: {
+              productId: created.id,
+              warehouseId: defaultWarehouse.id,
+              quantity: initialQty,
+              tenantId: userTenantId,
+            },
+          });
+          await tx.stockMovement.create({
+            data: {
+              productId: created.id,
+              warehouseId: defaultWarehouse.id,
+              type: StockMovementType.IN,
+              quantity: initialQty,
+              unitCost: unitCost as unknown as Prisma.Decimal,
+              totalCost: totalCost as unknown as Prisma.Decimal,
+              referenceType: 'INITIAL_STOCK',
+              notes: 'Initial stock on product creation',
+              tenantId: userTenantId,
+            },
+          });
+          void pw;
+        }
+      }
+
+      return created;
     });
 
     return product;

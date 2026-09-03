@@ -59,7 +59,12 @@ export async function cleanDatabase() {
   // Clean all tables in dependency order (children first)
   try {
     await prisma.stockMovement.deleteMany();
+    await prisma.fifoCostLayer.deleteMany();
+    await prisma.stockCountLine.deleteMany();
+    await prisma.stockCount.deleteMany();
     await prisma.productWarehouse.deleteMany();
+    await prisma.salesOrderItem.deleteMany();
+    await prisma.salesOrder.deleteMany();
     await prisma.product.deleteMany();
     await prisma.warehouse.deleteMany();
     await prisma.purchase.deleteMany();

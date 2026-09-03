@@ -10,6 +10,71 @@ export interface DashboardReport {
   vendorCount: number;
   invoiceCount: number;
   orderCount: number;
+  totalProducts?: number;
+  lowStockCount?: number;
+  totalStockValue?: number;
+  valuationMethod?: string;
+  lowStockItems?: LowStockItem[];
+}
+
+export interface LowStockItem {
+  id: string;
+  sku: string;
+  name: string;
+  stockQuantity: number;
+  minStockLevel: number;
+}
+
+export interface InventoryReport {
+  available: boolean;
+  valuationMethod: "FIFO" | "WEIGHTED_AVERAGE" | string;
+  totalProducts: number;
+  totalStockQuantity: number;
+  totalStockValue: number;
+  lowStockCount: number;
+  byStatus: { active: number; inactive: number };
+  products: InventoryReportProduct[];
+  warehouseBreakdown: InventoryWarehouseBreakdown[];
+}
+
+export interface InventoryReportProduct {
+  id: string;
+  sku: string;
+  name: string;
+  stockQuantity: number;
+  minStockLevel: number;
+  unitPrice: number;
+  costPrice: number;
+  isActive: boolean;
+  isLowStock: boolean;
+  totalValue: number;
+  warehouseStocks: InventoryWarehouseStock[];
+}
+
+export interface InventoryWarehouseStock {
+  warehouseId: string;
+  warehouseName: string;
+  quantity: number;
+  averageCost: number;
+}
+
+export interface InventoryWarehouseBreakdown {
+  warehouseId: string;
+  warehouseName: string;
+  productCount: number;
+  totalQuantity: number;
+}
+
+export interface ProfitabilityReport {
+  available: boolean;
+  reason?: string;
+  method?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  totalRevenue?: number;
+  totalCogs?: number;
+  grossProfit?: number;
+  cogsByProduct?: { productId: string; totalCogs: number }[];
 }
 
 export interface SalesReport {

@@ -197,7 +197,7 @@ describe('Reports E2E Tests', () => {
       expect(response.body.data.totalVendors).toBeDefined();
     });
 
-    it('should return unavailable for profitability report', async () => {
+    it('should return authoritative profitability report', async () => {
       const token = generateToken(testData.tenantAAdmin);
 
       const response = await request(app.getHttpServer())
@@ -205,8 +205,11 @@ describe('Reports E2E Tests', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200);
 
-      expect(response.body.data.available).toBe(false);
-      expect(response.body.data.reason).toBeDefined();
+      expect(response.body.data.available).toBe(true);
+      expect(response.body.data.method).toBeDefined();
+      expect(typeof response.body.data.totalCogs).toBe('number');
+      expect(typeof response.body.data.totalRevenue).toBe('number');
+      expect(typeof response.body.data.grossProfit).toBe('number');
     });
   });
 

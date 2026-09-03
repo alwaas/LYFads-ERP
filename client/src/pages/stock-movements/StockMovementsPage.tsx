@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 
 import PageLoader from "../../components/common/PageLoader";
 import { stockMovementService } from "../../services/stock-movement.service";
@@ -29,6 +30,7 @@ const movementTypeColors: Record<StockMovementType, string> = {
 };
 
 const StockMovementsPage = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
@@ -59,9 +61,17 @@ const StockMovementsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Stock Movements</h1>
-        <p className="text-slate-500 mt-1">Track inventory movements and transfers.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Stock Movements</h1>
+          <p className="text-slate-500 mt-1">Track inventory movements and transfers.</p>
+        </div>
+        <button
+          onClick={() => navigate("/stock-movements/add")}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm"
+        >
+          <Plus size={16} /> New Movement
+        </button>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -110,7 +120,7 @@ const StockMovementsPage = () => {
                 </tr>
               ) : (
                 movements.map((movement) => (
-                  <tr key={movement.id} className="hover:bg-slate-50 transition">
+                  <tr key={movement.id} className="hover:bg-slate-50 transition cursor-pointer" onClick={() => navigate(`/stock-movements/${movement.id}`)}>
                     <td className="px-4 py-3 text-slate-600">
                       {new Date(movement.createdAt).toLocaleDateString()}
                     </td>

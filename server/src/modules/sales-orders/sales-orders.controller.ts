@@ -83,6 +83,11 @@ export class SalesOrdersController {
     return this.salesOrdersService.updateStatus(id, 'FULFILLED', user.tenantId, user.userId);
   }
 
+  @Post(':id/fulfill-with-inventory')
+  fulfillWithInventory(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.salesOrdersService.fulfillWithInventory(id, user.tenantId, user.userId);
+  }
+
   @Post(':id/cancel')
   cancel(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
     return this.salesOrdersService.updateStatus(id, 'CANCELLED', user.tenantId, user.userId);
