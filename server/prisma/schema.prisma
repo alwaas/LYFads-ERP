@@ -560,9 +560,10 @@ model InvoiceItem {
 }
 
 model Payment {
-  id          String              @id @default(cuid())
-  invoiceId   String
-  amount      Decimal             @db.Decimal(12, 2)
+  id                String              @id @default(cuid())
+  invoiceId         String?
+  purchaseInvoiceId String?
+  amount            Decimal             @db.Decimal(12, 2)
   paymentDate DateTime
   method      PaymentMethod
   referenceNo String?
@@ -573,31 +574,37 @@ model Payment {
   status      PaymentStatus       @default(ACTIVE)
   voidedAt    DateTime?
   voidedById  String?
-  invoice     Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  allocations PaymentAllocation[]
+  invoice          Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  purchaseInvoice  PurchaseInvoice?   @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  allocations      PaymentAllocation[]
 
   @@index([invoiceId, tenantId])
+  @@index([purchaseInvoiceId, tenantId])
   @@index([paymentDate, tenantId])
   @@index([tenantId])
   @@index([status, tenantId])
 }
 
 model PaymentAllocation {
-  id        String   @id @default(cuid())
-  paymentId String
-  invoiceId String
-  amount    Decimal  @db.Decimal(12, 2)
+  id                String   @id @default(cuid())
+  paymentId         String
+  invoiceId         String?
+  purchaseInvoiceId String?
+  amount            Decimal  @db.Decimal(12, 2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   tenantId  String
-  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice          Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  purchaseInvoice  PurchaseInvoice?   @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  payment          Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([paymentId, invoiceId])
+  @@unique([paymentId, purchaseInvoiceId])
   @@index([paymentId, tenantId])
   @@index([invoiceId, tenantId])
+  @@index([purchaseInvoiceId, tenantId])
   @@index([tenantId])
 }
 
@@ -659,8 +666,9 @@ model Vendor {
   notes         String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
-  purchases     Purchase[]
-  purchaseOrders PurchaseOrder[]
+  purchases         Purchase[]
+  purchaseOrders    PurchaseOrder[]
+  purchaseInvoices  PurchaseInvoice[]
 
   @@index([tenantId])
   @@index([name, tenantId])
@@ -685,6 +693,7 @@ model PurchaseOrder {
   updatedAt            DateTime              @updatedAt
   tenantId             String
   items                PurchaseOrderItem[]
+  purchaseInvoices     PurchaseInvoice[]
   vendor               Vendor                @relation(fields: [vendorId], references: [id])
   warehouse            Warehouse?            @relation(fields: [warehouseId], references: [id])
   tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -717,6 +726,60 @@ model PurchaseOrderItem {
   @@index([purchaseOrderId, tenantId])
   @@index([tenantId])
   @@map("purchase_order_items")
+}
+
+model PurchaseInvoice {
+  id                String                @id @default(cuid())
+  invoiceNumber     String
+  vendorId          String
+  purchaseOrderId   String?
+  issueDate         DateTime              @default(now())
+  dueDate           DateTime
+  status            PurchaseInvoiceStatus @default(DRAFT)
+  subtotal          Decimal               @db.Decimal(12, 2)
+  tax               Decimal               @default(0) @db.Decimal(12, 2)
+  discount          Decimal               @default(0) @db.Decimal(12, 2)
+  total             Decimal               @db.Decimal(12, 2)
+  amountPaid        Decimal               @default(0) @db.Decimal(12, 2)
+  balanceAmount     Decimal               @db.Decimal(12, 2)
+  notes             String?
+  tenantId          String
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  items             PurchaseInvoiceItem[]
+  vendor            Vendor                @relation(fields: [vendorId], references: [id])
+  purchaseOrder     PurchaseOrder?        @relation(fields: [purchaseOrderId], references: [id])
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payments          Payment[]
+  allocations       PaymentAllocation[]
+
+  @@unique([invoiceNumber, tenantId])
+  @@index([tenantId])
+  @@index([vendorId, tenantId])
+  @@index([purchaseOrderId, tenantId])
+  @@index([status, tenantId])
+  @@index([dueDate, tenantId])
+  @@map("purchase_invoices")
+}
+
+model PurchaseInvoiceItem {
+  id                String          @id @default(cuid())
+  purchaseInvoiceId String
+  description       String
+  quantity          Decimal         @db.Decimal(12, 2)
+  unitCost          Decimal         @db.Decimal(12, 2)
+  tax               Decimal         @default(0) @db.Decimal(12, 2)
+  discount          Decimal         @default(0) @db.Decimal(12, 2)
+  lineTotal         Decimal         @db.Decimal(12, 2)
+  sequence          Int             @default(0)
+  createdAt         DateTime        @default(now())
+  tenantId          String
+  purchaseInvoice   PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseInvoiceId, tenantId])
+  @@index([tenantId])
+  @@map("purchase_invoice_items")
 }
 
 model Tenant {
@@ -761,6 +824,8 @@ model Tenant {
   projects                 Project[]
   purchaseOrderItems       PurchaseOrderItem[]
   purchaseOrders           PurchaseOrder[]
+  purchaseInvoiceItems     PurchaseInvoiceItem[]
+  purchaseInvoices         PurchaseInvoice[]
   salaryStructures         SalaryStructure[]
   salesOrderItems          SalesOrderItem[]
   salesOrders              SalesOrder[]
@@ -1234,6 +1299,16 @@ enum PurchaseOrderStatus {
   SUBMITTED
   APPROVED
   RECEIVED
+  CANCELLED
+}
+
+enum PurchaseInvoiceStatus {
+  DRAFT
+  APPROVED
+  POSTED
+  PARTIALLY_PAID
+  PAID
+  VOIDED
   CANCELLED
 }
 

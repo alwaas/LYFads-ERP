@@ -3,40 +3,85 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 
-import { InvoiceStatus, PaymentStatus } from '@prisma/client';
+import {
+  InvoiceStatus,
+  PaymentStatus,
+  PurchaseInvoiceStatus,
+} from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
 @Injectable()
 export class PaymentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
-  async create(dto: CreatePaymentDto, userTenantId: string) {
-    const invoice = await this.prisma.invoice.findUnique({
-      where: { id: dto.invoiceId },
-      select: { id: true, tenantId: true, balanceAmount: true },
-    });
+  async create(dto: CreatePaymentDto, userTenantId: string, userId?: string) {
+    const hasInvoice = !!dto.invoiceId;
+    const hasBill = !!dto.purchaseInvoiceId;
 
-    if (!invoice) {
-      throw new NotFoundException('Invoice not found');
+    if (hasInvoice && hasBill) {
+      throw new BadRequestException(
+        'Payment must target either an invoice or a vendor bill',
+      );
     }
 
-    if (invoice.tenantId !== userTenantId) {
-      throw new ForbiddenException('Access denied to this invoice');
+    if (hasBill) {
+      const bill = await this.prisma.purchaseInvoice.findUnique({
+        where: { id: dto.purchaseInvoiceId },
+        select: { id: true, tenantId: true, status: true, balanceAmount: true },
+      });
+
+      if (!bill) {
+        throw new NotFoundException('Vendor bill not found');
+      }
+
+      if (bill.tenantId !== userTenantId) {
+        throw new ForbiddenException('Access denied to this vendor bill');
+      }
+
+      if (bill.status === PurchaseInvoiceStatus.VOIDED || bill.status === PurchaseInvoiceStatus.CANCELLED) {
+        throw new ConflictException('Cannot pay a voided or cancelled vendor bill');
+      }
+
+      if (
+        bill.status !== PurchaseInvoiceStatus.POSTED &&
+        bill.status !== PurchaseInvoiceStatus.PARTIALLY_PAID
+      ) {
+        throw new ConflictException('Vendor bill must be posted before it can be paid');
+      }
+    } else if (hasInvoice) {
+      const invoice = await this.prisma.invoice.findUnique({
+        where: { id: dto.invoiceId },
+        select: { id: true, tenantId: true, balanceAmount: true },
+      });
+
+      if (!invoice) {
+        throw new NotFoundException('Invoice not found');
+      }
+
+      if (invoice.tenantId !== userTenantId) {
+        throw new ForbiddenException('Access denied to this invoice');
+      }
     }
 
     const newPayment = await this.prisma.$transaction(async (tx) => {
       const payment = await tx.payment.create({
         data: {
           invoiceId: dto.invoiceId,
+          purchaseInvoiceId: dto.purchaseInvoiceId,
           amount: new Prisma.Decimal(dto.amount),
           paymentDate: new Date(dto.paymentDate),
           method: dto.method,
@@ -47,9 +92,21 @@ export class PaymentsService {
         },
       });
 
-      await this.refreshInvoice(dto.invoiceId, tx);
+      if (dto.invoiceId) {
+        await this.refreshInvoice(dto.invoiceId, tx);
+      } else if (dto.purchaseInvoiceId) {
+        await this.refreshPurchaseInvoice(dto.purchaseInvoiceId, tx);
+      }
 
       return payment;
+    });
+
+    await this.activityLogsService.log({
+      action: 'CREATE',
+      module: 'PAYMENT',
+      description: `Payment of ${dto.amount} ${dto.method} created against ${dto.purchaseInvoiceId ? 'vendor bill' : dto.invoiceId ? 'invoice' : 'no bill'}.`,
+      userId,
+      tenantId: userTenantId,
     });
 
     return newPayment;
@@ -81,9 +138,11 @@ export class PaymentsService {
         take: limit,
         include: {
           invoice: true,
+          purchaseInvoice: true,
           allocations: {
             include: {
               invoice: true,
+              purchaseInvoice: true,
             },
           },
         },
@@ -108,9 +167,11 @@ export class PaymentsService {
       where: { id },
       include: {
         invoice: true,
+        purchaseInvoice: true,
         allocations: {
           include: {
             invoice: true,
+            purchaseInvoice: true,
           },
         },
       },
@@ -127,7 +188,7 @@ export class PaymentsService {
     return payment;
   }
 
-  async update(id: string, dto: UpdatePaymentDto, userTenantId: string) {
+  async update(id: string, dto: UpdatePaymentDto, userTenantId: string, userId?: string) {
     const oldPayment = await this.findOne(id, userTenantId);
 
     if (oldPayment.status === PaymentStatus.VOIDED) {
@@ -146,9 +207,21 @@ export class PaymentsService {
         },
       });
 
-      await this.refreshInvoice(oldPayment.invoiceId, tx);
+      if (oldPayment.invoiceId) {
+        await this.refreshInvoice(oldPayment.invoiceId, tx);
+      } else if (oldPayment.purchaseInvoiceId) {
+        await this.refreshPurchaseInvoice(oldPayment.purchaseInvoiceId, tx);
+      }
 
       return payment;
+    });
+
+    await this.activityLogsService.log({
+      action: 'UPDATE',
+      module: 'PAYMENT',
+      description: `Payment ${updatedPayment.id} updated.`,
+      userId,
+      tenantId: userTenantId,
     });
 
     return updatedPayment;
@@ -170,7 +243,11 @@ export class PaymentsService {
         where: { id },
       });
 
-      await this.refreshInvoice(payment.invoiceId, tx);
+      if (payment.invoiceId) {
+        await this.refreshInvoice(payment.invoiceId, tx);
+      } else if (payment.purchaseInvoiceId) {
+        await this.refreshPurchaseInvoice(payment.purchaseInvoiceId, tx);
+      }
     });
 
     return {
@@ -186,28 +263,46 @@ export class PaymentsService {
       throw new ConflictException('Payment is already voided');
     }
 
-    const voidedPayment = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.payment.update({
-        where: { id },
-        data: {
-          status: PaymentStatus.VOIDED,
-          voidedAt: new Date(),
-          voidedById: userId,
-        },
+    if (payment.invoiceId) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { id },
+          data: {
+            status: PaymentStatus.VOIDED,
+            voidedAt: new Date(),
+            voidedById: userId,
+          },
+        });
+        await this.refreshInvoice(payment.invoiceId!, tx);
       });
+    } else {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { id },
+          data: {
+            status: PaymentStatus.VOIDED,
+            voidedAt: new Date(),
+            voidedById: userId,
+          },
+        });
+        await this.refreshPurchaseInvoice(payment.purchaseInvoiceId!, tx);
+      });
+    }
 
-      await this.refreshInvoice(payment.invoiceId, tx);
+    const voidedPayment = await this.findOne(id, userTenantId);
 
-      return updated;
+    await this.activityLogsService.log({
+      action: 'VOID',
+      module: 'PAYMENT',
+      description: `Payment ${id} voided.`,
+      userId,
+      tenantId: userTenantId,
     });
 
     return voidedPayment;
   }
 
-  private async refreshInvoice(
-    invoiceId: string,
-    tx?: Prisma.TransactionClient,
-  ) {
+  private async refreshInvoice(invoiceId: string, tx?: Prisma.TransactionClient) {
     const prismaClient = tx || this.prisma;
 
     const invoice = await prismaClient.invoice.findUnique({
@@ -215,10 +310,8 @@ export class PaymentsService {
       include: {
         payments: true,
         allocations: {
-          where: {
-            payment: {
-              status: PaymentStatus.ACTIVE,
-            },
+          include: {
+            payment: true,
           },
         },
       },
@@ -231,6 +324,7 @@ export class PaymentsService {
       .reduce((sum, p) => sum.plus(new Prisma.Decimal(p.amount)), new Prisma.Decimal(0));
 
     const paidFromAllocations = invoice.allocations
+      .filter((alloc) => alloc.payment.status === PaymentStatus.ACTIVE)
       .reduce((sum, alloc) => sum.plus(new Prisma.Decimal(alloc.amount)), new Prisma.Decimal(0));
 
     const paidAmount = paidFromDirectPayments.plus(paidFromAllocations);
@@ -253,6 +347,59 @@ export class PaymentsService {
       where: { id: invoiceId },
       data: {
         paidAmount,
+        balanceAmount: balance,
+        status,
+      },
+    });
+  }
+
+  private async refreshPurchaseInvoice(
+    purchaseInvoiceId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const prismaClient = tx || this.prisma;
+
+    const bill = await prismaClient.purchaseInvoice.findUnique({
+      where: { id: purchaseInvoiceId },
+      include: {
+        payments: true,
+        allocations: {
+          include: {
+            payment: true,
+          },
+        },
+      },
+    });
+
+    if (!bill) return;
+
+    const paidFromDirectPayments = bill.payments
+      .filter((p) => p.status === PaymentStatus.ACTIVE && p.purchaseInvoiceId === purchaseInvoiceId)
+      .reduce((sum, p) => sum.plus(new Prisma.Decimal(p.amount)), new Prisma.Decimal(0));
+
+    const paidFromAllocations = bill.allocations
+      .filter((alloc) => alloc.payment.status === PaymentStatus.ACTIVE)
+      .reduce((sum, alloc) => sum.plus(new Prisma.Decimal(alloc.amount)), new Prisma.Decimal(0));
+
+    const paidAmount = paidFromDirectPayments.plus(paidFromAllocations);
+
+    const total = new Prisma.Decimal(bill.total);
+    const balance = total.minus(paidAmount);
+
+    let status: PurchaseInvoiceStatus;
+
+    if (paidAmount.lte(0)) {
+      status = PurchaseInvoiceStatus.POSTED;
+    } else if (balance.lte(0)) {
+      status = PurchaseInvoiceStatus.PAID;
+    } else {
+      status = PurchaseInvoiceStatus.PARTIALLY_PAID;
+    }
+
+    await prismaClient.purchaseInvoice.update({
+      where: { id: purchaseInvoiceId },
+      data: {
+        amountPaid: paidAmount,
         balanceAmount: balance,
         status,
       },

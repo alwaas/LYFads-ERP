@@ -427,6 +427,26 @@ const ViewVendorPage = lazy(
   () => import("../pages/vendors/ViewVendorPage")
 );
 
+const VendorBillsPage = lazy(
+  () => import("../pages/vendor-bills/VendorBillsPage")
+);
+
+const AddVendorBillPage = lazy(
+  () => import("../pages/vendor-bills/AddVendorBillPage")
+);
+
+const EditVendorBillPage = lazy(
+  () => import("../pages/vendor-bills/EditVendorBillPage")
+);
+
+const ViewVendorBillPage = lazy(
+  () => import("../pages/vendor-bills/ViewVendorBillPage")
+);
+
+const ApplyVendorBillPaymentPage = lazy(
+  () => import("../pages/vendor-bills/ApplyVendorBillPaymentPage")
+);
+
 const ProductsPage = lazy(
   () => import("../pages/products/ProductsPage")
 );
@@ -1138,6 +1158,61 @@ const router = createBrowserRouter([
       <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
         <Suspense fallback={<PageLoader />}>
           <ViewVendorPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendor-bills",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <VendorBillsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendor-bills/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddVendorBillPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendor-bills/:id/edit",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <EditVendorBillPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendor-bills/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewVendorBillPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/vendor-bills/:id/apply-payment",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ApplyVendorBillPaymentPage />
         </Suspense>
       </ProtectedRoute>
     ),

@@ -33,7 +33,7 @@ export class PaymentAllocationsController {
     @Body() dto: CreatePaymentAllocationDto,
     @GetUser() user: AuthenticatedUser,
   ) {
-    return this.paymentAllocationsService.create(dto, user.tenantId);
+    return this.paymentAllocationsService.create(dto, user.tenantId, user.userId);
   }
 
   @Get()

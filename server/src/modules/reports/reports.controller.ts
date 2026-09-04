@@ -17,6 +17,7 @@ import {
   CustomerQueryDto,
   InventoryQueryDto,
   SalesOrderQueryDto,
+  PayablesQueryDto,
 } from './dto/report-query.dto';
 
 @Controller('reports')
@@ -76,6 +77,14 @@ export class ReportsController {
     @Query() query: VendorQueryDto,
   ) {
     return this.reportsService.getVendorReport(user.tenantId, query);
+  }
+
+  @Get('payables')
+  payables(
+    @GetUser() user: AuthenticatedUser,
+    @Query() query: PayablesQueryDto,
+  ) {
+    return this.reportsService.getPayablesReport(user.tenantId, query);
   }
 
   @Get('profitability')

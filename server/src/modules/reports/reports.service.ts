@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { Prisma, InvoiceStatus } from '@prisma/client';
+import { Prisma, InvoiceStatus, PurchaseInvoiceStatus } from '@prisma/client';
 import type {
   DashboardQueryDto,
   ExpenseQueryDto,
   ProfitabilityQueryDto,
   PurchaseQueryDto,
   ReceivablesQueryDto,
+  PayablesQueryDto,
   SalesQueryDto,
   VendorQueryDto,
   CustomerQueryDto,
@@ -322,6 +323,77 @@ export class ReportsService {
       },
       invoiceCount: receivables.length,
       topOutstandingCustomers: topOutstanding.slice(0, 10),
+    };
+  }
+
+  async getPayablesReport(tenantId: string, _query?: PayablesQueryDto) {
+    const bills = await this.prisma.purchaseInvoice.findMany({
+      where: {
+        tenantId,
+        status: { in: [PurchaseInvoiceStatus.POSTED, PurchaseInvoiceStatus.PARTIALLY_PAID] },
+        balanceAmount: { gt: 0 },
+      },
+      include: {
+        vendor: { select: { id: true, name: true } },
+      },
+      orderBy: { dueDate: 'asc' },
+    });
+
+    const now = new Date();
+    const aging = {
+      current: 0,
+      days31to60: 0,
+      days61to90: 0,
+      days90plus: 0,
+    };
+
+    const topOutstanding: any[] = [];
+
+    for (const bill of bills) {
+      const balance = toNumber(bill.balanceAmount);
+      const dueDate = new Date(bill.dueDate);
+      const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysOverdue <= 0) {
+        aging.current += balance;
+      } else if (daysOverdue <= 30) {
+        aging.current += balance;
+      } else if (daysOverdue <= 60) {
+        aging.days31to60 += balance;
+      } else if (daysOverdue <= 90) {
+        aging.days61to90 += balance;
+      } else {
+        aging.days90plus += balance;
+      }
+
+      topOutstanding.push({
+        purchaseInvoiceId: bill.id,
+        invoiceNumber: bill.invoiceNumber,
+        vendorId: bill.vendor?.id,
+        vendorName: bill.vendor?.name || 'Unknown',
+        balanceAmount: balance,
+        dueDate: bill.dueDate,
+        daysOverdue: Math.max(0, daysOverdue),
+        status: bill.status,
+      });
+    }
+
+    topOutstanding.sort((a, b) => b.balanceAmount - a.balanceAmount);
+
+    const totalPayables = bills
+      .reduce((sum, b) => sum.plus(new Prisma.Decimal(b.balanceAmount)), new Prisma.Decimal(0))
+      .toNumber();
+
+    return {
+      totalPayables,
+      aging: {
+        current: aging.current,
+        days31to60: aging.days31to60,
+        days61to90: aging.days61to90,
+        days90plus: aging.days90plus,
+      },
+      billCount: bills.length,
+      topOutstandingVendors: topOutstanding.slice(0, 10),
     };
   }
 

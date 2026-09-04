@@ -69,6 +69,12 @@ export class VendorQueryDto extends ReportQueryDto {
   search?: string;
 }
 
+export class PayablesQueryDto extends ReportQueryDto {
+  @IsOptional()
+  @IsString()
+  vendorId?: string;
+}
+
 export class ProfitabilityQueryDto extends ReportQueryDto {}
 
 export class InventoryQueryDto extends ReportQueryDto {

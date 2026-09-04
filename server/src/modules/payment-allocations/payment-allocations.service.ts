@@ -6,19 +6,43 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { Prisma, PaymentStatus, InvoiceStatus } from '@prisma/client';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import {
+  Prisma,
+  PaymentStatus,
+  InvoiceStatus,
+  PurchaseInvoiceStatus,
+} from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 import { CreatePaymentAllocationDto } from './dto/create-payment-allocation.dto';
 
 @Injectable()
 export class PaymentAllocationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
-  async create(dto: CreatePaymentAllocationDto, userTenantId: string) {
+  async create(dto: CreatePaymentAllocationDto, userTenantId: string, userId?: string) {
+    const hasInvoice = !!dto.invoiceId;
+    const hasBill = !!dto.purchaseInvoiceId;
+
+    if ((hasInvoice && hasBill) || (!hasInvoice && !hasBill)) {
+      throw new BadRequestException(
+        'Allocation must target either an invoice or a vendor bill',
+      );
+    }
+
     const payment = await this.prisma.payment.findUnique({
       where: { id: dto.paymentId },
-      select: { id: true, tenantId: true, status: true, invoiceId: true },
+      select: {
+        id: true,
+        tenantId: true,
+        status: true,
+        invoiceId: true,
+        purchaseInvoiceId: true,
+      },
     });
 
     if (!payment) {
@@ -33,17 +57,11 @@ export class PaymentAllocationsService {
       throw new ConflictException('Cannot allocate against a voided payment');
     }
 
-    const invoice = await this.prisma.invoice.findUnique({
-      where: { id: dto.invoiceId },
-      select: { id: true, tenantId: true, balanceAmount: true, total: true },
-    });
-
-    if (!invoice) {
-      throw new NotFoundException('Invoice not found');
+    if (payment.invoiceId && !hasInvoice) {
+      throw new ConflictException('This payment is a customer receipt; target an invoice');
     }
-
-    if (invoice.tenantId !== userTenantId) {
-      throw new ForbiddenException('Access denied to this invoice');
+    if (payment.purchaseInvoiceId && !hasBill) {
+      throw new ConflictException('This payment is a vendor payment; target a vendor bill');
     }
 
     const allocationAmount = new Prisma.Decimal(dto.amount);
@@ -51,6 +69,9 @@ export class PaymentAllocationsService {
     if (allocationAmount.lte(0)) {
       throw new BadRequestException('Allocation amount must be positive');
     }
+
+    // Cross-tenant + over-allocation guards are shared by both branches.
+    const paymentTotal = await this.getPaymentTotal(dto.paymentId);
 
     const existingAllocations = await this.prisma.paymentAllocation.findMany({
       where: { paymentId: dto.paymentId },
@@ -62,22 +83,45 @@ export class PaymentAllocationsService {
       new Prisma.Decimal(0),
     );
 
-    const paymentAmount = payment.invoiceId === dto.invoiceId
-      ? await this.getDirectPaymentAmount(dto.paymentId, dto.invoiceId)
-      : 0;
-
-    const remainingPaymentAmount = new Prisma.Decimal(payment.invoiceId === dto.invoiceId
-      ? await this.getDirectPaymentAmount(dto.paymentId, dto.invoiceId)
-      : 0).plus(totalAllocated);
-
-    const paymentTotal = await this.getPaymentTotal(dto.paymentId);
-
     if (totalAllocated.plus(allocationAmount).gt(paymentTotal)) {
       throw new ConflictException('Allocation exceeds remaining payment amount');
     }
 
+    if (hasInvoice) {
+      return this.allocateToInvoice(dto, userTenantId, userId);
+    }
+
+    return this.allocateToPurchaseInvoice(
+      dto,
+      paymentTotal,
+      totalAllocated,
+      userTenantId,
+      userId,
+    );
+  }
+
+  private async allocateToInvoice(
+    dto: CreatePaymentAllocationDto,
+    userTenantId: string,
+    userId?: string,
+  ) {
+    const invoiceId = dto.invoiceId!;
+
+    const invoice = await this.prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { id: true, tenantId: true, balanceAmount: true, total: true },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
+
+    if (invoice.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this invoice');
+    }
+
     const invoiceAllocations = await this.prisma.paymentAllocation.findMany({
-      where: { invoiceId: dto.invoiceId },
+      where: { invoiceId: invoiceId },
       select: { amount: true },
     });
 
@@ -88,7 +132,7 @@ export class PaymentAllocationsService {
 
     const directPayments = await this.prisma.payment.findMany({
       where: {
-        invoiceId: dto.invoiceId,
+        invoiceId: invoiceId,
         status: PaymentStatus.ACTIVE,
         id: { not: dto.paymentId },
       },
@@ -100,16 +144,18 @@ export class PaymentAllocationsService {
       new Prisma.Decimal(0),
     );
 
-    const remainingBalance = new Prisma.Decimal(invoice.total).minus(totalInvoiceAllocated).minus(totalDirectPayments);
+    const remainingBalance = new Prisma.Decimal(invoice.total)
+      .minus(totalInvoiceAllocated)
+      .minus(totalDirectPayments);
 
-    if (allocationAmount.gt(remainingBalance)) {
+    if (new Prisma.Decimal(dto.amount).gt(remainingBalance)) {
       throw new ConflictException('Allocation exceeds remaining invoice balance');
     }
 
     const existing = await this.prisma.paymentAllocation.findFirst({
       where: {
         paymentId: dto.paymentId,
-        invoiceId: dto.invoiceId,
+        invoiceId: invoiceId,
       },
     });
 
@@ -121,15 +167,142 @@ export class PaymentAllocationsService {
       const alloc = await tx.paymentAllocation.create({
         data: {
           paymentId: dto.paymentId,
-          invoiceId: dto.invoiceId,
-          amount: allocationAmount,
+          invoiceId: invoiceId,
+          amount: new Prisma.Decimal(dto.amount),
           tenantId: userTenantId,
         },
       });
 
-      await this.refreshInvoice(dto.invoiceId, tx);
+      await this.refreshInvoice(invoiceId, tx);
 
       return alloc;
+    });
+
+    await this.activityLogsService.log({
+      action: 'ALLOCATE',
+      module: 'PAYMENT',
+      description: `Payment ${dto.paymentId} allocated ${dto.amount} to invoice ${invoiceId}.`,
+      userId,
+      tenantId: userTenantId,
+    });
+
+    return allocation;
+  }
+
+  private async allocateToPurchaseInvoice(
+    dto: CreatePaymentAllocationDto,
+    paymentTotal: Prisma.Decimal,
+    totalAllocated: Prisma.Decimal,
+    userTenantId: string,
+    userId?: string,
+  ) {
+    const billId = dto.purchaseInvoiceId!;
+
+    const bill = await this.prisma.purchaseInvoice.findUnique({
+      where: { id: billId },
+      select: {
+        id: true,
+        tenantId: true,
+        total: true,
+        balanceAmount: true,
+        status: true,
+      },
+    });
+
+    if (!bill) {
+      throw new NotFoundException('Vendor bill not found');
+    }
+
+    if (bill.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this vendor bill');
+    }
+
+    if (
+      bill.status === PurchaseInvoiceStatus.VOIDED ||
+      bill.status === PurchaseInvoiceStatus.CANCELLED
+    ) {
+      throw new ConflictException('Cannot allocate against a voided or cancelled vendor bill');
+    }
+
+    if (
+      bill.status !== PurchaseInvoiceStatus.POSTED &&
+      bill.status !== PurchaseInvoiceStatus.PARTIALLY_PAID
+    ) {
+      throw new ConflictException(
+        'Vendor bill must be posted before a payment can be allocated to it',
+      );
+    }
+
+    if (new Prisma.Decimal(dto.amount).gt(paymentTotal.minus(totalAllocated))) {
+      throw new ConflictException('Allocation exceeds remaining payment amount');
+    }
+
+    const billAllocations = await this.prisma.paymentAllocation.findMany({
+      where: { purchaseInvoiceId: billId },
+      select: { amount: true },
+    });
+
+    const totalBillAllocated = billAllocations.reduce(
+      (sum, alloc) => sum.plus(new Prisma.Decimal(alloc.amount)),
+      new Prisma.Decimal(0),
+    );
+
+    const billDirectPayments = await this.prisma.payment.findMany({
+      where: {
+        purchaseInvoiceId: billId,
+        status: PaymentStatus.ACTIVE,
+        id: { not: dto.paymentId },
+      },
+      select: { amount: true },
+    });
+
+    const totalDirectPayments = billDirectPayments.reduce(
+      (sum, p) => sum.plus(new Prisma.Decimal(p.amount)),
+      new Prisma.Decimal(0),
+    );
+
+    const remainingBalance = new Prisma.Decimal(bill.total)
+      .minus(totalBillAllocated)
+      .minus(totalDirectPayments);
+
+    if (new Prisma.Decimal(dto.amount).gt(remainingBalance)) {
+      throw new ConflictException('Allocation exceeds remaining vendor bill balance');
+    }
+
+    const existing = await this.prisma.paymentAllocation.findFirst({
+      where: {
+        paymentId: dto.paymentId,
+        purchaseInvoiceId: billId,
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException(
+        'This payment is already allocated to this vendor bill',
+      );
+    }
+
+    const allocation = await this.prisma.$transaction(async (tx) => {
+      const alloc = await tx.paymentAllocation.create({
+        data: {
+          paymentId: dto.paymentId,
+          purchaseInvoiceId: billId,
+          amount: new Prisma.Decimal(dto.amount),
+          tenantId: userTenantId,
+        },
+      });
+
+      await this.refreshPurchaseInvoice(billId, tx);
+
+      return alloc;
+    });
+
+    await this.activityLogsService.log({
+      action: 'ALLOCATE',
+      module: 'PAYMENT',
+      description: `Payment ${dto.paymentId} allocated ${dto.amount} to vendor bill ${billId}.`,
+      userId,
+      tenantId: userTenantId,
     });
 
     return allocation;
@@ -144,6 +317,7 @@ export class PaymentAllocationsService {
       where.OR = [
         { payment: { referenceNo: { contains: search.search, mode: 'insensitive' } } },
         { invoice: { invoiceNumber: { contains: search.search, mode: 'insensitive' } } },
+        { purchaseInvoice: { invoiceNumber: { contains: search.search, mode: 'insensitive' } } },
       ];
     }
 
@@ -177,6 +351,20 @@ export class PaymentAllocationsService {
               },
             },
           },
+          purchaseInvoice: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              total: true,
+              balanceAmount: true,
+              vendor: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -198,6 +386,7 @@ export class PaymentAllocationsService {
       include: {
         payment: true,
         invoice: true,
+        purchaseInvoice: true,
       },
     });
 
@@ -220,7 +409,11 @@ export class PaymentAllocationsService {
         where: { id },
       });
 
-      await this.refreshInvoice(allocation.invoiceId, tx);
+      if (allocation.invoiceId) {
+        await this.refreshInvoice(allocation.invoiceId, tx);
+      } else if (allocation.purchaseInvoiceId) {
+        await this.refreshPurchaseInvoice(allocation.purchaseInvoiceId, tx);
+      }
     });
 
     return {
@@ -242,23 +435,7 @@ export class PaymentAllocationsService {
     return new Prisma.Decimal(payment.amount);
   }
 
-  private async getDirectPaymentAmount(paymentId: string, invoiceId: string): Promise<number> {
-    const payment = await this.prisma.payment.findFirst({
-      where: { id: paymentId, invoiceId },
-      select: { amount: true },
-    });
-
-    if (!payment) {
-      return 0;
-    }
-
-    return Number(payment.amount);
-  }
-
-  private async refreshInvoice(
-    invoiceId: string,
-    tx?: Prisma.TransactionClient,
-  ) {
+  private async refreshInvoice(invoiceId: string, tx?: Prisma.TransactionClient) {
     const prismaClient = tx || this.prisma;
 
     const invoice = await prismaClient.invoice.findUnique({
@@ -303,6 +480,59 @@ export class PaymentAllocationsService {
       where: { id: invoiceId },
       data: {
         paidAmount,
+        balanceAmount: balance,
+        status,
+      },
+    });
+  }
+
+  private async refreshPurchaseInvoice(
+    purchaseInvoiceId: string,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const prismaClient = tx || this.prisma;
+
+    const bill = await prismaClient.purchaseInvoice.findUnique({
+      where: { id: purchaseInvoiceId },
+      include: {
+        payments: true,
+        allocations: {
+          include: {
+            payment: true,
+          },
+        },
+      },
+    });
+
+    if (!bill) return;
+
+    const paidFromDirectPayments = bill.payments
+      .filter((p) => p.status === PaymentStatus.ACTIVE && p.purchaseInvoiceId === purchaseInvoiceId)
+      .reduce((sum, p) => sum.plus(new Prisma.Decimal(p.amount)), new Prisma.Decimal(0));
+
+    const paidFromAllocations = bill.allocations
+      .filter((alloc) => alloc.payment.status === PaymentStatus.ACTIVE)
+      .reduce((sum, alloc) => sum.plus(new Prisma.Decimal(alloc.amount)), new Prisma.Decimal(0));
+
+    const paidAmount = paidFromDirectPayments.plus(paidFromAllocations);
+
+    const total = new Prisma.Decimal(bill.total);
+    const balance = total.minus(paidAmount);
+
+    let status: PurchaseInvoiceStatus;
+
+    if (paidAmount.lte(0)) {
+      status = PurchaseInvoiceStatus.POSTED;
+    } else if (balance.lte(0)) {
+      status = PurchaseInvoiceStatus.PAID;
+    } else {
+      status = PurchaseInvoiceStatus.PARTIALLY_PAID;
+    }
+
+    await prismaClient.purchaseInvoice.update({
+      where: { id: purchaseInvoiceId },
+      data: {
+        amountPaid: paidAmount,
         balanceAmount: balance,
         status,
       },

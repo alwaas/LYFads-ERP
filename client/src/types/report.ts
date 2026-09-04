@@ -128,6 +128,27 @@ export interface ReceivablesReport {
   }>;
 }
 
+export interface PayablesReport {
+  totalPayables: number;
+  aging: {
+    current: number;
+    days31to60: number;
+    days61to90: number;
+    days90plus: number;
+  };
+  billCount: number;
+  topOutstandingVendors: Array<{
+    purchaseInvoiceId: string;
+    invoiceNumber: string;
+    vendorId: string;
+    vendorName: string;
+    balanceAmount: number;
+    dueDate: string;
+    daysOverdue: number;
+    status: string;
+  }>;
+}
+
 export interface CustomerReport {
   customerCount: number;
   topCustomers: Array<{

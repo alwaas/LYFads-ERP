@@ -268,6 +268,17 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
 
   {
+    title: "Vendor Bills",
+    path: "/vendor-bills",
+    icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
     title: "Products",
     path: "/products",
     icon: Package,

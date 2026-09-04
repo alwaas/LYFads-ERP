@@ -34,7 +34,7 @@ export class PaymentsController {
 
   @Post()
   create(@Body() dto: CreatePaymentDto, @GetUser() user: AuthenticatedUser) {
-    return this.paymentsService.create(dto, user.tenantId);
+    return this.paymentsService.create(dto, user.tenantId, user.userId);
   }
 
   @Get()
@@ -58,7 +58,7 @@ export class PaymentsController {
     @Body() dto: UpdatePaymentDto,
     @GetUser() user: AuthenticatedUser,
   ) {
-    return this.paymentsService.update(id, dto, user.tenantId);
+    return this.paymentsService.update(id, dto, user.tenantId, user.userId);
   }
 
   @Delete(':id')
