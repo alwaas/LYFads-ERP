@@ -14,6 +14,7 @@ import type {
   InventoryQueryDto,
 } from './dto/report-query.dto';
 import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
+import { GlService } from '../gl/gl.service';
 
 type DateRange = {
   dateFrom?: Date;
@@ -63,6 +64,7 @@ export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly valuation: InventoryValuationService,
+    private readonly glService: GlService,
   ) {}
 
   async getDashboard(tenantId: string, query: DashboardQueryDto) {
@@ -1029,5 +1031,23 @@ export class ReportsService {
         total: order.total,
       })),
     };
+  }
+
+  async getTrialBalanceReport(tenantId: string, query?: { dateFrom?: string; dateTo?: string }) {
+    return this.glService.getTrialBalance(tenantId, query);
+  }
+
+  async getProfitAndLossReport(tenantId: string, query?: { dateFrom?: string; dateTo?: string }) {
+    const pnl = await this.glService.getProfitAndLoss(tenantId, query);
+    return {
+      totalRevenue: pnl.totalRevenue,
+      totalExpenses: pnl.totalExpenses,
+      netIncome: pnl.netIncome,
+      byAccount: pnl.byAccount,
+    };
+  }
+
+  async getGeneralLedgerReport(tenantId: string, query?: { dateFrom?: string; dateTo?: string; accountId?: string; referenceId?: string }) {
+    return this.glService.getGeneralLedger(tenantId, query);
   }
 }

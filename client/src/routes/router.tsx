@@ -319,6 +319,42 @@ const ProtectedRoute = lazy(
   () => import("./ProtectedRoute")
 );
 
+const FinanceDashboardPage = lazy(
+  () => import("../pages/finance/FinanceDashboardPage")
+);
+
+const ChartOfAccountsPage = lazy(
+  () => import("../pages/finance/ChartOfAccountsPage")
+);
+
+const AddAccountPage = lazy(
+  () => import("../pages/finance/AddAccountPage")
+);
+
+const JournalEntriesPage = lazy(
+  () => import("../pages/finance/JournalEntriesPage")
+);
+
+const AddJournalEntryPage = lazy(
+  () => import("../pages/finance/AddJournalEntryPage")
+);
+
+const ViewJournalEntryPage = lazy(
+  () => import("../pages/finance/ViewJournalEntryPage")
+);
+
+const TrialBalancePage = lazy(
+  () => import("../pages/finance/TrialBalancePage")
+);
+
+const ProfitLossPage = lazy(
+  () => import("../pages/finance/ProfitLossPage")
+);
+
+const GeneralLedgerPage = lazy(
+  () => import("../pages/finance/GeneralLedgerPage")
+);
+
 const TimelinePage = lazy(
   () => import("../pages/timeline/TimelinePage")
 );
@@ -1944,6 +1980,105 @@ const router = createBrowserRouter([
       <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN]}>
         <Suspense fallback={<PageLoader />}>
           <MyPlanPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <FinanceDashboardPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance/accounts",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ChartOfAccountsPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance/accounts/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddAccountPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance/journal-entries",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <JournalEntriesPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance/journal-entries/add",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <AddJournalEntryPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance/journal-entries/:id",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ViewJournalEntryPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance/trial-balance",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <TrialBalancePage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance/profit-loss",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <ProfitLossPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/finance/general-ledger",
+    element: (
+      <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+        <Suspense fallback={<PageLoader />}>
+          <GeneralLedgerPage />
         </Suspense>
       </ProtectedRoute>
     ),

@@ -20,12 +20,14 @@ import {
 import { Prisma } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
+import { GlService } from '../gl/gl.service';
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly glService: GlService,
   ) {}
 
   async create(dto: CreatePaymentDto, userTenantId: string, userId?: string) {
@@ -100,6 +102,24 @@ export class PaymentsService {
 
       return payment;
     });
+
+    if (dto.invoiceId) {
+      await this.glService.postInvoicePayment(
+        userTenantId,
+        newPayment.id,
+        newPayment.amount,
+        dto.invoiceId,
+        userId,
+      );
+    } else if (dto.purchaseInvoiceId) {
+      await this.glService.postVendorPayment(
+        userTenantId,
+        newPayment.id,
+        newPayment.amount,
+        dto.purchaseInvoiceId,
+        userId,
+      );
+    }
 
     await this.activityLogsService.log({
       action: 'CREATE',

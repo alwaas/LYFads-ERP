@@ -15,6 +15,7 @@ import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
 import { SalesOrderQueryDto } from './dto/sales-order-query.dto';
 import { AddItemsDto, SalesOrderItemInputDto } from './dto/add-items.dto';
 import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
+import { GlService } from '../gl/gl.service';
 
 @Injectable()
 export class SalesOrdersService {
@@ -22,6 +23,7 @@ export class SalesOrdersService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly valuation: InventoryValuationService,
+    private readonly glService: GlService,
   ) {}
 
   private toMoney(value?: string | null): Prisma.Decimal {
@@ -443,6 +445,7 @@ export class SalesOrdersService {
 
     const movementCount = await this.prisma.$transaction(async (tx) => {
       let count = 0;
+      const cogsEntries: Array<{ productId: string; totalCost: Prisma.Decimal }> = [];
       for (const item of salesOrder.items) {
         const qty = Number(item.quantity);
         if (qty <= 0) continue;
@@ -518,6 +521,11 @@ export class SalesOrdersService {
             notes: `Sales order ${salesOrder.orderNumber} fulfillment`,
           },
         });
+
+        cogsEntries.push({
+          productId: item.productId,
+          totalCost: totalCost as unknown as Prisma.Decimal,
+        });
         count++;
       }
 
@@ -525,6 +533,32 @@ export class SalesOrdersService {
         where: { id: salesOrder.id },
         data: { status: SalesOrderStatus.FULFILLED },
       });
+
+      const cogsAccount = await tx.account.findUnique({
+        where: { code_tenantId: { code: '5000', tenantId: userTenantId } },
+      });
+      const inventoryAccount = await tx.account.findUnique({
+        where: { code_tenantId: { code: '1020', tenantId: userTenantId } },
+      });
+
+      for (const cogs of cogsEntries) {
+        await this.glService.createJournalEntryInTransaction(
+          tx,
+          {
+            date: new Date(),
+            description: `COGS for sales order ${salesOrder.orderNumber} (product ${cogs.productId})`,
+            referenceId: `cogs_${salesOrder.id}_${cogs.productId}`,
+            posted: true,
+            createdById: userId,
+            lines: [
+              { accountId: cogsAccount!.id, debitAmount: cogs.totalCost },
+              { accountId: inventoryAccount!.id, creditAmount: cogs.totalCost },
+            ],
+          },
+          userTenantId,
+        );
+      }
+
       return count;
     });
 

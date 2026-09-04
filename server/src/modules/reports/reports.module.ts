@@ -6,9 +6,10 @@ import { ReportsService } from './reports.service';
 import { ReportsExportController } from './reports-export.controller';
 import { ReportsExportService } from './reports-export.service';
 import { InventoryValuationModule } from '../inventory-valuation/inventory-valuation.module';
+import { GlModule } from '../gl/gl.module';
 
 @Module({
-  imports: [PrismaModule, InventoryValuationModule],
+  imports: [PrismaModule, InventoryValuationModule, GlModule],
   controllers: [ReportsController, ReportsExportController],
   providers: [ReportsService, ReportsExportService],
   exports: [ReportsService, ReportsExportService],

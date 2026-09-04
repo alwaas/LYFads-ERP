@@ -7,8 +7,9 @@ import { PrismaService } from '../../database/prisma.service';
 
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, InvoiceStatus } from '@prisma/client';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { GlService } from '../gl/gl.service';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
@@ -17,6 +18,7 @@ export class InvoiceService {
   constructor(
     private prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly glService: GlService,
   ) {}
 
   async create(dto: CreateInvoiceDto, userTenantId: string, userId?: string) {
@@ -87,6 +89,20 @@ export class InvoiceService {
       userId,
       tenantId: userTenantId,
     });
+
+    if (invoice.status !== InvoiceStatus.DRAFT) {
+      try {
+        await this.glService.postInvoice(
+          userTenantId,
+          invoice.id,
+          invoice.total,
+          invoice.tax,
+          userId,
+        );
+      } catch (err) {
+        void err;
+      }
+    }
 
     return invoice;
   }

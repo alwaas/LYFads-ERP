@@ -12,12 +12,14 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 import { CreatePurchaseInvoiceDto, CreatePurchaseInvoiceItemDto } from './dto/create-purchase-invoice.dto';
 import { UpdatePurchaseInvoiceDto } from './dto/update-purchase-invoice.dto';
+import { GlService } from '../gl/gl.service';
 
 @Injectable()
 export class PurchaseInvoicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly glService: GlService,
   ) {}
 
   private toMoney(value: string | number | Prisma.Decimal): Prisma.Decimal {
@@ -391,6 +393,16 @@ export class PurchaseInvoicesService {
       if (hasPayments > 0) {
         throw new ConflictException('Cannot void a bill that has payments');
       }
+    }
+
+    if (status === PurchaseInvoiceStatus.POSTED) {
+      await this.glService.postVendorBill(
+        userTenantId,
+        id,
+        updated.total,
+        updated.tax,
+        userId,
+      );
     }
 
     await this.activityLogsService.log({

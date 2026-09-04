@@ -9,10 +9,14 @@ import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ExpenseQueryDto } from './dto/expense-query.dto';
 import { Prisma } from '@prisma/client';
+import { GlService } from '../gl/gl.service';
 
 @Injectable()
 export class ExpensesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly glService: GlService,
+  ) {}
 
   async create(dto: CreateExpenseDto, userTenantId: string) {
     const expense = await this.prisma.expense.create({
@@ -27,6 +31,12 @@ export class ExpensesService {
         tenantId: userTenantId,
       },
     });
+
+    try {
+      await this.glService.postExpense(userTenantId, expense.id, expense.amount);
+    } catch (err) {
+      void err;
+    }
 
     return expense;
   }

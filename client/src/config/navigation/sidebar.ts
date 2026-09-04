@@ -478,6 +478,17 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
 
   {
+    title: "General Ledger",
+    path: "/finance",
+    icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
     title: "Tenant Management",
     path: "/tenants",
     icon: Building2,

@@ -104,3 +104,41 @@ export class SalesOrderQueryDto {
   @IsEnum(SalesOrderStatus)
   status?: SalesOrderStatus;
 }
+
+export class TrialBalanceQueryDto {
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+}
+
+export class ProfitAndLossQueryDto {
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+}
+
+export class GeneralLedgerQueryDto {
+  @IsOptional()
+  @IsDateString()
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateTo?: string;
+
+  @IsOptional()
+  @IsString()
+  accountId?: string;
+
+  @IsOptional()
+  @IsString()
+  referenceId?: string;
+}

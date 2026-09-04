@@ -15,6 +15,7 @@ import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { PurchaseOrderQueryDto } from './dto/purchase-order-query.dto';
 import { ReceivePurchaseOrderDto } from './dto/receive-purchase-order.dto';
 import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
+import { GlService } from '../gl/gl.service';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -22,6 +23,7 @@ export class PurchaseOrdersService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly valuation: InventoryValuationService,
+    private readonly glService: GlService,
   ) {}
 
   private toMoney(value?: string | null): Prisma.Decimal {
@@ -464,6 +466,13 @@ export class PurchaseOrdersService {
       let totalReceivedNow = 0;
       let allFullyReceived = true;
 
+      const inventoryAccount = await tx.account.findUnique({
+        where: { code_tenantId: { code: '1020', tenantId: userTenantId } },
+      });
+      const apAccount = await tx.account.findUnique({
+        where: { code_tenantId: { code: '2000', tenantId: userTenantId } },
+      });
+
       for (const recv of dto.items) {
         const ei = existingItems.find((e) => e.id === recv.itemId)!;
         const qty = Number(recv.quantity);
@@ -479,7 +488,6 @@ export class PurchaseOrdersService {
 
         const inboundUnitCost = ei.unitCost;
 
-        // Authoritative valuation: FIFO creates a layer, WA updates product_warehouses.averageCost
         const { totalCost, unitCost } = await this.valuation.applyMovement(
           tx,
           userTenantId,
@@ -530,6 +538,22 @@ export class PurchaseOrdersService {
             notes: dto.notes ?? `Purchase order ${po.orderNumber} receipt`,
           },
         });
+
+        await this.glService.createJournalEntryInTransaction(
+          tx,
+          {
+            date: new Date(),
+            description: `Inventory receipt for PO ${po.orderNumber} (product ${ei.productId})`,
+            referenceId: `inventory_receipt_${po.id}_${ei.productId}`,
+            posted: true,
+            createdById: userId,
+            lines: [
+              { accountId: inventoryAccount!.id, debitAmount: totalCost },
+              { accountId: apAccount!.id, creditAmount: totalCost },
+            ],
+          },
+          userTenantId,
+        );
 
         const newReceived = Number(ei.receivedQuantity) + qty;
         await tx.purchaseOrderItem.update({

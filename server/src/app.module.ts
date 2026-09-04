@@ -54,6 +54,7 @@ import { SalesOrdersModule } from './modules/sales-orders/sales-orders.module';
 import { PaymentAllocationsModule } from './modules/payment-allocations/payment-allocations.module';
 import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.module';
 import { PurchaseInvoicesModule } from './modules/purchase-invoices/purchase-invoices.module';
+import { GlModule } from './modules/gl/gl.module';
 import { TenantManagementModule } from './modules/tenant-management/tenant-management.module';
 import { PlansModule } from './modules/plans/plans.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
@@ -106,6 +107,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
     PaymentAllocationsModule,
     PurchaseOrdersModule,
     PurchaseInvoicesModule,
+    GlModule,
     TenantManagementModule,
     PlansModule,
     SubscriptionsModule,

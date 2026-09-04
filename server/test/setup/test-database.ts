@@ -58,6 +58,10 @@ export async function cleanDatabase() {
 
   // Clean all tables in dependency order (children first)
   try {
+    await prisma.journalEntryLine.deleteMany().catch(() => {});
+    await prisma.journalEntry.deleteMany().catch(() => {});
+    await prisma.account.deleteMany().catch(() => {});
+    await prisma.fiscalYear.deleteMany().catch(() => {});
     await prisma.stockMovement.deleteMany();
     await prisma.fifoCostLayer.deleteMany();
     await prisma.stockCountLine.deleteMany();
@@ -787,6 +791,81 @@ export async function setupTestDatabase() {
     },
   });
 
+  // Create vendors for Tenant A
+  const tenantAVendor = await prisma.vendor.create({
+    data: {
+      name: 'Tenant A Vendor',
+      contactPerson: 'Vendor Contact A',
+      email: 'vendor@tenant-a.com',
+      phone: '5555555555',
+      address: '123 Vendor St',
+      isActive: true,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create vendors for Tenant B
+  const tenantBVendor = await prisma.vendor.create({
+    data: {
+      name: 'Tenant B Vendor',
+      contactPerson: 'Vendor Contact B',
+      email: 'vendor@tenant-b.com',
+      phone: '6666666666',
+      address: '456 Vendor Ave',
+      isActive: true,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create fiscal year for Tenant A
+  const tenantAFiscalYear = await prisma.fiscalYear.create({
+    data: {
+      year: 2024,
+      startDate: new Date('2024-01-01'),
+      endDate: new Date('2024-12-31'),
+      status: 'OPEN',
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Seed default chart of accounts for both tenants
+  const DEFAULT_ACCOUNTS = [
+    { code: '1000', name: 'Cash', type: 'ASSET', normalBalanceSide: 'DEBIT' },
+    { code: '1010', name: 'Accounts Receivable', type: 'ASSET', normalBalanceSide: 'DEBIT' },
+    { code: '1020', name: 'Inventory', type: 'ASSET', normalBalanceSide: 'DEBIT' },
+    { code: '1030', name: 'Prepaid Expenses', type: 'ASSET', normalBalanceSide: 'DEBIT' },
+    { code: '2000', name: 'Accounts Payable', type: 'LIABILITY', normalBalanceSide: 'CREDIT' },
+    { code: '2010', name: 'Accrued Expenses', type: 'LIABILITY', normalBalanceSide: 'CREDIT' },
+    { code: '2020', name: 'Taxes Payable', type: 'LIABILITY', normalBalanceSide: 'CREDIT' },
+    { code: '3000', name: 'Retained Earnings', type: 'EQUITY', normalBalanceSide: 'CREDIT' },
+    { code: '4000', name: 'Sales Revenue', type: 'INCOME', normalBalanceSide: 'CREDIT' },
+    { code: '5000', name: 'Cost of Goods Sold', type: 'EXPENSE', normalBalanceSide: 'DEBIT' },
+    { code: '5010', name: 'Operating Expenses', type: 'EXPENSE', normalBalanceSide: 'DEBIT' },
+  ];
+
+  for (const acc of DEFAULT_ACCOUNTS) {
+    await prisma.account.create({
+      data: {
+        code: acc.code,
+        name: acc.name,
+        type: acc.type as any,
+        normalBalanceSide: acc.normalBalanceSide as any,
+        isActive: true,
+        tenantId: tenantA.id,
+      },
+    });
+    await prisma.account.create({
+      data: {
+        code: acc.code,
+        name: acc.name,
+        type: acc.type as any,
+        normalBalanceSide: acc.normalBalanceSide as any,
+        isActive: true,
+        tenantId: tenantB.id,
+      },
+    });
+  }
+
   return {
     tenantA,
     tenantB,
@@ -830,6 +909,8 @@ export async function setupTestDatabase() {
     tenantBMilestone,
     tenantAProduct,
     tenantBProduct,
+    tenantAVendor,
+    tenantBVendor,
     tenantAWarehouse,
     tenantBWarehouse,
     tenantAStockMovement,
@@ -838,6 +919,7 @@ export async function setupTestDatabase() {
     defaultPlan,
     tenantASubscription,
     tenantBSubscription,
+    tenantAFiscalYear,
   };
 }
 

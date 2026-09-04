@@ -18,6 +18,9 @@ import {
   InventoryQueryDto,
   SalesOrderQueryDto,
   PayablesQueryDto,
+  TrialBalanceQueryDto,
+  ProfitAndLossQueryDto,
+  GeneralLedgerQueryDto,
 } from './dto/report-query.dto';
 
 @Controller('reports')
@@ -141,5 +144,29 @@ export class ReportsController {
     @Query('year') year?: string,
   ) {
     return this.reportsService.getPayrollSummary(user.tenantId, month, year);
+  }
+
+  @Get('trial-balance')
+  trialBalance(
+    @GetUser() user: AuthenticatedUser,
+    @Query() query: TrialBalanceQueryDto,
+  ) {
+    return this.reportsService.getTrialBalanceReport(user.tenantId, query);
+  }
+
+  @Get('profit-loss')
+  profitLoss(
+    @GetUser() user: AuthenticatedUser,
+    @Query() query: ProfitAndLossQueryDto,
+  ) {
+    return this.reportsService.getProfitAndLossReport(user.tenantId, query);
+  }
+
+  @Get('general-ledger')
+  generalLedger(
+    @GetUser() user: AuthenticatedUser,
+    @Query() query: GeneralLedgerQueryDto,
+  ) {
+    return this.reportsService.getGeneralLedgerReport(user.tenantId, query);
   }
 }
