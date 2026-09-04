@@ -30,7 +30,9 @@ model User {
   managedProjects    Project[]          @relation("ProjectManager")
    memberships        TenantMembership[]
    tenant             Tenant             @relation(fields: [tenantId], references: [id])
-   createdJournalEntries JournalEntry[]
+    createdJournalEntries JournalEntry[]
+  createdExpenses    Expense[] @relation("CreatedExpenses")
+  approvedExpenses   Expense[] @relation("ApprovedExpenses")
 
   @@map("users")
 }
@@ -71,6 +73,7 @@ model Employee {
   leaves                Leave[]
   salaryStructures      SalaryStructure[]
   task                  Task[]
+  expenses              Expense[]
 
   @@index([userId, tenantId])
   @@index([tenantId])
@@ -615,15 +618,39 @@ model Expense {
   category      String
   description   String
   amount        Decimal       @db.Decimal(12, 2)
+  taxAmount     Decimal       @default(0) @db.Decimal(12, 2)
+  total         Decimal?      @db.Decimal(12, 2)
   referenceNo   String?
   notes         String?
+  paymentMethod PaymentMethod
+  status        ExpenseStatus @default(DRAFT)
+  receiptUrl    String?
+  vendorId      String?
+  employeeId    String?
+  glAccountId   String?
+  createdById   String?
+  approvedById  String?
+  approvedAt    DateTime?
+  paidAt        DateTime?
+  amountPaid    Decimal       @default(0) @db.Decimal(12, 2)
+  balanceAmount Decimal?      @db.Decimal(12, 2)
   tenantId      String
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
-  paymentMethod PaymentMethod
+
+  tenant        Tenant        @relation("TenantExpenses", fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy     User?         @relation("CreatedExpenses", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy    User?         @relation("ApprovedExpenses", fields: [approvedById], references: [id], onDelete: SetNull)
+  vendor        Vendor?       @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  employee      Employee?     @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  glAccount     Account?      @relation(fields: [glAccountId], references: [id], onDelete: SetNull)
 
   @@index([expenseDate, tenantId])
   @@index([category, tenantId])
+  @@index([status, tenantId])
+  @@index([vendorId, tenantId])
+  @@index([employeeId, tenantId])
+  @@index([createdById, tenantId])
   @@index([tenantId])
   @@map("expenses")
 }
@@ -670,6 +697,7 @@ model Vendor {
   purchases         Purchase[]
   purchaseOrders    PurchaseOrder[]
   purchaseInvoices  PurchaseInvoice[]
+  expenses          Expense[]
 
   @@index([tenantId])
   @@index([name, tenantId])
@@ -826,22 +854,23 @@ model Tenant {
   purchaseOrderItems       PurchaseOrderItem[]
   purchaseOrders           PurchaseOrder[]
   purchaseInvoiceItems     PurchaseInvoiceItem[]
-  purchaseInvoices         PurchaseInvoice[]
-  salaryStructures         SalaryStructure[]
-  salesOrderItems          SalesOrderItem[]
-  salesOrders              SalesOrder[]
-   stockMovements           StockMovement[]
-   tasks                    Task[]
-   memberships              TenantMembership[]
-   users                    User[]
-   warehouses               Warehouse[]
-   subscription             TenantSubscription?
-   StockCount               StockCount[]
-   StockCountLine           StockCountLine[]
-   fiscalYears              FiscalYear[]
-   accounts                 Account[]
-   journalEntries           JournalEntry[]
-   journalEntryLines        JournalEntryLine[]
+   purchaseInvoices         PurchaseInvoice[]
+   salaryStructures         SalaryStructure[]
+   salesOrderItems          SalesOrderItem[]
+   salesOrders              SalesOrder[]
+    stockMovements           StockMovement[]
+    tasks                    Task[]
+    memberships              TenantMembership[]
+    users                    User[]
+    warehouses               Warehouse[]
+    subscription             TenantSubscription?
+    StockCount               StockCount[]
+    StockCountLine           StockCountLine[]
+    fiscalYears              FiscalYear[]
+    accounts                 Account[]
+    journalEntries           JournalEntry[]
+    journalEntryLines        JournalEntryLine[]
+    expenses                 Expense[]     @relation("TenantExpenses")
 
   @@map("tenants")
 }
@@ -1113,6 +1142,7 @@ model Account {
   updatedAt        DateTime        @updatedAt
   tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   journalEntryLines JournalEntryLine[]
+  expenses          Expense[]
 
   @@unique([code, tenantId])
   @@index([tenantId, type])
@@ -1393,6 +1423,16 @@ enum PurchaseInvoiceStatus {
   PARTIALLY_PAID
   PAID
   VOIDED
+  CANCELLED
+}
+
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  POSTED
+  PAID
+  REJECTED
   CANCELLED
 }
 
