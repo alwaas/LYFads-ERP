@@ -28,6 +28,10 @@ describe('Expenses Workflow State Machine E2E', () => {
 
   const adminTokenA = () => generateToken(testData.tenantAAdmin);
   const adminTokenB = () => generateToken(testData.tenantBAdmin);
+  const managerTokenA = () => generateToken(testData.tenantAManager);
+  const employeeTokenA = () => generateToken(testData.tenantAEmployee);
+  const superAdminTokenA = () =>
+    generateToken(testData.superAdmin);
 
   const getAccountCodes = async (tenantId: string): Promise<Record<string, string>> => {
     const codes = ['1000', '1010', '1020', '1030', '2000', '2010', '2020', '3000', '4000', '5000', '5010'];
@@ -1032,8 +1036,547 @@ describe('Expenses Workflow State Machine E2E', () => {
     await submitAndApproveAndPost(id);
     await request(app.getHttpServer())
       .patch(`/expenses/${id}/payment`)
-      .set('Authorization', `Bearer ${adminTokenA()}`)
-      .send({ amount })
-      .expect(200);
+    .set('Authorization', `Bearer ${adminTokenA()}`)
+    .send({ amount })
+    .expect(200);
   }
+
+  describe('Expenses Authorization E2E', () => {
+    describe('1. EMPLOYEE allowed operations', () => {
+      it('EMPLOYEE can create an expense', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .send(
+            createDraftExpense({
+              description: uniqueDescription('employee-create'),
+              createdById: 'spoofed-id',
+            }),
+          )
+          .expect(201);
+
+        const expense = res.body.data;
+        expect(expense.status).toBe(ExpenseStatus.DRAFT);
+        expect(expense.createdById).toBe(testData.tenantAEmployee.id);
+      });
+
+      it('EMPLOYEE can view expenses in their tenant', async () => {
+        await createExpenseInDb();
+
+        const res = await request(app.getHttpServer())
+          .get('/expenses')
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(200);
+
+        const expenses = res.body.data.data;
+        expect(Array.isArray(expenses)).toBe(true);
+        expenses.forEach((e: any) => {
+          expect(e.tenantId).toBe(testData.tenantA.id);
+        });
+      });
+
+      it('EMPLOYEE can view own expense by id', async () => {
+        const expense = await createExpenseInDb();
+
+        const res = await request(app.getHttpServer())
+          .get(`/expenses/${expense.id}`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(200);
+
+        expect(res.body.data.id).toBe(expense.id);
+      });
+
+      it('EMPLOYEE can edit their own DRAFT expense', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .send(createDraftExpense({ description: uniqueDescription('employee-edit') }))
+          .expect(201);
+
+        const expense = res.body.data;
+        const updated = await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .send({ description: 'Updated by creator' })
+          .expect(200);
+
+        expect(updated.body.data.description).toBe('Updated by creator');
+      });
+
+      it('EMPLOYEE can submit their own DRAFT expense', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .send(createDraftExpense({ description: uniqueDescription('employee-submit') }))
+          .expect(201);
+
+        const submitRes = await request(app.getHttpServer())
+          .patch(`/expenses/${res.body.data.id}/submit`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(200);
+
+        expect(submitRes.body.data.status).toBe(ExpenseStatus.SUBMITTED);
+      });
+
+      it('EMPLOYEE cannot edit another user expense', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .send(createDraftExpense({ description: uniqueDescription('admin-create') }))
+          .expect(201);
+
+        const expense = res.body.data;
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .send({ description: 'Hacked by employee' })
+          .expect(403);
+      });
+    });
+
+    describe('2. EMPLOYEE cannot approve/post/pay', () => {
+      it('EMPLOYEE cannot approve (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/approve`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(403);
+      });
+
+      it('EMPLOYEE cannot post (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await approveExpense(expense.id);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/post`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(403);
+      });
+
+      it('EMPLOYEE cannot record payment (403)', async () => {
+        const expense = await createExpenseInDb({ amount: '100.00' });
+        await submitAndApproveAndPost(expense.id);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/payment`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .send({ amount: '50.00' })
+          .expect(403);
+      });
+
+      it('EMPLOYEE cannot reject (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/reject`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(403);
+      });
+
+      it('EMPLOYEE cannot cancel (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/cancel`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(403);
+      });
+
+      it('EMPLOYEE cannot delete (403)', async () => {
+        const expense = await createExpenseInDb();
+        await request(app.getHttpServer())
+          .delete(`/expenses/${expense.id}`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(403);
+      });
+
+      it('EMPLOYEE cannot post-to-ledger (403)', async () => {
+        const expense = await createExpenseInDb();
+        await request(app.getHttpServer())
+          .post(`/expenses/${expense.id}/post-to-ledger`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(403);
+      });
+    });
+
+    describe('3. MANAGER approval/rejection permissions', () => {
+      it('MANAGER can approve submitted expense', async () => {
+        const expense = await createAndSubmitExpense();
+        const res = await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/approve`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(200);
+
+        expect(res.body.data.status).toBe(ExpenseStatus.APPROVED);
+      });
+
+      it('MANAGER can reject submitted expense', async () => {
+        const expense = await createAndSubmitExpense();
+        const res = await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/reject`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(200);
+
+        expect(res.body.data.status).toBe(ExpenseStatus.REJECTED);
+      });
+
+      it('MANAGER cannot post (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await approveExpense(expense.id);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/post`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(403);
+      });
+
+      it('MANAGER cannot record payment (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await approveExpense(expense.id);
+        await postExpense(expense.id);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/payment`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .send({ amount: '50.00' })
+          .expect(403);
+      });
+
+      it('MANAGER cannot post-to-ledger (403)', async () => {
+        const expense = await createExpenseInDb();
+        await request(app.getHttpServer())
+          .post(`/expenses/${expense.id}/post-to-ledger`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(403);
+      });
+
+      it('MANAGER cannot delete (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await request(app.getHttpServer())
+          .delete(`/expenses/${expense.id}`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(403);
+      });
+
+      it('MANAGER can cancel a submitted expense', async () => {
+        const expense = await createAndSubmitExpense();
+        const res = await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/cancel`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(200);
+
+        expect(res.body.data.status).toBe(ExpenseStatus.CANCELLED);
+      });
+    });
+
+    describe('4. ADMIN / SUPER_ADMIN full access', () => {
+      it('ADMIN can perform full workflow: create → submit → post → pay (SUPER_ADMIN approves)', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .send(createDraftExpense({ description: uniqueDescription('admin-full'), amount: '200.00' }))
+          .expect(201);
+
+        const expense = res.body.data;
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/submit`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .expect(200);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/approve`)
+          .set('Authorization', `Bearer ${superAdminTokenA()}`)
+          .expect(200);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/post`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .expect(200);
+
+        const payRes = await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/payment`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .send({ amount: '200.00' })
+          .expect(200);
+
+        expect(payRes.body.data.status).toBe(ExpenseStatus.PAID);
+      });
+
+      it('SUPER_ADMIN can perform full workflow: approve → post → pay', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .send(createDraftExpense({ description: uniqueDescription('sa-full'), amount: '150.00' }))
+          .expect(201);
+
+        const expense = res.body.data;
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/submit`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .expect(200);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/approve`)
+          .set('Authorization', `Bearer ${superAdminTokenA()}`)
+          .expect(200);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/post`)
+          .set('Authorization', `Bearer ${superAdminTokenA()}`)
+          .expect(200);
+
+        const payRes = await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/payment`)
+          .set('Authorization', `Bearer ${superAdminTokenA()}`)
+          .send({ amount: '150.00' })
+          .expect(200);
+
+        expect(payRes.body.data.status).toBe(ExpenseStatus.PAID);
+      });
+    });
+
+    describe('5. Unauthenticated requests rejected', () => {
+      it('no token → GET /expenses (401)', async () => {
+        await request(app.getHttpServer()).get('/expenses').expect(401);
+      });
+
+      it('no token → POST /expenses (401)', async () => {
+        await request(app.getHttpServer())
+          .post('/expenses')
+          .send(createDraftExpense())
+          .expect(401);
+      });
+
+      it('no token → PATCH /expenses/:id/submit (401)', async () => {
+        await request(app.getHttpServer())
+          .patch('/expenses/some-id/submit')
+          .expect(401);
+      });
+
+      it('no token → PATCH /expenses/:id/approve (401)', async () => {
+        await request(app.getHttpServer())
+          .patch('/expenses/some-id/approve')
+          .expect(401);
+      });
+
+      it('no token → PATCH /expenses/:id/post (401)', async () => {
+        await request(app.getHttpServer())
+          .patch('/expenses/some-id/post')
+          .expect(401);
+      });
+
+      it('no token → PATCH /expenses/:id/payment (401)', async () => {
+        await request(app.getHttpServer())
+          .patch('/expenses/some-id/payment')
+          .send({ amount: '50.00' })
+          .expect(401);
+      });
+
+      it('no token → DELETE /expenses/:id (401)', async () => {
+        await request(app.getHttpServer())
+          .delete('/expenses/some-id')
+          .expect(401);
+      });
+    });
+
+    describe('6. Cross-tenant access rejected', () => {
+      it('tenant B cannot view tenant A expense (403)', async () => {
+        const expense = await createExpenseInDb();
+
+        await request(app.getHttpServer())
+          .get(`/expenses/${expense.id}`)
+          .set('Authorization', `Bearer ${adminTokenB()}`)
+          .expect(403);
+      });
+
+      it('tenant B cannot submit tenant A expense (403)', async () => {
+        const expense = await createExpenseInDb();
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/submit`)
+          .set('Authorization', `Bearer ${adminTokenB()}`)
+          .expect(403);
+      });
+
+      it('tenant B cannot approve tenant A expense (403)', async () => {
+        const expense = await createAndSubmitExpense();
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/approve`)
+          .set('Authorization', `Bearer ${adminTokenB()}`)
+          .expect(403);
+      });
+
+      it('tenant B cannot post tenant A expense (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await approveExpense(expense.id);
+
+        const before = await prisma.expense.findUnique({ where: { id: expense.id } });
+        expect(before!.status).toBe(ExpenseStatus.APPROVED);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/post`)
+          .set('Authorization', `Bearer ${adminTokenB()}`)
+          .expect(403);
+
+        const after = await prisma.expense.findUnique({ where: { id: expense.id } });
+        expect(after!.status).toBe(ExpenseStatus.APPROVED);
+      });
+
+      it('tenant B cannot pay on tenant A expense (403)', async () => {
+        const expense = await createExpenseInDb({ amount: '100.00' });
+        await submitAndApproveAndPost(expense.id);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/payment`)
+          .set('Authorization', `Bearer ${adminTokenB()}`)
+          .send({ amount: '50.00' })
+          .expect(403);
+      });
+
+      it('tenant B expense list only returns tenant B expenses', async () => {
+        const tenantAExpense = await createExpenseInDb();
+
+        const res = await request(app.getHttpServer())
+          .get('/expenses')
+          .set('Authorization', `Bearer ${adminTokenB()}`)
+          .expect(200);
+
+        const expenses = res.body.data.data;
+        expenses.forEach((e: any) => {
+          expect(e.tenantId).toBe(testData.tenantB.id);
+        });
+        expect(expenses.find((e: any) => e.id === tenantAExpense.id)).toBeUndefined();
+      });
+    });
+
+    describe('7. User identity from JWT, not request body', () => {
+      it('createdById comes from authenticated user, not body', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .send(
+            createDraftExpense({
+              description: uniqueDescription('spoof-test'),
+              createdById: 'spoofed-injected-id',
+            }),
+          )
+          .expect(201);
+
+        const expense = res.body.data;
+        expect(expense.createdById).toBe(testData.tenantAEmployee.id);
+        expect(expense.createdById).not.toBe('spoofed-injected-id');
+      });
+
+      it('approver identity comes from JWT, not body', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .send(createDraftExpense({ description: uniqueDescription('approver-spoof') }))
+          .expect(201);
+
+        const expense = res.body.data;
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/submit`)
+          .set('Authorization', `Bearer ${employeeTokenA()}`)
+          .expect(200);
+
+        const approveRes = await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/approve`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .send({ approvedById: 'spoofed-approver-id' })
+          .expect(200);
+
+        expect(approveRes.body.data.approvedById).toBe(testData.tenantAAdmin.id);
+      });
+    });
+
+    describe('8. Workflow endpoints cannot bypass authorization', () => {
+      it('MANAGER cannot post (403, role guard blocks before service)', async () => {
+        const expense = await createAndSubmitExpense();
+        await approveExpense(expense.id);
+
+        const statusBefore = await prisma.expense.findUnique({ where: { id: expense.id } });
+        expect(statusBefore!.status).toBe(ExpenseStatus.APPROVED);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/post`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(403);
+
+        const statusAfter = await prisma.expense.findUnique({ where: { id: expense.id } });
+        expect(statusAfter!.status).toBe(ExpenseStatus.APPROVED);
+      });
+
+      it('MANAGER cannot access payment endpoint (403)', async () => {
+        const expense = await createAndSubmitExpense();
+        await approveExpense(expense.id);
+        await postExpense(expense.id);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/payment`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .send({ amount: '10.00' })
+          .expect(403);
+      });
+
+      it('MANAGER cannot access post-to-ledger (403)', async () => {
+        const expense = await createExpenseInDb();
+        await request(app.getHttpServer())
+          .post(`/expenses/${expense.id}/post-to-ledger`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(403);
+      });
+
+      it('MANAGER cannot delete expense (403)', async () => {
+        const expense = await createExpenseInDb();
+        await request(app.getHttpServer())
+          .delete(`/expenses/${expense.id}`)
+          .set('Authorization', `Bearer ${managerTokenA()}`)
+          .expect(403);
+
+        const exists = await prisma.expense.findUnique({ where: { id: expense.id } });
+        expect(exists).toBeTruthy();
+      });
+    });
+
+    describe('Separation of duty', () => {
+      it('user cannot approve their own submitted expense (403)', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .send(createDraftExpense({ description: uniqueDescription('self-approve') }))
+          .expect(201);
+
+        const expense = res.body.data;
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/submit`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .expect(200);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/approve`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .expect(403);
+      });
+
+      it('user cannot reject their own submitted expense (403)', async () => {
+        const res = await request(app.getHttpServer())
+          .post('/expenses')
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .send(createDraftExpense({ description: uniqueDescription('self-reject') }))
+          .expect(201);
+
+        const expense = res.body.data;
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/submit`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .expect(200);
+
+        await request(app.getHttpServer())
+          .patch(`/expenses/${expense.id}/reject`)
+          .set('Authorization', `Bearer ${adminTokenA()}`)
+          .expect(403);
+      });
+    });
+  });
 });

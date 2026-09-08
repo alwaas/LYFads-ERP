@@ -12,7 +12,7 @@ import { ExpenseQueryDto } from './dto/expense-query.dto';
 import { RecordExpensePaymentDto } from './dto/record-expense-payment.dto';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
-import { Prisma, ExpenseStatus } from '@prisma/client';
+import { Prisma, ExpenseStatus, UserRole } from '@prisma/client';
 import { GlService } from '../gl/gl.service';
 
 type Decimalish = number | string | Prisma.Decimal;
@@ -233,8 +233,18 @@ export class ExpensesService {
     return expense;
   }
 
-  async update(id: string, dto: UpdateExpenseDto, userTenantId: string, userId?: string) {
+  async update(
+    id: string,
+    dto: UpdateExpenseDto,
+    userTenantId: string,
+    userId?: string,
+    userRole?: string,
+  ) {
     const expense = await this.findOne(id, userTenantId);
+
+    if (userRole === UserRole.EMPLOYEE && expense.createdById && expense.createdById !== userId) {
+      throw new ForbiddenException('You can only edit expenses you created');
+    }
 
     if (
       expense.status !== ExpenseStatus.DRAFT &&
@@ -368,8 +378,18 @@ export class ExpensesService {
     return this.findOne(id, userTenantId);
   }
 
-  async submit(id: string, userTenantId: string, userId?: string) {
+  async submit(
+    id: string,
+    userTenantId: string,
+    userId?: string,
+    userRole?: string,
+  ) {
     const expense = await this.findOne(id, userTenantId);
+
+    if (userRole === UserRole.EMPLOYEE && expense.createdById && expense.createdById !== userId) {
+      throw new ForbiddenException('You can only submit expenses you created');
+    }
+
     this.assertTransition(expense.status, ExpenseStatus.SUBMITTED);
 
     const updated = await this.prisma.expense.update({
@@ -390,6 +410,11 @@ export class ExpensesService {
 
   async approve(id: string, userTenantId: string, userId?: string) {
     const expense = await this.findOne(id, userTenantId);
+
+    if (expense.createdById && expense.createdById === userId) {
+      throw new ForbiddenException('You cannot approve your own expense');
+    }
+
     this.assertTransition(expense.status, ExpenseStatus.APPROVED);
 
     const updated = await this.prisma.expense.update({
@@ -414,6 +439,11 @@ export class ExpensesService {
 
   async reject(id: string, userTenantId: string, userId?: string) {
     const expense = await this.findOne(id, userTenantId);
+
+    if (expense.createdById && expense.createdById === userId) {
+      throw new ForbiddenException('You cannot reject your own expense');
+    }
+
     this.assertTransition(expense.status, ExpenseStatus.REJECTED);
 
     const updated = await this.prisma.expense.update({
@@ -470,8 +500,18 @@ export class ExpensesService {
     return this.findOne(id, userTenantId);
   }
 
-  async cancel(id: string, userTenantId: string, userId?: string) {
+  async cancel(
+    id: string,
+    userTenantId: string,
+    userId?: string,
+    userRole?: string,
+  ) {
     const expense = await this.findOne(id, userTenantId);
+
+    if (userRole === UserRole.EMPLOYEE && expense.createdById && expense.createdById !== userId) {
+      throw new ForbiddenException('You can only cancel expenses you created');
+    }
+
     this.assertTransition(expense.status, ExpenseStatus.CANCELLED);
 
     const updated = await this.prisma.expense.update({
