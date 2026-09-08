@@ -21,6 +21,7 @@ import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ExpenseQueryDto } from './dto/expense-query.dto';
+import { RecordExpensePaymentDto } from './dto/record-expense-payment.dto';
 
 @Controller('expenses')
 @UseGuards(JwtAuthGuard)
@@ -30,15 +31,7 @@ export class ExpensesController {
 
   @Post()
   create(@Body() dto: CreateExpenseDto, @GetUser() user: AuthenticatedUser) {
-    return this.expensesService.create(dto, user.tenantId);
-  }
-
-  @Post(':id/post-to-ledger')
-  postToLedger(
-    @Param('id') id: string,
-    @GetUser() user: AuthenticatedUser,
-  ) {
-    return this.expensesService.postToLedger(id, user.tenantId, user.userId);
+    return this.expensesService.create(dto, user.tenantId, user.userId);
   }
 
   @Get()
@@ -57,11 +50,58 @@ export class ExpensesController {
     @Body() dto: UpdateExpenseDto,
     @GetUser() user: AuthenticatedUser,
   ) {
-    return this.expensesService.update(id, dto, user.tenantId);
+    return this.expensesService.update(id, dto, user.tenantId, user.userId);
+  }
+
+  @Patch(':id/submit')
+  submit(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.expensesService.submit(id, user.tenantId, user.userId);
+  }
+
+  @Patch(':id/approve')
+  approve(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.expensesService.approve(id, user.tenantId, user.userId);
+  }
+
+  @Patch(':id/reject')
+  reject(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.expensesService.reject(id, user.tenantId, user.userId);
+  }
+
+  @Patch(':id/post')
+  post(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.expensesService.post(id, user.tenantId, user.userId);
+  }
+
+  @Patch(':id/cancel')
+  cancel(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.expensesService.cancel(id, user.tenantId, user.userId);
+  }
+
+  @Post(':id/post-to-ledger')
+  postToLedger(
+    @Param('id') id: string,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.expensesService.postToLedger(id, user.tenantId, user.userId);
+  }
+
+  @Patch(':id/payment')
+  recordPayment(
+    @Param('id') id: string,
+    @Body() dto: RecordExpensePaymentDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.expensesService.recordPayment(
+      id,
+      dto,
+      user.tenantId,
+      user.userId,
+    );
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
-    return this.expensesService.remove(id, user.tenantId);
+    return this.expensesService.remove(id, user.tenantId, user.userId);
   }
 }
