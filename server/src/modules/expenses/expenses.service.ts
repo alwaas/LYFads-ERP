@@ -14,6 +14,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 import { Prisma, ExpenseStatus, UserRole } from '@prisma/client';
 import { GlService } from '../gl/gl.service';
+import { PaymentsService } from '../payments/payments.service';
 
 type Decimalish = number | string | Prisma.Decimal;
 
@@ -32,6 +33,7 @@ export class ExpensesService {
     private readonly prisma: PrismaService,
     private readonly glService: GlService,
     private readonly activityLogs: ActivityLogsService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   private toDecimal(value?: Decimalish): Prisma.Decimal {
@@ -544,49 +546,27 @@ export class ExpensesService {
       );
     }
 
-    const paymentAmount = this.toDecimal(dto.amount);
-    if (paymentAmount.lte(0)) {
-      throw new BadRequestException('Payment amount must be greater than zero');
-    }
-
-    const totalDec = expense.total ?? expense.amount;
-    const alreadyPaid = expense.amountPaid ?? this.toDecimal(0);
-    const remainingBalance = totalDec.minus(alreadyPaid);
-
-    if (paymentAmount.gt(remainingBalance)) {
-      throw new BadRequestException(
-        `Payment amount ${paymentAmount.toString()} exceeds remaining balance ${remainingBalance.toString()}`,
-      );
-    }
-
-    const newPaid = alreadyPaid.plus(paymentAmount);
-    const balance = totalDec.minus(newPaid);
-
-    const isFullyPaid = balance.lte(0);
-
-    const updated = await this.prisma.expense.update({
-      where: { id },
-      data: {
-        amountPaid: newPaid,
-        balanceAmount: balance,
-        paidAt: isFullyPaid ? new Date() : undefined,
-        status: isFullyPaid ? ExpenseStatus.PAID : ExpenseStatus.POSTED,
-        notes: dto.notes != null
-          ? expense.notes
-            ? `${expense.notes}\n${dto.notes}`
-            : dto.notes
-          : undefined,
+    const payment = await this.paymentsService.create(
+      {
+        expenseId: id,
+        amount: dto.amount,
+        paymentDate: new Date().toISOString(),
+        method: expense.paymentMethod,
+        referenceNo: dto.referenceNo,
+        remarks: dto.notes,
       },
-    });
-
-    await this.logTransition(
-      updated.id,
-      'PAYMENT',
-      `Payment of ${dto.amount} recorded against expense "${updated.description}"`,
       userTenantId,
       userId,
     );
 
-    return updated;
+    await this.logTransition(
+      id,
+      'PAYMENT',
+      `Payment of ${dto.amount} recorded against expense "${expense.description}"`,
+      userTenantId,
+      userId,
+    );
+
+    return this.findOne(id, userTenantId);
   }
 }

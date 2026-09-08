@@ -17,6 +17,10 @@ export class CreatePaymentDto {
   @IsString()
   purchaseInvoiceId?: string;
 
+  @IsOptional()
+  @IsString()
+  expenseId?: string;
+
   @IsDecimal()
   amount: string;
 

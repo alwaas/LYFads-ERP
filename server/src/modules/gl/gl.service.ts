@@ -514,6 +514,42 @@ export class GlService {
     );
   }
 
+  async postExpensePayment(
+    tenantId: string,
+    paymentId: string,
+    amount: Prisma.Decimal | number,
+    expenseId?: string,
+    userId?: string,
+  ): Promise<void> {
+    const apAccount = await this.getAccountByCode(tenantId, '2000');
+    const bankAccount = await this.getAccountByCode(tenantId, '1000');
+
+    const lines: JournalEntryLineInput[] = [
+      {
+        accountId: apAccount.id,
+        debitAmount: amount,
+        description: `Expense ${expenseId ?? ''} payment`,
+      },
+      {
+        accountId: bankAccount.id,
+        creditAmount: amount,
+        description: `Payment ${paymentId} for expense ${expenseId ?? ''}`,
+      },
+    ];
+
+    await this.createJournalEntry(
+      {
+        date: new Date(),
+        description: `Expense payment ${paymentId}${expenseId ? ` against expense ${expenseId}` : ''}`,
+        referenceId: `expense_payment_${paymentId}`,
+        lines,
+        posted: true,
+        createdById: userId,
+      },
+      tenantId,
+    );
+  }
+
   async findAccounts(tenantId: string, pagination: PaginationDto) {
     const { skip, limit } = pagination;
     const where = { tenantId };

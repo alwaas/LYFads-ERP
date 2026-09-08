@@ -567,6 +567,7 @@ model Payment {
   id                String              @id @default(cuid())
   invoiceId         String?
   purchaseInvoiceId String?
+  expenseId         String?
   amount            Decimal             @db.Decimal(12, 2)
   paymentDate DateTime
   method      PaymentMethod
@@ -580,11 +581,13 @@ model Payment {
   voidedById  String?
   invoice          Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   purchaseInvoice  PurchaseInvoice?   @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  expense          Expense?           @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   allocations      PaymentAllocation[]
 
   @@index([invoiceId, tenantId])
   @@index([purchaseInvoiceId, tenantId])
+  @@index([expenseId, tenantId])
   @@index([paymentDate, tenantId])
   @@index([tenantId])
   @@index([status, tenantId])
@@ -595,20 +598,24 @@ model PaymentAllocation {
   paymentId         String
   invoiceId         String?
   purchaseInvoiceId String?
+  expenseId         String?
   amount            Decimal  @db.Decimal(12, 2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   tenantId  String
   invoice          Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   purchaseInvoice  PurchaseInvoice?   @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  expense          Expense?           @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   payment          Payment            @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([paymentId, invoiceId])
   @@unique([paymentId, purchaseInvoiceId])
+  @@unique([paymentId, expenseId])
   @@index([paymentId, tenantId])
   @@index([invoiceId, tenantId])
   @@index([purchaseInvoiceId, tenantId])
+  @@index([expenseId, tenantId])
   @@index([tenantId])
 }
 
@@ -644,6 +651,8 @@ model Expense {
   vendor        Vendor?       @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   employee      Employee?     @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   glAccount     Account?      @relation(fields: [glAccountId], references: [id], onDelete: SetNull)
+  payments      Payment[]
+  allocations   PaymentAllocation[]
 
   @@index([expenseDate, tenantId])
   @@index([category, tenantId])

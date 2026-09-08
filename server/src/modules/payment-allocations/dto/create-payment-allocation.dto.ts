@@ -12,6 +12,10 @@ export class CreatePaymentAllocationDto {
   @IsString()
   purchaseInvoiceId?: string;
 
+  @IsOptional()
+  @IsString()
+  expenseId?: string;
+
   @IsDecimal()
   amount: string;
 }
