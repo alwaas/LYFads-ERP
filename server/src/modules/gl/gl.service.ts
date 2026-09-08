@@ -466,25 +466,45 @@ export class GlService {
     );
   }
 
-  async postExpense(tenantId: string, expenseId: string, amount: Prisma.Decimal | number, userId?: string): Promise<void> {
-    const expenseAccount = await this.getAccountByCode(tenantId, '5010');
-    const bankAccount = await this.getAccountByCode(tenantId, '1000');
+  async postExpense(
+    tenantId: string,
+    expenseId: string,
+    amount: Prisma.Decimal | number,
+    userId?: string,
+    options?: {
+      glAccountId?: string | null;
+      vendorId?: string | null;
+      taxAmount?: Prisma.Decimal | number;
+    },
+  ): Promise<void> {
+    const expenseAccount = options?.glAccountId
+      ? await this.getAccountById(tenantId, options.glAccountId)
+      : await this.getAccountByCode(tenantId, '5010');
+
+    const amountDec = this.toDecimal(amount);
+    const taxDec = this.toDecimal(options?.taxAmount);
+    const totalDec = taxDec.gt(0) ? amountDec.plus(taxDec) : amountDec;
+
+    const creditAccountCode = options?.vendorId ? '2000' : '1000';
+    const creditAccount = await this.getAccountByCode(tenantId, creditAccountCode);
 
     const lines: JournalEntryLineInput[] = [
       {
         accountId: expenseAccount.id,
-        debitAmount: amount,
+        description: `Expense ${expenseId} recorded`,
+        debitAmount: totalDec,
       },
       {
-        accountId: bankAccount.id,
-        creditAmount: amount,
+        accountId: creditAccount.id,
+        description: `Expense ${expenseId} ${options?.vendorId ? 'on account' : 'paid'}`,
+        creditAmount: totalDec,
       },
     ];
 
     await this.createJournalEntry(
       {
         date: new Date(),
-        description: `Expense ${expenseId} recorded`,
+        description: `Expense ${expenseId} posted`,
         referenceId: `expense_${expenseId}`,
         lines,
         posted: true,

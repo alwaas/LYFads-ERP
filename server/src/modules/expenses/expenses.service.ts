@@ -32,13 +32,25 @@ export class ExpensesService {
       },
     });
 
-    try {
-      await this.glService.postExpense(userTenantId, expense.id, expense.amount);
-    } catch (err) {
-      void err;
-    }
-
     return expense;
+  }
+
+  async postToLedger(id: string, userTenantId: string, userId?: string) {
+    const expense = await this.findOne(id, userTenantId);
+
+    await this.glService.postExpense(
+      userTenantId,
+      expense.id,
+      expense.amount,
+      userId,
+      {
+        glAccountId: expense.glAccountId,
+        vendorId: expense.vendorId,
+        taxAmount: expense.taxAmount,
+      },
+    );
+
+    return this.findOne(id, userTenantId);
   }
 
   async findAll(query: ExpenseQueryDto, userTenantId: string) {

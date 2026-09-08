@@ -33,6 +33,14 @@ export class ExpensesController {
     return this.expensesService.create(dto, user.tenantId);
   }
 
+  @Post(':id/post-to-ledger')
+  postToLedger(
+    @Param('id') id: string,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.expensesService.postToLedger(id, user.tenantId, user.userId);
+  }
+
   @Get()
   findAll(@Query() query: ExpenseQueryDto, @GetUser() user: AuthenticatedUser) {
     return this.expensesService.findAll(query, user.tenantId);
