@@ -47,6 +47,8 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Array<{
   { code: '5010', name: 'Operating Expenses', type: AccountType.EXPENSE, normalBalanceSide: NormalBalanceSide.DEBIT },
   { code: '5020', name: 'Bank Fees', type: AccountType.EXPENSE, normalBalanceSide: NormalBalanceSide.DEBIT },
   { code: '5030', name: 'Utilities Expense', type: AccountType.EXPENSE, normalBalanceSide: NormalBalanceSide.DEBIT },
+  { code: '5040', name: 'Salaries Expense', type: AccountType.EXPENSE, normalBalanceSide: NormalBalanceSide.DEBIT },
+  { code: '2100', name: 'Salaries Payable', type: AccountType.LIABILITY, normalBalanceSide: NormalBalanceSide.CREDIT },
 ];
 
 @Injectable()
@@ -542,6 +544,58 @@ export class GlService {
         date: new Date(),
         description: `Expense payment ${paymentId}${expenseId ? ` against expense ${expenseId}` : ''}`,
         referenceId: `expense_payment_${paymentId}`,
+        lines,
+        posted: true,
+        createdById: userId,
+      },
+      tenantId,
+    );
+  }
+
+  async postPayrollInTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    payrollId: string,
+    amount: Prisma.Decimal | number,
+    userId?: string,
+  ): Promise<JournalEntry> {
+    const expenseAccount = await tx.account.findUnique({
+      where: { code_tenantId: { code: '5040', tenantId } },
+      select: { id: true },
+    });
+
+    if (!expenseAccount) {
+      throw new NotFoundException('Account with code 5040 not found for tenant');
+    }
+
+    const payableAccount = await tx.account.findUnique({
+      where: { code_tenantId: { code: '2100', tenantId } },
+      select: { id: true },
+    });
+
+    if (!payableAccount) {
+      throw new NotFoundException('Account with code 2100 not found for tenant');
+    }
+
+    const lines: JournalEntryLineInput[] = [
+      {
+        accountId: expenseAccount.id,
+        description: `Payroll ${payrollId} salary expense`,
+        debitAmount: amount,
+      },
+      {
+        accountId: payableAccount.id,
+        description: `Payroll ${payrollId} salary payable`,
+        creditAmount: amount,
+      },
+    ];
+
+    return this.createJournalEntryInTransaction(
+      tx,
+      {
+        date: new Date(),
+        description: `Payroll ${payrollId} approved`,
+        referenceId: `payroll_${payrollId}`,
         lines,
         posted: true,
         createdById: userId,

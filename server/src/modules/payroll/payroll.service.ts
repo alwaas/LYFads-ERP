@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { GlService } from '../gl/gl.service';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
@@ -24,6 +25,7 @@ export class PayrollService {
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly payrollCalculationService: PayrollCalculationService,
+    private readonly glService: GlService,
   ) {}
 
   async calculate(
@@ -371,27 +373,39 @@ export class PayrollService {
       throw new ConflictException('Only processed payroll can be approved');
     }
 
-    const updated = await this.prisma.payroll.update({
-      where: { id },
-      data: {
-        status: 'APPROVED',
-        approvedById: userId,
-        approvedAt: new Date(),
-      },
-      include: {
-        employee: {
-          include: {
-            user: true,
+    const amount = payroll.netSalary;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const existingJe = await tx.journalEntry.findFirst({
+        where: { tenantId: userTenantId, referenceId: `payroll_${id}` },
+      });
+
+      if (!existingJe) {
+        await this.glService.postPayrollInTransaction(tx, userTenantId, id, amount, userId);
+      }
+
+      return tx.payroll.update({
+        where: { id },
+        data: {
+          status: 'APPROVED',
+          approvedById: userId,
+          approvedAt: new Date(),
+        },
+        include: {
+          employee: {
+            include: {
+              user: true,
+            },
+          },
+          approvedBy: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
           },
         },
-        approvedBy: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
+      });
     });
 
     await this.activityLogsService.log({

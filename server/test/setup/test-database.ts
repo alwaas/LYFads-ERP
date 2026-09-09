@@ -841,6 +841,8 @@ export async function setupTestDatabase() {
     { code: '4000', name: 'Sales Revenue', type: 'INCOME', normalBalanceSide: 'CREDIT' },
     { code: '5000', name: 'Cost of Goods Sold', type: 'EXPENSE', normalBalanceSide: 'DEBIT' },
     { code: '5010', name: 'Operating Expenses', type: 'EXPENSE', normalBalanceSide: 'DEBIT' },
+    { code: '5040', name: 'Salaries Expense', type: 'EXPENSE', normalBalanceSide: 'DEBIT' },
+    { code: '2100', name: 'Salaries Payable', type: 'LIABILITY', normalBalanceSide: 'CREDIT' },
   ];
 
   for (const acc of DEFAULT_ACCOUNTS) {

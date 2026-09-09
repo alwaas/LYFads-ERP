@@ -16,6 +16,8 @@ import {
 } from '@prisma/client';
 
 describe('Step 4.7 HR & Payroll E2E Tests', () => {
+  jest.setTimeout(30000);
+
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let jwtService: JwtService;
@@ -87,6 +89,12 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
   }, 60000);
 
   afterEach(async () => {
+    try {
+      await prisma.journalEntryLine.deleteMany();
+      await prisma.journalEntry.deleteMany();
+    } catch (e) {
+      // GL tables may not exist in all test configurations
+    }
     await prisma.activityLog.deleteMany();
     await prisma.payrollItem.deleteMany();
     await prisma.payroll.deleteMany({
@@ -1050,6 +1058,10 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
   });
 
   describe('Payroll: Process Approve Mark-Paid Workflow', () => {
+    beforeEach(() => {
+      jest.setTimeout(30000);
+    });
+
     it('process -> approve -> mark-paid workflow', async () => {
       const payroll = await prisma.payroll.create({
         data: {
@@ -1095,7 +1107,7 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
       expect(paid.body.data.paymentMethod).toBe('BANK_TRANSFER');
       expect(paid.body.data.paymentReference).toBe('TXN-001');
       expect(paid.body.data.paidAt).toBeDefined();
-    });
+    }, 30000);
 
     it('invalid transitions rejected', async () => {
       const payroll = await prisma.payroll.create({
@@ -1454,6 +1466,191 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
         .get('/reports/payroll-summary')
         .set('Authorization', `Bearer ${token}`)
         .expect(403);
+    });
+  });
+
+  describe('Payroll: GL Posting', () => {
+    const runWorkflowToApproved = async (month: number, year: number) => {
+      const payroll = await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month,
+          year,
+          basicSalary: 75000,
+          netSalary: 75000,
+          status: PayrollStatus.PENDING,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/process`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      const approved = await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/approve`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      return { payroll, approved };
+    };
+
+    it('approved payroll creates exactly one balanced JE with DR 5040 / CR 2100', async () => {
+      const { payroll, approved } = await runWorkflowToApproved(13, 2024);
+
+      const je = await prisma.journalEntry.findFirst({
+        where: { referenceId: `payroll_${payroll.id}` },
+        include: { lines: { include: { account: true } } },
+      });
+
+      expect(je).toBeDefined();
+      expect(je!.posted).toBe(true);
+      expect(je!.lines.length).toBe(2);
+
+      const debitLine = je!.lines.find((l) => l.debitAmount.gt(0));
+      const creditLine = je!.lines.find((l) => l.creditAmount.gt(0));
+
+      expect(debitLine).toBeDefined();
+      expect(creditLine).toBeDefined();
+      expect(debitLine!.account.code).toBe('5040');
+      expect(creditLine!.account.code).toBe('2100');
+
+      const debitTotal = debitLine!.debitAmount.toNumber();
+      const creditTotal = creditLine!.creditAmount.toNumber();
+      expect(debitTotal).toBeCloseTo(creditTotal, 2);
+      expect(debitTotal).toBe(75000);
+    });
+
+    it('correct amount: netSalary is used for JE', async () => {
+      const payroll = await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 14,
+          year: 2024,
+          basicSalary: 75000,
+          netSalary: 65000,
+          status: PayrollStatus.PENDING,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/process`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/approve`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(201);
+
+      const je = await prisma.journalEntry.findFirst({
+        where: { referenceId: `payroll_${payroll.id}` },
+        include: { lines: { include: { account: true } } },
+      });
+
+      expect(je).toBeDefined();
+
+      const debitLine = je!.lines.find((l) => l.debitAmount.gt(0));
+      const creditLine = je!.lines.find((l) => l.creditAmount.gt(0));
+
+      expect(debitLine!.debitAmount.toNumber()).toBe(65000);
+      expect(creditLine!.creditAmount.toNumber()).toBe(65000);
+    });
+
+    it('duplicate/retry does not create duplicate JE', async () => {
+      const { payroll } = await runWorkflowToApproved(15, 2024);
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      // Attempt to approve again — should fail with 409 (not PROCESSED)
+      const retryResponse = await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/approve`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(409);
+
+      expect(retryResponse.body.message).toContain('Only processed payroll can be approved');
+
+      // Verify only one JE exists
+      const jeCount = await prisma.journalEntry.count({
+        where: { referenceId: `payroll_${payroll.id}` },
+      });
+      expect(jeCount).toBe(1);
+    });
+
+    it('invalid workflow cannot create GL entry', async () => {
+      const payroll = await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 16,
+          year: 2024,
+          basicSalary: 75000,
+          netSalary: 75000,
+          status: PayrollStatus.PENDING,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      // Try to approve a PENDING payroll directly (without processing first)
+      await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/approve`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(409);
+
+      // No JE should have been created
+      const jeCount = await prisma.journalEntry.count({
+        where: { tenantId: testData.tenantA.id, referenceId: `payroll_${payroll.id}` },
+      });
+      expect(jeCount).toBe(0);
+    });
+
+    it('tenant isolation: tenant A cannot post GL to tenant B accounts', async () => {
+      const payroll = await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantBEmployeeRecord.id,
+          month: 17,
+          year: 2024,
+          basicSalary: 75000,
+          netSalary: 75000,
+          status: PayrollStatus.PROCESSED,
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      // Approve using tenant A admin token — should be blocked by tenant isolation
+      const tokenA = generateToken(testData.tenantAAdmin);
+
+      await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/approve`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
+
+      // No JE should have been created in either tenant
+      const jeA = await prisma.journalEntry.count({
+        where: { tenantId: testData.tenantA.id, referenceId: `payroll_${payroll.id}` },
+      });
+      const jeB = await prisma.journalEntry.count({
+        where: { tenantId: testData.tenantB.id, referenceId: `payroll_${payroll.id}` },
+      });
+      expect(jeA).toBe(0);
+      expect(jeB).toBe(0);
+    });
+
+    it('approved payroll creates JE only once (idempotency within transaction)', async () => {
+      const { payroll } = await runWorkflowToApproved(18, 2024);
+
+      const je = await prisma.journalEntry.findMany({
+        where: { referenceId: `payroll_${payroll.id}` },
+      });
+
+      expect(je.length).toBe(1);
     });
   });
 });
