@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database';
 import { CreateSalaryStructureDto } from './dto/create-salary-structure.dto';
 import { UpdateSalaryStructureDto } from './dto/update-salary-structure.dto';
@@ -29,7 +34,9 @@ export class SalaryStructuresService {
     });
 
     if (existing) {
-      throw new ConflictException('Active salary structure already exists for this employee');
+      throw new ConflictException(
+        'Active salary structure already exists for this employee',
+      );
     }
 
     const salaryStructure = await this.prisma.salaryStructure.create({
@@ -37,12 +44,21 @@ export class SalaryStructuresService {
         employeeId: dto.employeeId,
         basicSalary: new Prisma.Decimal(dto.basicSalary),
         hra: dto.hra ? new Prisma.Decimal(dto.hra) : new Prisma.Decimal(0),
-        allowances: dto.allowances ? new Prisma.Decimal(dto.allowances) : new Prisma.Decimal(0),
-        bonus: dto.bonus ? new Prisma.Decimal(dto.bonus) : new Prisma.Decimal(0),
-        incentives: dto.incentives ? new Prisma.Decimal(dto.incentives) : new Prisma.Decimal(0),
-        deductions: dto.deductions ? new Prisma.Decimal(dto.deductions) : new Prisma.Decimal(0),
+        allowances: dto.allowances
+          ? new Prisma.Decimal(dto.allowances)
+          : new Prisma.Decimal(0),
+        bonus: dto.bonus
+          ? new Prisma.Decimal(dto.bonus)
+          : new Prisma.Decimal(0),
+        incentives: dto.incentives
+          ? new Prisma.Decimal(dto.incentives)
+          : new Prisma.Decimal(0),
+        deductions: dto.deductions
+          ? new Prisma.Decimal(dto.deductions)
+          : new Prisma.Decimal(0),
         effectiveFrom: new Date(dto.effectiveFrom),
         effectiveTo: dto.effectiveTo ? new Date(dto.effectiveTo) : undefined,
+        isActive: dto.isActive ?? true,
         tenantId: userTenantId,
       },
       select: {
@@ -86,7 +102,11 @@ export class SalaryStructuresService {
     return salaryStructure;
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    userTenantId: string,
+  ) {
     const { skip, limit } = pagination;
 
     const where: Record<string, unknown> = { tenantId: userTenantId };
@@ -96,7 +116,10 @@ export class SalaryStructuresService {
         is: {
           user: {
             is: {
-              fullName: { contains: search.search, mode: Prisma.QueryMode.insensitive },
+              fullName: {
+                contains: search.search,
+                mode: Prisma.QueryMode.insensitive,
+              },
             },
           },
         },
@@ -210,19 +233,29 @@ export class SalaryStructuresService {
     return structure;
   }
 
-  async update(id: string, dto: UpdateSalaryStructureDto, userTenantId: string) {
+  async update(
+    id: string,
+    dto: UpdateSalaryStructureDto,
+    userTenantId: string,
+  ) {
     const structure = await this.findOne(id, userTenantId);
 
     const data: Record<string, unknown> = {};
 
-    if (dto.basicSalary !== undefined) data.basicSalary = new Prisma.Decimal(dto.basicSalary);
+    if (dto.basicSalary !== undefined)
+      data.basicSalary = new Prisma.Decimal(dto.basicSalary);
     if (dto.hra !== undefined) data.hra = new Prisma.Decimal(dto.hra);
-    if (dto.allowances !== undefined) data.allowances = new Prisma.Decimal(dto.allowances);
+    if (dto.allowances !== undefined)
+      data.allowances = new Prisma.Decimal(dto.allowances);
     if (dto.bonus !== undefined) data.bonus = new Prisma.Decimal(dto.bonus);
-    if (dto.incentives !== undefined) data.incentives = new Prisma.Decimal(dto.incentives);
-    if (dto.deductions !== undefined) data.deductions = new Prisma.Decimal(dto.deductions);
-    if (dto.effectiveFrom !== undefined) data.effectiveFrom = new Date(dto.effectiveFrom);
-    if (dto.effectiveTo !== undefined) data.effectiveTo = new Date(dto.effectiveTo);
+    if (dto.incentives !== undefined)
+      data.incentives = new Prisma.Decimal(dto.incentives);
+    if (dto.deductions !== undefined)
+      data.deductions = new Prisma.Decimal(dto.deductions);
+    if (dto.effectiveFrom !== undefined)
+      data.effectiveFrom = new Date(dto.effectiveFrom);
+    if (dto.effectiveTo !== undefined)
+      data.effectiveTo = new Date(dto.effectiveTo);
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
     const updated = await this.prisma.salaryStructure.update({

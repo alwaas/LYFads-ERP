@@ -26,8 +26,18 @@ export class PayrollService {
     private readonly payrollCalculationService: PayrollCalculationService,
   ) {}
 
-  async calculate(tenantId: string, employeeId: string, month: number, year: number) {
-    return this.payrollCalculationService.calculatePayroll(tenantId, employeeId, month, year);
+  async calculate(
+    tenantId: string,
+    employeeId: string,
+    month: number,
+    year: number,
+  ) {
+    return this.payrollCalculationService.calculatePayroll(
+      tenantId,
+      employeeId,
+      month,
+      year,
+    );
   }
 
   async create(dto: CreatePayrollDto, userTenantId: string) {
@@ -98,7 +108,7 @@ export class PayrollService {
           ? new Prisma.Decimal(dto.totalDeduction)
           : new Prisma.Decimal(0),
         netSalary: new Prisma.Decimal(dto.netSalary),
-        status: dto.status ?? 'PENDING',
+        status: 'PENDING',
         payslipNo: dto.payslipNo,
         tenantId: userTenantId,
       },
@@ -123,7 +133,11 @@ export class PayrollService {
   }
 
   private sanitizePayrollData(payroll: any, role: UserRole) {
-    if (role === UserRole.SUPER_ADMIN || role === UserRole.ADMIN || role === UserRole.MANAGER) {
+    if (
+      role === UserRole.SUPER_ADMIN ||
+      role === UserRole.ADMIN ||
+      role === UserRole.MANAGER
+    ) {
       return payroll;
     }
 
@@ -263,7 +277,6 @@ export class PayrollService {
       data.totalDeduction = new Prisma.Decimal(dto.totalDeduction);
     if (dto.netSalary !== undefined)
       data.netSalary = new Prisma.Decimal(dto.netSalary);
-    if (dto.status !== undefined) data.status = dto.status;
     if (dto.payslipNo !== undefined) data.payslipNo = dto.payslipNo;
     if (dto.generatedAt !== undefined)
       data.generatedAt = dto.generatedAt ? new Date(dto.generatedAt) : null;
@@ -401,7 +414,9 @@ export class PayrollService {
     const payroll = await this.findOne(id, userTenantId);
 
     if (payroll.status !== 'APPROVED') {
-      throw new ConflictException('Only approved payroll can be marked as paid');
+      throw new ConflictException(
+        'Only approved payroll can be marked as paid',
+      );
     }
 
     const updated = await this.prisma.payroll.update({

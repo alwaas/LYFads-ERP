@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const payrollStatusEnum = [
   "PENDING",
-  "GENERATED",
+  "PROCESSED",
+  "APPROVED",
   "PAID",
 ] as const;
 

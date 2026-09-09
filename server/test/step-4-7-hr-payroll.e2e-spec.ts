@@ -22,11 +22,41 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
   let testData: {
     tenantA: { id: string };
     tenantB: { id: string };
-    tenantAAdmin: { id: string; email: string; role: string; tenantId: string; fullName: string };
-    tenantAManager: { id: string; email: string; role: string; tenantId: string; fullName: string };
-    tenantAEmployee: { id: string; email: string; role: string; tenantId: string; fullName: string };
-    tenantBAdmin: { id: string; email: string; role: string; tenantId: string; fullName: string };
-    tenantBEmployee: { id: string; email: string; role: string; tenantId: string; fullName: string };
+    tenantAAdmin: {
+      id: string;
+      email: string;
+      role: string;
+      tenantId: string;
+      fullName: string;
+    };
+    tenantAManager: {
+      id: string;
+      email: string;
+      role: string;
+      tenantId: string;
+      fullName: string;
+    };
+    tenantAEmployee: {
+      id: string;
+      email: string;
+      role: string;
+      tenantId: string;
+      fullName: string;
+    };
+    tenantBAdmin: {
+      id: string;
+      email: string;
+      role: string;
+      tenantId: string;
+      fullName: string;
+    };
+    tenantBEmployee: {
+      id: string;
+      email: string;
+      role: string;
+      tenantId: string;
+      fullName: string;
+    };
     tenantAEmployeeRecord: { id: string };
     tenantBEmployeeRecord: { id: string };
     tenantAProject: { id: string };
@@ -109,7 +139,13 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
     });
   });
 
-  const generateToken = (user: { id: string; email: string; role: string; tenantId: string; fullName: string }) => {
+  const generateToken = (user: {
+    id: string;
+    email: string;
+    role: string;
+    tenantId: string;
+    fullName: string;
+  }) => {
     return jwtService.sign({
       sub: user.id,
       email: user.email,
@@ -217,7 +253,10 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
       const token = generateToken(testData.tenantAEmployee);
 
       let managerEmployee = await prisma.employee.findFirst({
-        where: { tenantId: testData.tenantA.id, userId: { not: testData.tenantAEmployee.id } },
+        where: {
+          tenantId: testData.tenantA.id,
+          userId: { not: testData.tenantAEmployee.id },
+        },
         take: 1,
       });
 
@@ -262,7 +301,10 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
       const token = generateToken(testData.tenantAEmployee);
 
       const otherEmployee = await prisma.employee.findFirst({
-        where: { tenantId: testData.tenantA.id, userId: { not: testData.tenantAEmployee.id } },
+        where: {
+          tenantId: testData.tenantA.id,
+          userId: { not: testData.tenantAEmployee.id },
+        },
         take: 1,
       });
 
@@ -1124,6 +1166,201 @@ describe('Step 4.7 HR & Payroll E2E Tests', () => {
         .patch(`/payroll/${payroll.id}`)
         .set('Authorization', `Bearer ${token}`)
         .send({ basicSalary: 80000 })
+        .expect(409);
+    });
+  });
+
+  describe('Payroll: DTO Status Hardening', () => {
+    it('create cannot force PAID status', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const response = await request(app.getHttpServer())
+        .post('/payroll')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 8,
+          year: 2024,
+          basicSalary: '75000',
+          netSalary: '75000',
+          status: PayrollStatus.PAID,
+        })
+        .expect(201);
+
+      expect(response.body.data.status).toBe(PayrollStatus.PENDING);
+    });
+
+    it('update cannot force PAID status', async () => {
+      const payroll = await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 9,
+          year: 2024,
+          basicSalary: 75000,
+          netSalary: 75000,
+          status: PayrollStatus.PENDING,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      const response = await request(app.getHttpServer())
+        .patch(`/payroll/${payroll.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: PayrollStatus.PAID })
+        .expect(200);
+
+      expect(response.body.data.status).toBe(PayrollStatus.PENDING);
+    });
+  });
+
+  describe('Payroll: State Transition Safety', () => {
+    it('invalid transition: mark-paid on PENDING is rejected', async () => {
+      const payroll = await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 10,
+          year: 2024,
+          basicSalary: 75000,
+          netSalary: 75000,
+          status: PayrollStatus.PENDING,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/mark-paid`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ paymentMethod: 'BANK_TRANSFER' })
+        .expect(409);
+    });
+
+    it('repeated transition: process on already PROCESSED is rejected', async () => {
+      const payroll = await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 11,
+          year: 2024,
+          basicSalary: 75000,
+          netSalary: 75000,
+          status: PayrollStatus.PROCESSED,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/process`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(409);
+    });
+
+    it('repeated transition: approve on already APPROVED is rejected', async () => {
+      const payroll = await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 12,
+          year: 2024,
+          basicSalary: 75000,
+          netSalary: 75000,
+          status: PayrollStatus.APPROVED,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      await request(app.getHttpServer())
+        .post(`/payroll/${payroll.id}/approve`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(409);
+    });
+  });
+
+  describe('Salary Structure: isActive Boolean Validation', () => {
+    it('isActive=true salary structure succeeds', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const response = await request(app.getHttpServer())
+        .post('/salary-structures')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          employeeId: testData.tenantAEmployeeRecord.id,
+          basicSalary: '75000',
+          effectiveFrom: '2024-01-01',
+          isActive: true,
+        })
+        .expect(201);
+
+      expect(response.body.data.isActive).toBe(true);
+    });
+
+    it('isActive=false salary structure succeeds', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const response = await request(app.getHttpServer())
+        .post('/salary-structures')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          employeeId: testData.tenantAEmployeeRecord.id,
+          basicSalary: '75000',
+          effectiveFrom: '2024-01-01',
+          isActive: false,
+        })
+        .expect(201);
+
+      expect(response.body.data.isActive).toBe(false);
+    });
+  });
+
+  describe('Payroll: Tenant Isolation', () => {
+    it('create payroll for another tenant employee is rejected', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      await request(app.getHttpServer())
+        .post('/payroll')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          employeeId: testData.tenantBEmployeeRecord.id,
+          month: 1,
+          year: 2024,
+          basicSalary: '75000',
+          netSalary: '75000',
+        })
+        .expect(403);
+    });
+  });
+
+  describe('Payroll: Duplicate Prevention', () => {
+    it('duplicate employee/month/year payroll is rejected', async () => {
+      await prisma.payroll.create({
+        data: {
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 2,
+          year: 2024,
+          basicSalary: 75000,
+          netSalary: 75000,
+          status: PayrollStatus.PENDING,
+          tenantId: testData.tenantA.id,
+        },
+      });
+
+      const token = generateToken(testData.tenantAAdmin);
+
+      await request(app.getHttpServer())
+        .post('/payroll')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          employeeId: testData.tenantAEmployeeRecord.id,
+          month: 2,
+          year: 2024,
+          basicSalary: '75000',
+          netSalary: '75000',
+        })
         .expect(409);
     });
   });

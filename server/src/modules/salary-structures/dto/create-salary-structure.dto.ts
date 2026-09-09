@@ -1,5 +1,4 @@
-import { IsDecimal, IsEnum, IsOptional, IsString } from 'class-validator';
-import { EmploymentStatus } from '@prisma/client';
+import { IsBoolean, IsDecimal, IsOptional, IsString } from 'class-validator';
 import { IsDateString } from 'class-validator';
 
 export class CreateSalaryStructureDto {
@@ -35,6 +34,10 @@ export class CreateSalaryStructureDto {
   @IsOptional()
   @IsDateString()
   effectiveTo?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateSalaryStructureDto {
@@ -71,6 +74,6 @@ export class UpdateSalaryStructureDto {
   effectiveTo?: string;
 
   @IsOptional()
-  @IsEnum(EmploymentStatus)
-  isActive?: EmploymentStatus;
+  @IsBoolean()
+  isActive?: boolean;
 }
