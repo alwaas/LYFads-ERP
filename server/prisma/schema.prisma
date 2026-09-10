@@ -469,7 +469,7 @@ model Payroll {
   employee         Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items            PayrollItem[]
-
+  payment          Payment?
   @@unique([employeeId, month, year, tenantId])
   @@index([employeeId, tenantId])
   @@index([month, year, tenantId])
@@ -568,6 +568,7 @@ model Payment {
   invoiceId         String?
   purchaseInvoiceId String?
   expenseId         String?
+  payrollId         String?           @unique
   amount            Decimal             @db.Decimal(12, 2)
   paymentDate DateTime
   method      PaymentMethod
@@ -582,12 +583,14 @@ model Payment {
   invoice          Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   purchaseInvoice  PurchaseInvoice?   @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
   expense          Expense?           @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  payroll          Payroll?           @relation(fields: [payrollId], references: [id], onDelete: Cascade)
   tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   allocations      PaymentAllocation[]
 
   @@index([invoiceId, tenantId])
   @@index([purchaseInvoiceId, tenantId])
   @@index([expenseId, tenantId])
+  @@index([payrollId, tenantId])
   @@index([paymentDate, tenantId])
   @@index([tenantId])
   @@index([status, tenantId])

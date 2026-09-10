@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { GlService } from '../gl/gl.service';
+import { PaymentsService } from '../payments/payments.service';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
@@ -26,6 +27,7 @@ export class PayrollService {
     private readonly activityLogsService: ActivityLogsService,
     private readonly payrollCalculationService: PayrollCalculationService,
     private readonly glService: GlService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async calculate(
@@ -433,21 +435,58 @@ export class PayrollService {
       );
     }
 
-    const updated = await this.prisma.payroll.update({
-      where: { id },
-      data: {
-        status: 'PAID',
-        paidAt: new Date(),
-        paymentMethod: paymentMethod as any,
-        paymentReference,
+    const existingPayment = await this.prisma.payment.findFirst({
+      where: {
+        payrollId: id,
+        status: 'ACTIVE',
       },
-      include: {
-        employee: {
-          include: {
-            user: true,
+    });
+
+    if (existingPayment) {
+      throw new ConflictException('Payroll is already paid');
+    }
+
+    const netSalary = payroll.netSalary;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const payment = await this.paymentsService.create(
+        {
+          payrollId: id,
+          amount: netSalary.toString(),
+          paymentDate: new Date().toISOString(),
+          method: paymentMethod as any,
+          referenceNo: paymentReference,
+        },
+        userTenantId,
+        payroll.employee.userId,
+        tx,
+      );
+
+      await this.glService.postPayrollPaymentInTransaction(
+        tx,
+        userTenantId,
+        payment.id,
+        payment.amount,
+        id,
+        payroll.employee.userId,
+      );
+
+      return tx.payroll.update({
+        where: { id },
+        data: {
+          status: 'PAID',
+          paidAt: new Date(),
+          paymentMethod: paymentMethod as any,
+          paymentReference,
+        },
+        include: {
+          employee: {
+            include: {
+              user: true,
+            },
           },
         },
-      },
+      });
     });
 
     await this.activityLogsService.log({

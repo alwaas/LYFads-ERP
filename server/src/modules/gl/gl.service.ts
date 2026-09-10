@@ -604,6 +604,95 @@ export class GlService {
     );
   }
 
+  async postPayrollPayment(
+    tenantId: string,
+    paymentId: string,
+    amount: Prisma.Decimal | number,
+    payrollId?: string,
+    userId?: string,
+  ): Promise<void> {
+    const payableAccount = await this.getAccountByCode(tenantId, '2100');
+    const bankAccount = await this.getAccountByCode(tenantId, '1000');
+
+    const lines: JournalEntryLineInput[] = [
+      {
+        accountId: payableAccount.id,
+        debitAmount: amount,
+        description: `Payroll ${payrollId ?? ''} settlement`,
+      },
+      {
+        accountId: bankAccount.id,
+        creditAmount: amount,
+        description: `Payment ${paymentId}${payrollId ? ` for payroll ${payrollId}` : ''}`,
+      },
+    ];
+
+     await this.createJournalEntry(
+      {
+        date: new Date(),
+        description: `Payroll payment ${paymentId}${payrollId ? ` against payroll ${payrollId}` : ''}`,
+        referenceId: `payroll_payment_${paymentId}`,
+        lines,
+        posted: true,
+        createdById: userId,
+      },
+      tenantId,
+    );
+  }
+
+  async postPayrollPaymentInTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    paymentId: string,
+    amount: Prisma.Decimal | number,
+    payrollId: string,
+    userId?: string,
+  ): Promise<JournalEntry> {
+    const payableAccount = await tx.account.findUnique({
+      where: { code_tenantId: { code: '2100', tenantId } },
+      select: { id: true },
+    });
+
+    if (!payableAccount) {
+      throw new NotFoundException('Account with code 2100 not found for tenant');
+    }
+
+    const bankAccount = await tx.account.findUnique({
+      where: { code_tenantId: { code: '1000', tenantId } },
+      select: { id: true },
+    });
+
+    if (!bankAccount) {
+      throw new NotFoundException('Account with code 1000 not found for tenant');
+    }
+
+    const lines: JournalEntryLineInput[] = [
+      {
+        accountId: payableAccount.id,
+        description: `Payroll ${payrollId} payment settlement`,
+        debitAmount: amount,
+      },
+      {
+        accountId: bankAccount.id,
+        description: `Payment ${paymentId} for payroll ${payrollId}`,
+        creditAmount: amount,
+      },
+    ];
+
+    return this.createJournalEntryInTransaction(
+      tx,
+      {
+        date: new Date(),
+        description: `Payroll payment ${paymentId} against payroll ${payrollId}`,
+        referenceId: `payroll_payment_${paymentId}`,
+        lines,
+        posted: true,
+        createdById: userId,
+      },
+      tenantId,
+    );
+  }
+
   async findAccounts(tenantId: string, pagination: PaginationDto) {
     const { skip, limit } = pagination;
     const where = { tenantId };

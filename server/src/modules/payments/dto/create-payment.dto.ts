@@ -21,6 +21,10 @@ export class CreatePaymentDto {
   @IsString()
   expenseId?: string;
 
+  @IsOptional()
+  @IsString()
+  payrollId?: string;
+
   @IsDecimal()
   amount: string;
 
