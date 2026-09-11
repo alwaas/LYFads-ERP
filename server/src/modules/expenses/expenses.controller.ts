@@ -34,7 +34,7 @@ export class ExpensesController {
     return this.expensesService.create(dto, user.tenantId, user.userId);
   }
 
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER, UserRole.EMPLOYEE)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   @Get()
   findAll(@Query() query: ExpenseQueryDto, @GetUser() user: AuthenticatedUser) {
     return this.expensesService.findAll(query, user.tenantId);

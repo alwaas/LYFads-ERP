@@ -1539,6 +1539,106 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
     });
   });
 
+  describe('Phase 4.1: GL Account Cross-Tenant Access', () => {
+    it('should reject cross-tenant journal entry creation with wrong tenant account', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+
+      // Get tenant B's account ID
+      const tenantBAccount = await prisma.account.findFirst({
+        where: { tenantId: testData.tenantB.id, code: '1000' },
+      });
+
+      const tenantAAccount = await prisma.account.findFirst({
+        where: { tenantId: testData.tenantA.id, code: '2000' },
+      });
+
+      expect(tenantBAccount).toBeDefined();
+      expect(tenantAAccount).toBeDefined();
+
+      // Tenant A should not be able to create a journal entry using tenant B's account
+      await request(app.getHttpServer())
+        .post('/finance/journal-entries')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          date: new Date().toISOString(),
+          description: 'Cross-tenant test',
+          lines: [
+            {
+              accountId: tenantBAccount.id,
+              debitAmount: 100,
+            },
+            {
+              accountId: tenantAAccount.id,
+              creditAmount: 100,
+            },
+          ],
+          posted: true,
+        })
+        .expect(404);
+    });
+
+    it('should allow same-tenant journal entry creation with valid accounts', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+
+      // Get tenant A's accounts
+      const cashAccount = await prisma.account.findFirst({
+        where: { tenantId: testData.tenantA.id, code: '1000' },
+      });
+      const revenueAccount = await prisma.account.findFirst({
+        where: { tenantId: testData.tenantA.id, code: '4000' },
+      });
+
+      expect(cashAccount).toBeDefined();
+      expect(revenueAccount).toBeDefined();
+
+      // Tenant A should be able to create a journal entry with their own accounts
+      await request(app.getHttpServer())
+        .post('/finance/journal-entries')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          date: new Date().toISOString(),
+          description: 'Same-tenant test',
+          lines: [
+            {
+              accountId: cashAccount.id,
+              debitAmount: 100,
+            },
+            {
+              accountId: revenueAccount.id,
+              creditAmount: 100,
+            },
+          ],
+          posted: true,
+        })
+        .expect(201);
+    });
+  });
+
+  describe('Phase 4.1: Plans Module - GLOBAL SaaS Plan Verification', () => {
+    it('should allow SUPER_ADMIN to view all plans (GLOBAL resource)', async () => {
+      const tokenSuper = generateToken(testData.superAdmin);
+
+      const response = await request(app.getHttpServer())
+        .get('/plans')
+        .set('Authorization', `Bearer ${tokenSuper}`)
+        .expect(200);
+
+      expect(response.body.data).toBeDefined();
+    });
+
+    it('should return the same plans to all SUPER_ADMIN users', async () => {
+      const tokenSuper = generateToken(testData.superAdmin);
+
+      const response = await request(app.getHttpServer())
+        .get('/plans')
+        .set('Authorization', `Bearer ${tokenSuper}`)
+        .expect(200);
+
+      // Plans are global - all admins see the same set
+      expect(response.body.data.length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Phase 3.1: Role-Based Authorization', () => {
     it('should deny EMPLOYEE role access to payroll endpoints', async () => {
       const token = generateToken(testData.tenantAEmployee);

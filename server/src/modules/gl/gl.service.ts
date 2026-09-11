@@ -3,7 +3,6 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { Prisma, PrismaClient, AccountType, NormalBalanceSide, JournalEntry, JournalEntryLine, Account } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
@@ -91,13 +90,10 @@ export class GlService {
 
   async getAccountById(tenantId: string, accountId: string): Promise<Account> {
     const account = await this.prisma.account.findUnique({
-      where: { id: accountId },
+      where: { id: accountId, tenantId },
     });
     if (!account) {
-      throw new NotFoundException(`Account ${accountId} not found`);
-    }
-    if (account.tenantId !== tenantId) {
-      throw new ForbiddenException('Access denied to this account');
+      throw new NotFoundException(`Account ${accountId} not found for tenant`);
     }
     return account;
   }
@@ -212,18 +208,9 @@ export class GlService {
 
     this.validateBalanced(input.lines);
 
-    for (const line of input.lines) {
-      const account = await tx.account.findUnique({
-        where: { id: line.accountId },
-        select: { id: true, tenantId: true },
-      });
-      if (!account) {
-        throw new NotFoundException(`Account ${line.accountId} not found`);
+for (const line of input.lines) {
+        await this.getAccountById(tenantId, line.accountId);
       }
-      if (account.tenantId !== tenantId) {
-        throw new ForbiddenException('Access denied to this account');
-      }
-    }
 
     const date = input.date ? new Date(input.date) : new Date();
     let fiscalYearId: string | undefined;
