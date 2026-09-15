@@ -43,7 +43,7 @@ export class UploadsService {
     });
   }
 
-  async uploadFile(file: Express.Multer.File, folder = 'general') {
+  async uploadFile(file: Express.Multer.File, tenantId: string, folder = 'general') {
     if (!file) {
       throw new BadRequestException('File is required.');
     }
@@ -65,7 +65,7 @@ export class UploadsService {
       .replace(/^\/+|\/+$/g, '')
       .replace(/[^a-zA-Z0-9/_-]/g, '_');
 
-    const filePath = cleanFolder ? `${cleanFolder}/${fileName}` : fileName;
+    const filePath = cleanFolder ? `${cleanFolder}/${tenantId}/${fileName}` : `${tenantId}/${fileName}`;
 
     try {
       const { data: bucketData, error: bucketError } =
@@ -124,15 +124,19 @@ export class UploadsService {
     }
   }
 
-  async deleteFile(filePath: string) {
+  async deleteFile(filePath: string, tenantId: string) {
     if (!filePath) {
       throw new BadRequestException('File path is required.');
     }
 
+    const tenantScopedPath = filePath.startsWith(`${tenantId}/`)
+      ? filePath
+      : `${tenantId}/${filePath}`;
+
     try {
       const { error } = await this.supabase.storage
         .from(this.bucket)
-        .remove([filePath]);
+        .remove([tenantScopedPath]);
 
       if (error) {
         console.error('Supabase storage delete failed:', error);

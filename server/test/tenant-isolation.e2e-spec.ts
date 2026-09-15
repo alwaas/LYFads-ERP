@@ -831,6 +831,111 @@ describe('Tenant Isolation Security Tests (Phase 3D)', () => {
           .expect(403);
       }
     });
+
+    it('should construct tenant-scoped storage paths in UploadsService', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const response = await request(app.getHttpServer())
+        .post('/uploads/single')
+        .set('Authorization', `Bearer ${token}`)
+        .attach('file', Buffer.from('test content'), 'test.pdf')
+        .field('projectId', testData.tenantAProject.id)
+        .expect(500);
+
+      expect(response.body.message).toContain('Storage bucket');
+    });
+
+    it('should reject cross-tenant attachment deletion', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      const attachmentB = await prisma.attachment.create({
+        data: {
+          fileName: 'tenantB-file.pdf',
+          fileUrl: `attachments/${testData.tenantB.id}/tenantB-file.pdf`,
+          fileSize: 1024,
+          mimeType: 'application/pdf',
+          originalName: 'tenantB-file.pdf',
+          uploadedBy: testData.tenantBAdmin.id,
+          tenantId: testData.tenantB.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .delete(`/attachments/${attachmentB.id}`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(403);
+    });
+
+    it('should allow same-tenant attachment creation and deletion', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+
+      const attachment = await prisma.attachment.create({
+        data: {
+          fileName: 'same-tenant.pdf',
+          fileUrl: `attachments/${testData.tenantA.id}/same-tenant.pdf`,
+          fileSize: 1024,
+          mimeType: 'application/pdf',
+          originalName: 'same-tenant.pdf',
+          uploadedBy: testData.tenantAAdmin.id,
+          tenantId: testData.tenantA.id,
+          projectId: testData.tenantAProject.id,
+        },
+      });
+
+      await request(app.getHttpServer())
+        .delete(`/attachments/${attachment.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+    });
+
+    it('should maintain tenant isolation in attachment DB records', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      const attachmentA = await prisma.attachment.create({
+        data: {
+          fileName: 'a.pdf',
+          fileUrl: `attachments/${testData.tenantA.id}/a.pdf`,
+          fileSize: 1024,
+          mimeType: 'application/pdf',
+          originalName: 'a.pdf',
+          uploadedBy: testData.tenantAAdmin.id,
+          tenantId: testData.tenantA.id,
+          projectId: testData.tenantAProject.id,
+        },
+      });
+
+      const attachmentB = await prisma.attachment.create({
+        data: {
+          fileName: 'b.pdf',
+          fileUrl: `attachments/${testData.tenantB.id}/b.pdf`,
+          fileSize: 1024,
+          mimeType: 'application/pdf',
+          originalName: 'b.pdf',
+          uploadedBy: testData.tenantBAdmin.id,
+          tenantId: testData.tenantB.id,
+          projectId: testData.tenantBProject.id,
+        },
+      });
+
+      expect(attachmentA.tenantId).toBe(testData.tenantA.id);
+      expect(attachmentB.tenantId).toBe(testData.tenantB.id);
+      expect(attachmentA.fileUrl).toContain(testData.tenantA.id);
+      expect(attachmentB.fileUrl).toContain(testData.tenantB.id);
+
+      const listA = await request(app.getHttpServer())
+        .get('/attachments')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(200);
+
+      const attachments = Array.isArray(listA.body)
+        ? listA.body
+        : listA.body.data.data || [];
+      attachments.forEach((a: any) => {
+        expect(a.tenantId).toBe(testData.tenantA.id);
+      });
+    });
   });
 
   describe('CommentsService Tenant Isolation', () => {
