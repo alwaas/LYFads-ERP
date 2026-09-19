@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { PassportModule } from '@nestjs/passport';
 
 import { PrismaModule } from './database';
 import { AuthModule } from './modules/auth/auth.module';
@@ -63,6 +65,14 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        { limit: 100, ttl: 60000 },
+        { limit: 5, ttl: 60000, name: 'auth' },
+      ],
+      ignoreUserAgents: [/swagger/i],
     }),
     PrismaModule,
     HealthModule,

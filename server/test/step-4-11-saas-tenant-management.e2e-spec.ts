@@ -27,6 +27,17 @@ describe('Step 4.11 - SaaS Tenant Management Foundation (E2E)', () => {
     testData = await setupTestDatabase();
   }, 120000);
 
+  beforeEach(async () => {
+    await prisma.tenant.update({
+      where: { id: testData.tenantA.id },
+      data: { status: 'ACTIVE' },
+    });
+    await prisma.tenantSubscription.update({
+      where: { tenantId: testData.tenantA.id },
+      data: { status: 'ACTIVE' },
+    });
+  });
+
   afterAll(async () => {
     await teardownTestDatabase();
     await app.close();

@@ -69,12 +69,13 @@ export async function cleanDatabase() {
     await prisma.productWarehouse.deleteMany();
     await prisma.salesOrderItem.deleteMany();
     await prisma.salesOrder.deleteMany();
+    await prisma.purchaseOrderItem.deleteMany();
+    await prisma.purchaseOrder.deleteMany();
     await prisma.product.deleteMany();
     await prisma.warehouse.deleteMany();
     await prisma.purchase.deleteMany();
     await prisma.purchaseInvoiceItem.deleteMany();
     await prisma.purchaseInvoice.deleteMany();
-    await prisma.purchaseOrder.deleteMany();
     await prisma.vendor.deleteMany();
     await prisma.attachment.deleteMany();
     await prisma.comment.deleteMany();
@@ -786,7 +787,7 @@ export async function setupTestDatabase() {
       planId: defaultPlan.id,
       status: 'TRIAL',
       startDate: new Date('2024-01-01'),
-      trialEndDate: new Date('2024-02-01'),
+      trialEndDate: new Date('2027-02-01'),
       autoRenew: true,
     },
   });

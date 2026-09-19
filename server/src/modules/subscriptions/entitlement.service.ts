@@ -139,6 +139,14 @@ export class EntitlementService {
         return this.prisma.vendor.count({ where: { tenantId } });
       case 'MAX_WAREHOUSES':
         return this.prisma.warehouse.count({ where: { tenantId } });
+      case 'MAX_INVOICES':
+        return this.prisma.invoice.count({ where: { tenantId } });
+      case 'MAX_SALES_ORDERS':
+        return this.prisma.salesOrder.count({ where: { tenantId } });
+      case 'MAX_PURCHASES':
+        return this.prisma.purchase.count({ where: { tenantId } });
+      case 'MAX_EXPENSES':
+        return this.prisma.expense.count({ where: { tenantId } });
       default:
         return 0;
     }
