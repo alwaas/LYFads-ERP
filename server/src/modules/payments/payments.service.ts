@@ -241,6 +241,12 @@ export class PaymentsService {
     userTenantId: string,
     tx: Prisma.TransactionClient,
   ) {
+    const tenant = await tx.tenant.findUnique({
+      where: { id: userTenantId },
+      select: { currency: true },
+    });
+    const currency = (dto.currency || tenant?.currency || 'USD').toUpperCase();
+
     const payment = await tx.payment.create({
       data: {
         invoiceId: dto.invoiceId,
@@ -252,6 +258,7 @@ export class PaymentsService {
         method: dto.method,
         referenceNo: dto.referenceNo,
         remarks: dto.remarks,
+        currency,
         status: PaymentStatus.ACTIVE,
         tenantId: userTenantId,
       },

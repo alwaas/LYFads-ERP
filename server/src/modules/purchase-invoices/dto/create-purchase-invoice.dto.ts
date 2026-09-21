@@ -7,6 +7,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  Length,
   ValidateNested,
 } from 'class-validator';
 
@@ -41,6 +42,11 @@ export class CreatePurchaseInvoiceDto {
   @IsString()
   @IsNotEmpty()
   invoiceNumber: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
 
   @IsString()
   @IsNotEmpty()

@@ -109,6 +109,12 @@ export class PurchaseOrdersService {
     const total = this.toMoney(dto.total);
 
     const created = await this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: { id: userTenantId },
+        select: { currency: true },
+      });
+      const currency = (dto.currency || tenant?.currency || 'USD').toUpperCase();
+
       const po = await tx.purchaseOrder.create({
         data: {
           orderNumber: dto.orderNumber,
@@ -124,6 +130,7 @@ export class PurchaseOrdersService {
           tax,
           total,
           notes: dto.notes,
+          currency,
           tenantId: userTenantId,
         },
       });

@@ -82,6 +82,12 @@ export class InvoiceService {
       }
     }
 
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: userTenantId },
+      select: { currency: true },
+    });
+    const currency = (dto.currency || tenant?.currency || 'USD').toUpperCase();
+
     const invoice = await this.prisma.invoice.create({
       data: {
         invoiceNumber: dto.invoiceNumber,
@@ -89,6 +95,7 @@ export class InvoiceService {
         projectId: dto.projectId,
         salesOrderId: dto.salesOrderId,
         tenantId: userTenantId,
+        currency,
         issueDate: new Date(dto.issueDate),
         dueDate: new Date(dto.dueDate),
         subtotal: new Prisma.Decimal(dto.subtotal),
@@ -268,6 +275,7 @@ export class InvoiceService {
       data.balanceAmount = new Prisma.Decimal(updateData.balanceAmount);
     if (updateData.status) data.status = updateData.status;
     if (updateData.notes) data.notes = updateData.notes;
+    if (updateData.currency) data.currency = updateData.currency.toUpperCase();
 
     const updatedInvoice = await this.prisma.invoice.update({
       where: { id },

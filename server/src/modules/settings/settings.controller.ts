@@ -25,13 +25,13 @@ export class SettingsController {
   ) {}
 
   @Get()
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   getSettings(@GetUser() user: AuthenticatedUser) {
     return this.settingsService.getSettings(user.tenantId);
   }
 
   @Patch()
-  @Roles(UserRole.SUPER_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   updateSettings(
     @GetUser() user: AuthenticatedUser,
     @Body() dto: any,

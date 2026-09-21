@@ -66,6 +66,12 @@ export class GlService {
     const existing = await this.prisma.account.count({ where: { tenantId } });
     if (existing > 0) return;
 
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { currency: true },
+    });
+    const currency = tenant?.currency ?? 'USD';
+
     await this.prisma.account.createMany({
       data: DEFAULT_CHART_OF_ACCOUNTS.map((acc) => ({
         code: acc.code,
@@ -74,6 +80,7 @@ export class GlService {
         normalBalanceSide: acc.normalBalanceSide,
         isActive: true,
         tenantId,
+        currency,
       })),
       skipDuplicates: true,
     });
@@ -169,6 +176,12 @@ export class GlService {
         }
       }
 
+      const tenant = await tx.tenant.findUnique({
+        where: { id: tenantId },
+        select: { currency: true },
+      });
+      const currency = tenant?.currency ?? 'USD';
+
       return tx.journalEntry.create({
         data: {
           tenantId,
@@ -179,6 +192,7 @@ export class GlService {
           posted: input.posted ?? false,
           postedAt: input.posted ? new Date() : undefined,
           createdById: input.createdById,
+          currency,
           lines: {
             create: input.lines.map((line) => ({
               tenantId,

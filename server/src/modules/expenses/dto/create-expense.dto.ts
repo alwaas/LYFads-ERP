@@ -5,6 +5,7 @@ import {
   IsDateString,
   IsEnum,
   IsUUID,
+  Length,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from '@prisma/client';
@@ -36,6 +37,11 @@ export class CreateExpenseDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
 
   @IsOptional()
   @IsString()

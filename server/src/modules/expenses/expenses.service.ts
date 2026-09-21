@@ -143,6 +143,11 @@ export class ExpensesService {
     const amountDec = this.toDecimal(dto.amount);
     const taxDec = dto.taxAmount != null ? this.toDecimal(dto.taxAmount) : this.toDecimal(0);
     const totalDec = taxDec.gt(0) ? amountDec.plus(taxDec) : amountDec;
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: userTenantId },
+      select: { currency: true },
+    });
+    const currency = (dto.currency || tenant?.currency || 'USD').toUpperCase();
 
     const expense = await this.prisma.expense.create({
       data: {
@@ -155,6 +160,7 @@ export class ExpensesService {
         paymentMethod: dto.paymentMethod,
         referenceNo: dto.referenceNo,
         notes: dto.notes,
+        currency,
         receiptUrl: dto.receiptUrl,
         vendorId: dto.vendorId ?? undefined,
         employeeId: dto.employeeId ?? undefined,

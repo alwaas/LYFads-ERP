@@ -98,6 +98,12 @@ export class PurchaseInvoicesService {
 
     try {
       const created = await this.prisma.$transaction(async (tx) => {
+        const tenant = await tx.tenant.findUnique({
+          where: { id: userTenantId },
+          select: { currency: true },
+        });
+        const currency = (dto.currency || tenant?.currency || 'USD').toUpperCase();
+
         return tx.purchaseInvoice.create({
           data: {
             invoiceNumber: dto.invoiceNumber,
@@ -113,6 +119,7 @@ export class PurchaseInvoicesService {
             amountPaid: new Prisma.Decimal(0),
             balanceAmount: total,
             notes: dto.notes,
+            currency,
             tenantId: userTenantId,
             items: {
               create: itemsData.map((item) => ({

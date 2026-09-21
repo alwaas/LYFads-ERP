@@ -106,6 +106,7 @@ export class SalesOrdersService {
           tax,
           total,
           notes: dto.notes,
+          currency: (dto.currency || (await tx.tenant.findUnique({ where: { id: userTenantId }, select: { currency: true } }))?.currency || 'USD').toUpperCase(),
           tenantId: userTenantId,
         },
       });
@@ -663,6 +664,7 @@ export class SalesOrdersService {
           balanceAmount: salesOrder.total,
           status: invoiceStatus,
           notes: dto.notes || salesOrder.notes || `Generated from Sales Order ${salesOrder.orderNumber}`,
+          currency: salesOrder.currency ?? 'USD',
           tenantId: userTenantId,
         },
       });

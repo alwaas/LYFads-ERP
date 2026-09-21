@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  Length,
 } from 'class-validator';
 
 import { InvoiceStatus } from '@prisma/client';
@@ -11,6 +12,11 @@ import { InvoiceStatus } from '@prisma/client';
 export class CreateInvoiceDto {
   @IsString()
   invoiceNumber: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
 
   @IsString()
   clientId: string;
