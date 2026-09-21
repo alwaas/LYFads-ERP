@@ -347,6 +347,7 @@ export class PurchaseInvoicesService {
       ],
       [PurchaseInvoiceStatus.POSTED]: [
         PurchaseInvoiceStatus.VOIDED,
+        PurchaseInvoiceStatus.CANCELLED,
       ],
       [PurchaseInvoiceStatus.PARTIALLY_PAID]: [
         PurchaseInvoiceStatus.PAID,
@@ -373,16 +374,6 @@ export class PurchaseInvoicesService {
       );
     }
 
-    const updated = await this.prisma.purchaseInvoice.update({
-      where: { id },
-      data: { status },
-      include: {
-        vendor: { select: { id: true, name: true, email: true } },
-        purchaseOrder: { select: { id: true, orderNumber: true } },
-        items: true,
-      },
-    });
-
     if (status === PurchaseInvoiceStatus.VOIDED) {
       const hasPayments = await this.prisma.payment.count({
         where: {
@@ -395,12 +386,46 @@ export class PurchaseInvoicesService {
       }
     }
 
+    const updated = await this.prisma.purchaseInvoice.update({
+      where: { id },
+      data: { status },
+      include: {
+        vendor: { select: { id: true, name: true, email: true } },
+        purchaseOrder: { select: { id: true, orderNumber: true } },
+        items: true,
+      },
+    });
+
     if (status === PurchaseInvoiceStatus.POSTED) {
+      const netAmount =
+        updated.subtotal ??
+        new Prisma.Decimal(updated.total).minus(
+          updated.tax ? new Prisma.Decimal(updated.tax) : 0,
+        );
       await this.glService.postVendorBill(
         userTenantId,
         id,
-        updated.total,
+        netAmount,
         updated.tax,
+        userId,
+      );
+    }
+
+    if (
+      (status === PurchaseInvoiceStatus.VOIDED ||
+        status === PurchaseInvoiceStatus.CANCELLED) &&
+      bill.status === PurchaseInvoiceStatus.POSTED
+    ) {
+      const netAmount =
+        bill.subtotal ??
+        new Prisma.Decimal(bill.total).minus(
+          bill.tax ? new Prisma.Decimal(bill.tax) : 0,
+        );
+      await this.glService.reverseVendorBill(
+        userTenantId,
+        id,
+        netAmount,
+        bill.tax,
         userId,
       );
     }

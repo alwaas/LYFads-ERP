@@ -47,6 +47,7 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Array<{
   { code: '5020', name: 'Bank Fees', type: AccountType.EXPENSE, normalBalanceSide: NormalBalanceSide.DEBIT },
   { code: '5030', name: 'Utilities Expense', type: AccountType.EXPENSE, normalBalanceSide: NormalBalanceSide.DEBIT },
   { code: '5040', name: 'Salaries Expense', type: AccountType.EXPENSE, normalBalanceSide: NormalBalanceSide.DEBIT },
+  { code: '5050', name: 'Inventory Adjustments', type: AccountType.EXPENSE, normalBalanceSide: NormalBalanceSide.DEBIT },
   { code: '2100', name: 'Salaries Payable', type: AccountType.LIABILITY, normalBalanceSide: NormalBalanceSide.CREDIT },
 ];
 
@@ -351,7 +352,7 @@ for (const line of input.lines) {
 
     const taxDec = this.toDecimal(taxAmount);
     if (taxDec.gt(0)) {
-      lines[0].debitAmount = this.toDecimal(amount).plus(taxDec);
+      lines[1].creditAmount = this.toDecimal(amount).plus(taxDec);
       lines.push({
         accountId: taxAccount.id,
         debitAmount: taxDec,
@@ -677,6 +678,360 @@ for (const line of input.lines) {
         createdById: userId,
       },
       tenantId,
+    );
+  }
+
+  async reverseInvoiceInTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    invoiceId: string,
+    amount: Prisma.Decimal | number,
+    taxAmount?: Prisma.Decimal | number,
+    userId?: string,
+  ): Promise<JournalEntry> {
+    const referenceId = `invoice_cancel_${invoiceId}`;
+    const existing = await tx.journalEntry.findFirst({
+      where: { tenantId, referenceId },
+      include: { lines: { include: { account: true } } },
+    });
+    if (existing) return existing;
+
+    const revenueAccount = await this.getAccountByCode(tenantId, '4000');
+    const taxAccount = await this.getAccountByCode(tenantId, '2020');
+    const arAccount = await this.getAccountByCode(tenantId, '1010');
+
+    const amountDec = this.toDecimal(amount);
+    const taxDec = this.toDecimal(taxAmount);
+    const totalDec = taxDec.gt(0) ? amountDec.plus(taxDec) : amountDec;
+
+    const lines: JournalEntryLineInput[] = [
+      {
+        accountId: revenueAccount.id,
+        debitAmount: amountDec,
+        description: `Invoice ${invoiceId} cancelled - revenue reversal`,
+      },
+      {
+        accountId: arAccount.id,
+        creditAmount: totalDec,
+        description: `Invoice ${invoiceId} cancelled - AR reversal`,
+      },
+    ];
+
+    if (taxDec.gt(0)) {
+      lines.push({
+        accountId: taxAccount.id,
+        debitAmount: taxDec,
+        description: `Invoice ${invoiceId} cancelled - tax reversal`,
+      });
+    }
+
+    return this.createJournalEntryInTransaction(
+      tx,
+      {
+        date: new Date(),
+        description: `Invoice ${invoiceId} cancelled reversal`,
+        referenceId,
+        lines,
+        posted: true,
+        createdById: userId,
+      },
+      tenantId,
+    );
+  }
+
+  async reverseInvoice(
+    tenantId: string,
+    invoiceId: string,
+    amount: Prisma.Decimal | number,
+    taxAmount?: Prisma.Decimal | number,
+    userId?: string,
+  ): Promise<JournalEntry> {
+    return this.prisma.$transaction((tx) =>
+      this.reverseInvoiceInTransaction(tx, tenantId, invoiceId, amount, taxAmount, userId),
+    );
+  }
+
+  async reverseVendorBillInTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    billId: string,
+    amount: Prisma.Decimal | number,
+    taxAmount?: Prisma.Decimal | number,
+    userId?: string,
+  ): Promise<JournalEntry> {
+    const referenceId = `bill_cancel_${billId}`;
+    const existing = await tx.journalEntry.findFirst({
+      where: { tenantId, referenceId },
+      include: { lines: { include: { account: true } } },
+    });
+    if (existing) return existing;
+
+    const apAccount = await this.getAccountByCode(tenantId, '2000');
+    const expenseAccount = await this.getAccountByCode(tenantId, '5010');
+    const taxAccount = await this.getAccountByCode(tenantId, '2020');
+
+    const amountDec = this.toDecimal(amount);
+    const taxDec = this.toDecimal(taxAmount);
+    const totalDec = taxDec.gt(0) ? amountDec.plus(taxDec) : amountDec;
+
+    const lines: JournalEntryLineInput[] = [
+      {
+        accountId: apAccount.id,
+        debitAmount: totalDec,
+        description: `Vendor bill ${billId} cancelled - AP reversal`,
+      },
+      {
+        accountId: expenseAccount.id,
+        creditAmount: amountDec,
+        description: `Vendor bill ${billId} cancelled - expense reversal`,
+      },
+    ];
+
+    if (taxDec.gt(0)) {
+      lines.push({
+        accountId: taxAccount.id,
+        creditAmount: taxDec,
+        description: `Vendor bill ${billId} cancelled - tax reversal`,
+      });
+    }
+
+    return this.createJournalEntryInTransaction(
+      tx,
+      {
+        date: new Date(),
+        description: `Vendor bill ${billId} cancelled reversal`,
+        referenceId,
+        lines,
+        posted: true,
+        createdById: userId,
+      },
+      tenantId,
+    );
+  }
+
+  async reverseVendorBill(
+    tenantId: string,
+    billId: string,
+    amount: Prisma.Decimal | number,
+    taxAmount?: Prisma.Decimal | number,
+    userId?: string,
+  ): Promise<JournalEntry> {
+    return this.prisma.$transaction((tx) =>
+      this.reverseVendorBillInTransaction(tx, tenantId, billId, amount, taxAmount, userId),
+    );
+  }
+
+  async reversePaymentInTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    payment: {
+      id: string;
+      amount: Prisma.Decimal | number;
+      invoiceId?: string | null;
+      purchaseInvoiceId?: string | null;
+      expenseId?: string | null;
+      payrollId?: string | null;
+    },
+    userId?: string,
+  ): Promise<JournalEntry | null> {
+    const referenceId = `payment_void_${payment.id}`;
+    const existing = await tx.journalEntry.findFirst({
+      where: { tenantId, referenceId },
+      include: { lines: { include: { account: true } } },
+    });
+    if (existing) return existing;
+
+    const amountDec = this.toDecimal(payment.amount);
+    if (amountDec.lte(0)) return null;
+
+    let lines: JournalEntryLineInput[] = [];
+    let description = `Payment void reversal ${payment.id}`;
+
+    if (payment.invoiceId) {
+      const arAccount = await this.getAccountByCode(tenantId, '1010');
+      const bankAccount = await this.getAccountByCode(tenantId, '1000');
+      lines = [
+        {
+          accountId: arAccount.id,
+          debitAmount: amountDec,
+          description: `Void payment ${payment.id} against invoice ${payment.invoiceId} - AR restoration`,
+        },
+        {
+          accountId: bankAccount.id,
+          creditAmount: amountDec,
+          description: `Void payment ${payment.id} against invoice ${payment.invoiceId} - cash reversal`,
+        },
+      ];
+      description = `Payment ${payment.id} void reversal for invoice ${payment.invoiceId}`;
+    } else if (payment.purchaseInvoiceId) {
+      const bankAccount = await this.getAccountByCode(tenantId, '1000');
+      const apAccount = await this.getAccountByCode(tenantId, '2000');
+      lines = [
+        {
+          accountId: bankAccount.id,
+          debitAmount: amountDec,
+          description: `Void vendor payment ${payment.id} against bill ${payment.purchaseInvoiceId} - cash restoration`,
+        },
+        {
+          accountId: apAccount.id,
+          creditAmount: amountDec,
+          description: `Void vendor payment ${payment.id} against bill ${payment.purchaseInvoiceId} - AP restoration`,
+        },
+      ];
+      description = `Vendor payment ${payment.id} void reversal for bill ${payment.purchaseInvoiceId}`;
+    } else if (payment.expenseId) {
+      const bankAccount = await this.getAccountByCode(tenantId, '1000');
+      const apAccount = await this.getAccountByCode(tenantId, '2000');
+      lines = [
+        {
+          accountId: bankAccount.id,
+          debitAmount: amountDec,
+          description: `Void expense payment ${payment.id} against expense ${payment.expenseId} - cash restoration`,
+        },
+        {
+          accountId: apAccount.id,
+          creditAmount: amountDec,
+          description: `Void expense payment ${payment.id} against expense ${payment.expenseId} - AP restoration`,
+        },
+      ];
+      description = `Expense payment ${payment.id} void reversal for expense ${payment.expenseId}`;
+    } else if (payment.payrollId) {
+      const bankAccount = await this.getAccountByCode(tenantId, '1000');
+      const payableAccount = await this.getAccountByCode(tenantId, '2100');
+      lines = [
+        {
+          accountId: bankAccount.id,
+          debitAmount: amountDec,
+          description: `Void payroll payment ${payment.id} against payroll ${payment.payrollId} - cash restoration`,
+        },
+        {
+          accountId: payableAccount.id,
+          creditAmount: amountDec,
+          description: `Void payroll payment ${payment.id} against payroll ${payment.payrollId} - salaries payable restoration`,
+        },
+      ];
+      description = `Payroll payment ${payment.id} void reversal for payroll ${payment.payrollId}`;
+    } else {
+      return null;
+    }
+
+    return this.createJournalEntryInTransaction(
+      tx,
+      {
+        date: new Date(),
+        description,
+        referenceId,
+        lines,
+        posted: true,
+        createdById: userId,
+      },
+      tenantId,
+    );
+  }
+
+  async reversePayment(
+    tenantId: string,
+    payment: {
+      id: string;
+      amount: Prisma.Decimal | number;
+      invoiceId?: string | null;
+      purchaseInvoiceId?: string | null;
+      expenseId?: string | null;
+      payrollId?: string | null;
+    },
+    userId?: string,
+  ): Promise<JournalEntry | null> {
+    return this.prisma.$transaction((tx) =>
+      this.reversePaymentInTransaction(tx, tenantId, payment, userId),
+    );
+  }
+
+  async postInventoryAdjustmentInTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    countId: string,
+    lineId: string,
+    variance: number,
+    totalCost: Prisma.Decimal | number,
+    userId?: string,
+  ): Promise<JournalEntry | null> {
+    const referenceId = `stock_count_adj_${countId}_${lineId}`;
+    const existing = await tx.journalEntry.findFirst({
+      where: { tenantId, referenceId },
+      include: { lines: { include: { account: true } } },
+    });
+    if (existing) return existing;
+
+    const costDec = this.toDecimal(totalCost).abs();
+    if (costDec.lte(0)) return null;
+
+    const inventoryAccount = await this.getAccountByCode(tenantId, '1020');
+    let adjustmentAccount: Account;
+    try {
+      adjustmentAccount = await this.getAccountByCode(tenantId, '5050');
+    } catch {
+      adjustmentAccount = await this.getAccountByCode(tenantId, '5010');
+    }
+
+    let lines: JournalEntryLineInput[];
+    let description: string;
+
+    if (variance > 0) {
+      // Surplus: DR Inventory Asset (1020) / CR Inventory Adjustments (5050)
+      lines = [
+        {
+          accountId: inventoryAccount.id,
+          debitAmount: costDec,
+          description: `Stock count ${countId} surplus adjustment - inventory addition`,
+        },
+        {
+          accountId: adjustmentAccount.id,
+          creditAmount: costDec,
+          description: `Stock count ${countId} surplus adjustment - inventory gain`,
+        },
+      ];
+      description = `Stock count ${countId} line ${lineId} positive variance adjustment`;
+    } else {
+      // Shrinkage: DR Inventory Adjustments (5050) / CR Inventory Asset (1020)
+      lines = [
+        {
+          accountId: adjustmentAccount.id,
+          debitAmount: costDec,
+          description: `Stock count ${countId} shrinkage adjustment - inventory loss`,
+        },
+        {
+          accountId: inventoryAccount.id,
+          creditAmount: costDec,
+          description: `Stock count ${countId} shrinkage adjustment - inventory reduction`,
+        },
+      ];
+      description = `Stock count ${countId} line ${lineId} negative variance adjustment`;
+    }
+
+    return this.createJournalEntryInTransaction(
+      tx,
+      {
+        date: new Date(),
+        description,
+        referenceId,
+        lines,
+        posted: true,
+        createdById: userId,
+      },
+      tenantId,
+    );
+  }
+
+  async postInventoryAdjustment(
+    tenantId: string,
+    countId: string,
+    lineId: string,
+    variance: number,
+    totalCost: Prisma.Decimal | number,
+    userId?: string,
+  ): Promise<JournalEntry | null> {
+    return this.prisma.$transaction((tx) =>
+      this.postInventoryAdjustmentInTransaction(tx, tenantId, countId, lineId, variance, totalCost, userId),
     );
   }
 

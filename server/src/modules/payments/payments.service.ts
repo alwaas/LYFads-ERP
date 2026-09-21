@@ -437,54 +437,25 @@ export class PaymentsService {
       throw new ConflictException('Payment is already voided');
     }
 
-    if (payment.invoiceId) {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.payment.update({
-          where: { id },
-          data: {
-            status: PaymentStatus.VOIDED,
-            voidedAt: new Date(),
-            voidedById: userId,
-          },
-        });
-        await this.refreshInvoice(payment.invoiceId!, tx);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id },
+        data: {
+          status: PaymentStatus.VOIDED,
+          voidedAt: new Date(),
+          voidedById: userId,
+        },
       });
-    } else if (payment.purchaseInvoiceId) {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.payment.update({
-          where: { id },
-          data: {
-            status: PaymentStatus.VOIDED,
-            voidedAt: new Date(),
-            voidedById: userId,
-          },
-        });
-        await this.refreshPurchaseInvoice(payment.purchaseInvoiceId!, tx);
-      });
-    } else if (payment.expenseId) {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.payment.update({
-          where: { id },
-          data: {
-            status: PaymentStatus.VOIDED,
-            voidedAt: new Date(),
-            voidedById: userId,
-          },
-        });
-        await this.refreshExpense(payment.expenseId!, tx);
-      });
-    } else if (payment.payrollId) {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.payment.update({
-          where: { id },
-          data: {
-            status: PaymentStatus.VOIDED,
-            voidedAt: new Date(),
-            voidedById: userId,
-          },
-        });
+
+      if (payment.invoiceId) {
+        await this.refreshInvoice(payment.invoiceId, tx);
+      } else if (payment.purchaseInvoiceId) {
+        await this.refreshPurchaseInvoice(payment.purchaseInvoiceId, tx);
+      } else if (payment.expenseId) {
+        await this.refreshExpense(payment.expenseId, tx);
+      } else if (payment.payrollId) {
         await tx.payroll.update({
-          where: { id: payment.payrollId! },
+          where: { id: payment.payrollId },
           data: {
             status: 'APPROVED',
             paidAt: null,
@@ -492,8 +463,24 @@ export class PaymentsService {
             paymentReference: null,
           },
         });
-      });
-    }
+      }
+
+      if (payment.allocations && payment.allocations.length > 0) {
+        for (const alloc of payment.allocations) {
+          if (alloc.invoiceId && alloc.invoiceId !== payment.invoiceId) {
+            await this.refreshInvoice(alloc.invoiceId, tx);
+          }
+          if (alloc.purchaseInvoiceId && alloc.purchaseInvoiceId !== payment.purchaseInvoiceId) {
+            await this.refreshPurchaseInvoice(alloc.purchaseInvoiceId, tx);
+          }
+          if (alloc.expenseId && alloc.expenseId !== payment.expenseId) {
+            await this.refreshExpense(alloc.expenseId, tx);
+          }
+        }
+      }
+
+      await this.glService.reversePaymentInTransaction(tx, userTenantId, payment, userId);
+    });
 
     const voidedPayment = await this.findOne(id, userTenantId);
 

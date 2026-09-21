@@ -92,10 +92,11 @@ export class InvoiceService {
 
     if (invoice.status !== InvoiceStatus.DRAFT) {
       try {
+        const netAmount = invoice.subtotal ?? invoice.total.minus(invoice.tax ?? 0);
         await this.glService.postInvoice(
           userTenantId,
           invoice.id,
-          invoice.total,
+          netAmount,
           invoice.tax,
           userId,
         );
@@ -182,7 +183,7 @@ export class InvoiceService {
     userTenantId: string,
     userId?: string,
   ) {
-    await this.findOne(id, userTenantId);
+    const oldInvoice = await this.findOne(id, userTenantId);
 
     // Prevent tenantId spoofing - ignore any tenantId in the update DTO
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -248,6 +249,52 @@ export class InvoiceService {
       where: { id },
       data,
     });
+
+    if (
+      updateData.status === InvoiceStatus.CANCELLED &&
+      oldInvoice.status !== InvoiceStatus.CANCELLED
+    ) {
+      if (oldInvoice.status !== InvoiceStatus.DRAFT) {
+        try {
+          const netAmount =
+            oldInvoice.subtotal ??
+            new Prisma.Decimal(oldInvoice.total).minus(
+              oldInvoice.tax ? new Prisma.Decimal(oldInvoice.tax) : 0,
+            );
+          await this.glService.reverseInvoice(
+            userTenantId,
+            id,
+            netAmount,
+            oldInvoice.tax ?? 0,
+            userId,
+          );
+        } catch (err) {
+          void err;
+        }
+      }
+    } else if (
+      oldInvoice.status === InvoiceStatus.DRAFT &&
+      updateData.status &&
+      updateData.status !== InvoiceStatus.DRAFT &&
+      updateData.status !== InvoiceStatus.CANCELLED
+    ) {
+      try {
+        const netAmount =
+          updatedInvoice.subtotal ??
+          new Prisma.Decimal(updatedInvoice.total).minus(
+            updatedInvoice.tax ? new Prisma.Decimal(updatedInvoice.tax) : 0,
+          );
+        await this.glService.postInvoice(
+          userTenantId,
+          id,
+          netAmount,
+          updatedInvoice.tax ?? 0,
+          userId,
+        );
+      } catch (err) {
+        void err;
+      }
+    }
 
     await this.activityLogsService.log({
       action: 'UPDATE',

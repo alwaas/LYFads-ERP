@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { GlService } from '../gl/gl.service';
 
 export interface CreateStockCountLineInput {
   productId: string;
@@ -23,6 +24,7 @@ export class StockCountsService {
     private readonly prisma: PrismaService,
     private readonly valuation: InventoryValuationService,
     private readonly activityLogs: ActivityLogsService,
+    private readonly glService: GlService,
   ) {}
 
   async createDraft(dto: CreateStockCountInput, tenantId: string) {
@@ -186,6 +188,17 @@ export class StockCountsService {
               notes: `Stock count ${sc.id} reconciliation (positive variance)`,
             },
           });
+          if (new Prisma.Decimal(totalCost).gt(0)) {
+            await this.glService.postInventoryAdjustmentInTransaction(
+              tx,
+              tenantId,
+              sc.id,
+              line.id,
+              variance,
+              totalCost,
+              userId,
+            );
+          }
           totalVarianceValue = totalVarianceValue.plus(totalCost);
         } else {
           const { totalCost, unitCost } = await this.valuation.applyMovement(
@@ -227,6 +240,17 @@ export class StockCountsService {
               notes: `Stock count ${sc.id} reconciliation (negative variance)`,
             },
           });
+          if (new Prisma.Decimal(totalCost).abs().gt(0)) {
+            await this.glService.postInventoryAdjustmentInTransaction(
+              tx,
+              tenantId,
+              sc.id,
+              line.id,
+              variance,
+              totalCost,
+              userId,
+            );
+          }
           totalVarianceValue = totalVarianceValue.plus(totalCost);
         }
         adjustmentCount++;
