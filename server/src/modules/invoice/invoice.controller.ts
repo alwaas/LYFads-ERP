@@ -24,7 +24,7 @@ import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
-@Controller('invoice')
+@Controller(['invoice', 'invoices'])
 @UseGuards(JwtAuthGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
 export class InvoiceController {

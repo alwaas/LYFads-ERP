@@ -536,8 +536,10 @@ model Invoice {
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   tenantId      String
+  salesOrderId  String?
   client        Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
   project       Project?            @relation(fields: [projectId], references: [id])
+  salesOrder    SalesOrder?         @relation(fields: [salesOrderId], references: [id])
   tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items         InvoiceItem[]
   payments      Payment[]
@@ -545,6 +547,7 @@ model Invoice {
 
   @@index([clientId])
   @@index([status])
+  @@index([salesOrderId])
 }
 
 model InvoiceItem {
@@ -1221,6 +1224,7 @@ model SalesOrder {
   updatedAt            DateTime         @updatedAt
   tenantId             String
   items                SalesOrderItem[]
+  invoices             Invoice[]
   client               Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
   tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1417,6 +1421,7 @@ enum SalesOrderStatus {
   CONFIRMED
   PROCESSING
   FULFILLED
+  INVOICED
   CANCELLED
 }
 

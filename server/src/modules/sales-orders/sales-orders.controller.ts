@@ -25,6 +25,7 @@ import { SearchDto } from '../../common/dto/search.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 import { SalesOrderQueryDto } from './dto/sales-order-query.dto';
+import { CreateInvoiceFromOrderDto } from './dto/create-invoice-from-order.dto';
 
 @Controller('sales-orders')
 @UseGuards(JwtAuthGuard)
@@ -110,5 +111,23 @@ export class SalesOrdersController {
   @Post(':id/cancel')
   cancel(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
     return this.salesOrdersService.updateStatus(id, 'CANCELLED', user.tenantId, user.userId);
+  }
+
+  @Post(':id/create-invoice')
+  createInvoice(
+    @Param('id') id: string,
+    @Body() dto: CreateInvoiceFromOrderDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.salesOrdersService.createInvoice(id, dto, user.tenantId, user.userId);
+  }
+
+  @Post(':id/convert-to-invoice')
+  convertToInvoice(
+    @Param('id') id: string,
+    @Body() dto: CreateInvoiceFromOrderDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.salesOrdersService.createInvoice(id, dto, user.tenantId, user.userId);
   }
 }

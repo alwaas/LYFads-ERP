@@ -65,11 +65,29 @@ export class InvoiceService {
       }
     }
 
+    // Validate salesOrder belongs to tenant (if provided)
+    if (dto.salesOrderId) {
+      const salesOrder = await this.prisma.salesOrder.findFirst({
+        where: {
+          id: dto.salesOrderId,
+          tenantId: userTenantId,
+        },
+        select: { id: true },
+      });
+
+      if (!salesOrder) {
+        throw new ForbiddenException(
+          'Sales order does not belong to the current tenant.',
+        );
+      }
+    }
+
     const invoice = await this.prisma.invoice.create({
       data: {
         invoiceNumber: dto.invoiceNumber,
         clientId: dto.clientId,
         projectId: dto.projectId,
+        salesOrderId: dto.salesOrderId,
         tenantId: userTenantId,
         issueDate: new Date(dto.issueDate),
         dueDate: new Date(dto.dueDate),
@@ -138,6 +156,7 @@ export class InvoiceService {
         include: {
           client: true,
           project: true,
+          salesOrder: true,
           items: true,
           payments: true,
         },
@@ -164,6 +183,7 @@ export class InvoiceService {
       include: {
         client: true,
         project: true,
+        salesOrder: true,
         items: true,
         payments: true,
       },

@@ -19,6 +19,10 @@ export class CreateInvoiceDto {
   @IsString()
   projectId?: string;
 
+  @IsOptional()
+  @IsString()
+  salesOrderId?: string;
+
   @IsDateString()
   issueDate: string;
 

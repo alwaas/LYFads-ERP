@@ -7,15 +7,17 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
-import { Prisma, SalesOrderStatus } from '@prisma/client';
+import { Prisma, SalesOrderStatus, InvoiceStatus } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 import { CreateSalesOrderDto } from './dto/create-sales-order.dto';
 import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
 import { SalesOrderQueryDto } from './dto/sales-order-query.dto';
 import { AddItemsDto, SalesOrderItemInputDto } from './dto/add-items.dto';
+import { CreateInvoiceFromOrderDto } from './dto/create-invoice-from-order.dto';
 import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
 import { GlService } from '../gl/gl.service';
+import { EntitlementService } from '../subscriptions/entitlement.service';
 
 @Injectable()
 export class SalesOrdersService {
@@ -24,6 +26,7 @@ export class SalesOrdersService {
     private readonly activityLogsService: ActivityLogsService,
     private readonly valuation: InventoryValuationService,
     private readonly glService: GlService,
+    private readonly entitlementService: EntitlementService,
   ) {}
 
   private toMoney(value?: string | null): Prisma.Decimal {
@@ -185,6 +188,7 @@ export class SalesOrdersService {
         include: {
           client: { select: { id: true, companyName: true, email: true } },
           items: { include: { product: { select: { id: true, name: true, sku: true } } } },
+          invoices: { select: { id: true, invoiceNumber: true, status: true, total: true, balanceAmount: true } },
         },
         orderBy: { orderDate: 'desc' },
       }),
@@ -206,6 +210,7 @@ export class SalesOrdersService {
       include: {
         client: true,
         items: { include: { product: true } },
+        invoices: true,
       },
     });
 
@@ -367,9 +372,10 @@ export class SalesOrdersService {
 
     const validTransitions: Record<string, SalesOrderStatus[]> = {
       [SalesOrderStatus.DRAFT]: [SalesOrderStatus.CONFIRMED, SalesOrderStatus.CANCELLED],
-      [SalesOrderStatus.CONFIRMED]: [SalesOrderStatus.PROCESSING, SalesOrderStatus.CANCELLED],
-      [SalesOrderStatus.PROCESSING]: [SalesOrderStatus.FULFILLED, SalesOrderStatus.CANCELLED],
-      [SalesOrderStatus.FULFILLED]: [],
+      [SalesOrderStatus.CONFIRMED]: [SalesOrderStatus.PROCESSING, SalesOrderStatus.INVOICED, SalesOrderStatus.CANCELLED],
+      [SalesOrderStatus.PROCESSING]: [SalesOrderStatus.FULFILLED, SalesOrderStatus.INVOICED, SalesOrderStatus.CANCELLED],
+      [SalesOrderStatus.FULFILLED]: [SalesOrderStatus.INVOICED],
+      [SalesOrderStatus.INVOICED]: [SalesOrderStatus.FULFILLED],
       [SalesOrderStatus.CANCELLED]: [],
     };
 
@@ -571,5 +577,149 @@ export class SalesOrdersService {
     });
 
     return { alreadyFulfilled: false, movements: movementCount };
+  }
+
+  /**
+   * Converts a sales order into a sales invoice, copying items, client details,
+   * computing taxes, enforcing SaaS limits, updating order status to INVOICED,
+   * and posting to GL.
+   */
+  async createInvoice(
+    id: string,
+    dto: CreateInvoiceFromOrderDto = {},
+    userTenantId: string,
+    userId?: string,
+  ) {
+    const salesOrder = await this.prisma.salesOrder.findFirst({
+      where: { id, tenantId: userTenantId },
+      include: {
+        client: true,
+        items: {
+          include: { product: true },
+          orderBy: { sequence: 'asc' },
+        },
+        invoices: true,
+      },
+    });
+
+    if (!salesOrder) {
+      throw new NotFoundException('Sales order not found');
+    }
+
+    if (salesOrder.status === SalesOrderStatus.CANCELLED) {
+      throw new ConflictException('Cannot create invoice for a cancelled sales order');
+    }
+
+    if (salesOrder.status === SalesOrderStatus.INVOICED) {
+      throw new ConflictException('Sales order has already been invoiced');
+    }
+
+    if (!salesOrder.items || salesOrder.items.length === 0) {
+      throw new BadRequestException('Sales order has no items to invoice');
+    }
+
+    await this.entitlementService.enforceLimit(userTenantId, 'MAX_INVOICES');
+
+    let invoiceNumber = dto.invoiceNumber?.trim();
+    if (!invoiceNumber) {
+      invoiceNumber = `INV-${salesOrder.orderNumber}`;
+      const existing = await this.prisma.invoice.findFirst({
+        where: { invoiceNumber, tenantId: userTenantId },
+      });
+      if (existing) {
+        invoiceNumber = `INV-${salesOrder.orderNumber}-${Date.now().toString().slice(-4)}`;
+      }
+    } else {
+      const existing = await this.prisma.invoice.findFirst({
+        where: { invoiceNumber, tenantId: userTenantId },
+      });
+      if (existing) {
+        throw new ConflictException(`Invoice number ${invoiceNumber} already exists`);
+      }
+    }
+
+    const issueDate = dto.issueDate ? new Date(dto.issueDate) : new Date();
+    const dueDate = dto.dueDate
+      ? new Date(dto.dueDate)
+      : (salesOrder.expectedDeliveryDate
+          ? new Date(salesOrder.expectedDeliveryDate)
+          : new Date(issueDate.getTime() + 30 * 24 * 60 * 60 * 1000));
+
+    const invoiceStatus = dto.status || InvoiceStatus.SENT;
+
+    const createdInvoice = await this.prisma.$transaction(async (tx) => {
+      const inv = await tx.invoice.create({
+        data: {
+          invoiceNumber,
+          clientId: salesOrder.clientId,
+          salesOrderId: salesOrder.id,
+          issueDate,
+          dueDate,
+          subtotal: salesOrder.subtotal,
+          discount: salesOrder.discount,
+          tax: salesOrder.tax,
+          total: salesOrder.total,
+          paidAmount: new Prisma.Decimal(0),
+          balanceAmount: salesOrder.total,
+          status: invoiceStatus,
+          notes: dto.notes || salesOrder.notes || `Generated from Sales Order ${salesOrder.orderNumber}`,
+          tenantId: userTenantId,
+        },
+      });
+
+      const invoiceItemsData = salesOrder.items.map((item) => ({
+        invoiceId: inv.id,
+        description: item.product?.name
+          ? `${item.product.name}${item.product.sku ? ` (${item.product.sku})` : ''}`
+          : `Item for sales order ${salesOrder.orderNumber}`,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        amount: item.lineTotal,
+        tenantId: userTenantId,
+      }));
+
+      await tx.invoiceItem.createMany({
+        data: invoiceItemsData,
+      });
+
+      await tx.salesOrder.update({
+        where: { id: salesOrder.id },
+        data: { status: SalesOrderStatus.INVOICED },
+      });
+
+      return tx.invoice.findUnique({
+        where: { id: inv.id },
+        include: {
+          items: true,
+          client: true,
+          salesOrder: true,
+        },
+      });
+    });
+
+    if (createdInvoice && createdInvoice.status !== InvoiceStatus.DRAFT) {
+      try {
+        const netAmount = createdInvoice.total.minus(createdInvoice.tax ?? 0);
+        await this.glService.postInvoice(
+          userTenantId,
+          createdInvoice.id,
+          netAmount,
+          createdInvoice.tax,
+          userId,
+        );
+      } catch (err) {
+        void err;
+      }
+    }
+
+    await this.activityLogsService.log({
+      action: 'CONVERT_TO_INVOICE',
+      module: 'SALES_ORDER',
+      description: `Sales order ${salesOrder.orderNumber} converted to invoice ${createdInvoice!.invoiceNumber}.`,
+      userId,
+      tenantId: userTenantId,
+    });
+
+    return createdInvoice;
   }
 }
