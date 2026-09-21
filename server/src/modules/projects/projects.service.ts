@@ -9,6 +9,7 @@ import { PrismaService } from '../../database';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { EntitlementService } from '../subscriptions/entitlement.service';
 
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -18,12 +19,15 @@ export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly entitlementService: EntitlementService,
   ) {}
 
   /**
    * Create a project inside the authenticated tenant.
    */
   async create(dto: CreateProjectDto, userTenantId: string) {
+    await this.entitlementService.enforceLimit(userTenantId, 'MAX_PROJECTS');
+
     const projectCode = dto.projectCode.trim();
 
     this.validateProjectDates(dto.startDate, dto.endDate);

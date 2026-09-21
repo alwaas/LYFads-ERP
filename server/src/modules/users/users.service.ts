@@ -12,9 +12,14 @@ import * as bcrypt from 'bcrypt';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
+import { EntitlementService } from '../subscriptions/entitlement.service';
+
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitlementService: EntitlementService,
+  ) {}
 
   async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
     const { skip, limit } = pagination;
@@ -87,6 +92,8 @@ export class UsersService {
   }
 
   async create(dto: CreateUserDto, userTenantId: string) {
+    await this.entitlementService.enforceLimit(userTenantId, 'MAX_USERS');
+
     const existingUser = await this.prisma.user.findUnique({
       where: {
         email: dto.email,

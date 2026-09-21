@@ -11,11 +11,18 @@ import { WarehouseQueryDto } from './dto/warehouse-query.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
+import { EntitlementService } from '../subscriptions/entitlement.service';
+
 @Injectable()
 export class WarehousesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly entitlementService: EntitlementService,
+  ) {}
 
   async create(dto: CreateWarehouseDto, userTenantId: string) {
+    await this.entitlementService.enforceLimit(userTenantId, 'MAX_WAREHOUSES');
+
     if (dto.isDefault) {
       await this.prisma.warehouse.updateMany({
         where: { tenantId: userTenantId, isDefault: true },

@@ -12,6 +12,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { GlService } from '../gl/gl.service';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
+import { EntitlementService } from '../subscriptions/entitlement.service';
 
 @Injectable()
 export class InvoiceService {
@@ -19,9 +20,12 @@ export class InvoiceService {
     private prisma: PrismaService,
     private readonly activityLogsService: ActivityLogsService,
     private readonly glService: GlService,
+    private readonly entitlementService: EntitlementService,
   ) {}
 
   async create(dto: CreateInvoiceDto, userTenantId: string, userId?: string) {
+    await this.entitlementService.enforceLimit(userTenantId, 'MAX_INVOICES');
+
     // Validate that dto.tenantId (if provided) matches authenticated user's tenant
     if (dto.tenantId && dto.tenantId !== userTenantId) {
       throw new ForbiddenException(

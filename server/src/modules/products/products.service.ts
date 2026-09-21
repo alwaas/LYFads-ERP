@@ -12,15 +12,19 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 import { Prisma, StockMovementType } from '@prisma/client';
 import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
+import { EntitlementService } from '../subscriptions/entitlement.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly valuation: InventoryValuationService,
+    private readonly entitlementService: EntitlementService,
   ) {}
 
   async create(dto: CreateProductDto, userTenantId: string) {
+    await this.entitlementService.enforceLimit(userTenantId, 'MAX_PRODUCTS');
+
     const existing = await this.prisma.product.findFirst({
       where: {
         sku: dto.sku,

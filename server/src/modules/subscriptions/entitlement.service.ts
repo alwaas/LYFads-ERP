@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 
 import { PrismaService } from '../../database';
 
@@ -16,8 +16,20 @@ export class EntitlementService {
       return false;
     }
 
+    if (subscription.status !== 'ACTIVE' && subscription.status !== 'TRIAL') {
+      return false;
+    }
+
+    if (
+      subscription.status === 'TRIAL' &&
+      subscription.trialEndDate &&
+      new Date() > subscription.trialEndDate
+    ) {
+      return false;
+    }
+
     return subscription.plan.features.some(
-      (f) => f.featureCode === featureCode,
+      (f) => f.featureCode === featureCode || f.featureCode === 'ALL',
     );
   }
 
@@ -34,6 +46,18 @@ export class EntitlementService {
       return null;
     }
 
+    if (subscription.status !== 'ACTIVE' && subscription.status !== 'TRIAL') {
+      return null;
+    }
+
+    if (
+      subscription.status === 'TRIAL' &&
+      subscription.trialEndDate &&
+      new Date() > subscription.trialEndDate
+    ) {
+      return null;
+    }
+
     const limit = subscription.plan.limits.find(
       (l) => l.resourceCode === resourceCode,
     );
@@ -44,7 +68,7 @@ export class EntitlementService {
   async checkLimit(
     tenantId: string,
     resourceCode: string,
-    requestedAmount: number,
+    requestedAmount = 1,
   ): Promise<{ allowed: boolean; limit: number | null; current: number }> {
     const limit = await this.getLimit(tenantId, resourceCode);
 
@@ -63,6 +87,31 @@ export class EntitlementService {
       limit,
       current,
     };
+  }
+
+  async enforceLimit(
+    tenantId: string,
+    resourceCode: string,
+    requestedAmount = 1,
+  ): Promise<void> {
+    const result = await this.checkLimit(tenantId, resourceCode, requestedAmount);
+    if (!result.allowed) {
+      throw new ForbiddenException(
+        `Plan limit reached for ${resourceCode}. Limit: ${result.limit}, Current: ${result.current}. Please upgrade your subscription plan to add more.`,
+      );
+    }
+  }
+
+  async enforceFeature(
+    tenantId: string,
+    featureCode: string,
+  ): Promise<void> {
+    const has = await this.hasFeature(tenantId, featureCode);
+    if (!has) {
+      throw new ForbiddenException(
+        `Your plan does not have access to feature '${featureCode}'. Please upgrade your subscription plan.`,
+      );
+    }
   }
 
   async getEntitlements(tenantId: string) {
