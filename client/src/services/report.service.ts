@@ -1,5 +1,12 @@
 import api from "./api";
-import type { InventoryReport, ProfitabilityReport } from "../types/report";
+import type {
+  InventoryReport,
+  ProfitabilityReport,
+  ExpenseReport,
+  PurchaseReport,
+  VendorReport,
+  PayablesReport,
+} from "../types/report";
 
 export const getInventoryReport = async (): Promise<InventoryReport> => {
   const { data } = await api.get("/reports/inventory");
@@ -26,24 +33,29 @@ export const getReceivablesReport = async () => {
   return data.data;
 };
 
+export const getPayablesReport = async (params?: { dateFrom?: string; dateTo?: string }): Promise<PayablesReport> => {
+  const { data } = await api.get("/reports/payables", { params });
+  return data.data as PayablesReport;
+};
+
 export const getCustomerReport = async (params?: { dateFrom?: string; dateTo?: string; clientId?: string; projectId?: string; status?: string }) => {
   const { data } = await api.get("/reports/customers", { params });
   return data.data;
 };
 
-export const getExpenseReport = async (params?: { dateFrom?: string; dateTo?: string }) => {
+export const getExpenseReport = async (params?: { dateFrom?: string; dateTo?: string; category?: string; search?: string }): Promise<ExpenseReport> => {
   const { data } = await api.get("/reports/expenses", { params });
-  return data.data;
+  return data.data as ExpenseReport;
 };
 
-export const getPurchaseReport = async (params?: { dateFrom?: string; dateTo?: string }) => {
+export const getPurchaseReport = async (params?: { dateFrom?: string; dateTo?: string; vendorId?: string; search?: string }): Promise<PurchaseReport> => {
   const { data } = await api.get("/reports/purchases", { params });
-  return data.data;
+  return data.data as PurchaseReport;
 };
 
-export const getVendorReport = async (params?: { dateFrom?: string; dateTo?: string }) => {
+export const getVendorReport = async (params?: { dateFrom?: string; dateTo?: string }): Promise<VendorReport> => {
   const { data } = await api.get("/reports/vendors", { params });
-  return data.data;
+  return data.data as VendorReport;
 };
 
 export const getEmployeeDirectoryReport = async () => {

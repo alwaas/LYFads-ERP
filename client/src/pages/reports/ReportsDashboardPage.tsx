@@ -110,23 +110,64 @@ function ReportsDashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link to="/reports/employees" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
-            <h3 className="font-semibold text-slate-900">Employee Directory</h3>
-            <p className="text-sm text-slate-500">View all employee records</p>
-          </Link>
-          <Link to="/reports/attendance-summary" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
-            <h3 className="font-semibold text-slate-900">Attendance Summary</h3>
-            <p className="text-sm text-slate-500">Monthly attendance overview</p>
-          </Link>
-          <Link to="/reports/leave-report" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
-            <h3 className="font-semibold text-slate-900">Leave Report</h3>
-            <p className="text-sm text-slate-500">Leave analytics and trends</p>
-          </Link>
-          <Link to="/reports/payroll-summary" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
-            <h3 className="font-semibold text-slate-900">Payroll Summary</h3>
-            <p className="text-sm text-slate-500">Payroll overview by status</p>
-          </Link>
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Financial & Operational Reports</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Link to="/reports/sales" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition">
+              <h3 className="font-semibold text-slate-900 text-sm">Sales</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Invoices & revenue</p>
+            </Link>
+            <Link to="/reports/receivables" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition">
+              <h3 className="font-semibold text-slate-900 text-sm">Receivables</h3>
+              <p className="text-xs text-slate-500 mt-0.5">AR & aging schedule</p>
+            </Link>
+            <Link to="/reports/payables" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition">
+              <h3 className="font-semibold text-slate-900 text-sm">Payables</h3>
+              <p className="text-xs text-slate-500 mt-0.5">AP & vendor aging</p>
+            </Link>
+            <Link to="/reports/profitability" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition">
+              <h3 className="font-semibold text-slate-900 text-sm">Profitability</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Gross margins & COGS</p>
+            </Link>
+            <Link to="/reports/expenses" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition">
+              <h3 className="font-semibold text-slate-900 text-sm">Expenses</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Operating breakdown</p>
+            </Link>
+            <Link to="/reports/purchases" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition">
+              <h3 className="font-semibold text-slate-900 text-sm">Purchases</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Procurement spend</p>
+            </Link>
+            <Link to="/reports/vendors" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition">
+              <h3 className="font-semibold text-slate-900 text-sm">Vendors</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Supplier directory</p>
+            </Link>
+            <Link to="/reports/customers" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:shadow-md hover:border-indigo-200 transition">
+              <h3 className="font-semibold text-slate-900 text-sm">Customers</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Client performance</p>
+            </Link>
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Workforce & Payroll Reports</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link to="/reports/employees" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
+              <h3 className="font-semibold text-slate-900">Employee Directory</h3>
+              <p className="text-sm text-slate-500">View all employee records</p>
+            </Link>
+            <Link to="/reports/attendance-summary" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
+              <h3 className="font-semibold text-slate-900">Attendance Summary</h3>
+              <p className="text-sm text-slate-500">Monthly attendance overview</p>
+            </Link>
+            <Link to="/reports/leave-report" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
+              <h3 className="font-semibold text-slate-900">Leave Report</h3>
+              <p className="text-sm text-slate-500">Leave analytics and trends</p>
+            </Link>
+            <Link to="/reports/payroll-summary" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition">
+              <h3 className="font-semibold text-slate-900">Payroll Summary</h3>
+              <p className="text-sm text-slate-500">Payroll overview by status</p>
+            </Link>
+          </div>
         </div>
 
         {error && (

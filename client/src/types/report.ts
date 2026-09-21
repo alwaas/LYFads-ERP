@@ -252,7 +252,53 @@ export interface PayrollSummaryReport {
   }>;
 }
 
-export type ReportResponse = DashboardReport | SalesReport | ReceivablesReport | CustomerReport | UnavailableReport | EmployeeDirectoryReport | AttendanceSummaryReport | LeaveReport | PayrollSummaryReport;
+export interface ExpenseReport {
+  available: boolean;
+  totalExpenses: number;
+  expenseCount: number;
+  byCategory: Array<{ category: string; total: number }>;
+  byMonth: Array<{ month: string; total: number }>;
+}
+
+export interface PurchaseReport {
+  available: boolean;
+  totalPurchases: number;
+  purchaseCount: number;
+  byVendor: Array<{ vendorId: string; vendorName: string; total: number }>;
+  byMonth: Array<{ month: string; total: number }>;
+}
+
+export interface VendorReport {
+  available: boolean;
+  totalVendors: number;
+  activeVendors: number;
+  vendors: Array<{
+    id: string;
+    name: string;
+    contactPerson: string | null;
+    email: string | null;
+    phone: string | null;
+    isActive: boolean;
+    purchaseCount: number;
+    totalPurchases: number;
+  }>;
+}
+
+export type ReportResponse =
+  | DashboardReport
+  | SalesReport
+  | ReceivablesReport
+  | PayablesReport
+  | ExpenseReport
+  | PurchaseReport
+  | VendorReport
+  | ProfitabilityReport
+  | CustomerReport
+  | UnavailableReport
+  | EmployeeDirectoryReport
+  | AttendanceSummaryReport
+  | LeaveReport
+  | PayrollSummaryReport;
 
 export interface ReportQueryParams {
   dateFrom?: string;
@@ -260,4 +306,7 @@ export interface ReportQueryParams {
   clientId?: string;
   projectId?: string;
   status?: string;
+  category?: string;
+  vendorId?: string;
+  search?: string;
 }

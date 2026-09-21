@@ -213,6 +213,17 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
 
   {
+    title: "Payables",
+    path: "/reports/payables",
+    icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
     title: "Customers",
     path: "/reports/customers",
     icon: Briefcase,

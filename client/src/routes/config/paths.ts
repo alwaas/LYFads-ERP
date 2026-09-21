@@ -99,6 +99,7 @@ export const PATHS = {
   REPORTS: "/reports",
   SALES_REPORT: "/reports/sales",
   RECEIVABLES_REPORT: "/reports/receivables",
+  PAYABLES_REPORT: "/reports/payables",
   CUSTOMERS_REPORT: "/reports/customers",
   EXPENSE_REPORT: "/reports/expenses",
   PURCHASE_REPORT: "/reports/purchases",

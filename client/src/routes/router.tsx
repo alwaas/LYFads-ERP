@@ -207,6 +207,10 @@ const ReceivablesReportPage = lazy(
   () => import("../pages/reports/ReceivablesReportPage")
 );
 
+const PayablesReportPage = lazy(
+  () => import("../pages/reports/PayablesReportPage")
+);
+
 const CustomerReportPage = lazy(
   () => import("../pages/reports/CustomerReportPage")
 );
@@ -1650,6 +1654,17 @@ const router = createBrowserRouter([
       <ProtectedRoute>
         <Suspense fallback={<PageLoader />}>
           <ReceivablesReportPage />
+        </Suspense>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/reports/payables",
+    element: (
+      <ProtectedRoute>
+        <Suspense fallback={<PageLoader />}>
+          <PayablesReportPage />
         </Suspense>
       </ProtectedRoute>
     ),
