@@ -1060,19 +1060,13 @@ describe('Expenses Workflow State Machine E2E', () => {
         expect(expense.createdById).toBe(testData.tenantAEmployee.id);
       });
 
-      it('EMPLOYEE can view expenses in their tenant', async () => {
+      it('EMPLOYEE is blocked from listing all tenant expenses', async () => {
         await createExpenseInDb();
 
-        const res = await request(app.getHttpServer())
+        await request(app.getHttpServer())
           .get('/expenses')
           .set('Authorization', `Bearer ${employeeTokenA()}`)
-          .expect(200);
-
-        const expenses = res.body.data.data;
-        expect(Array.isArray(expenses)).toBe(true);
-        expenses.forEach((e: any) => {
-          expect(e.tenantId).toBe(testData.tenantA.id);
-        });
+          .expect(403);
       });
 
       it('EMPLOYEE can view own expense by id', async () => {
