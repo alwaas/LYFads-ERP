@@ -24,6 +24,7 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Post()
   create(@Body() dto: CreateUserDto, @CurrentUser() user: AuthenticatedUser) {
     return this.usersService.create(dto, user.tenantId);
@@ -43,6 +44,7 @@ export class UsersController {
     return this.usersService.findOne(id, user.tenantId);
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Patch(':id/role')
   updateRole(
     @Param('id') id: string,
@@ -52,6 +54,7 @@ export class UsersController {
     return this.usersService.updateRole(id, dto, user.tenantId);
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
@@ -61,6 +64,7 @@ export class UsersController {
     return this.usersService.updateStatus(id, dto, user.tenantId);
   }
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.usersService.remove(id, user.tenantId);

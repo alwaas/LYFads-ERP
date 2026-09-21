@@ -97,6 +97,10 @@ export class UsersService {
       throw new ForbiddenException('Email already exists.');
     }
 
+    if (dto.role === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Cannot assign SUPER_ADMIN role');
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.user.create({
@@ -122,6 +126,10 @@ export class UsersService {
   }
 
   async updateRole(id: string, dto: UpdateUserRoleDto, userTenantId: string) {
+    if (dto.role === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Cannot assign SUPER_ADMIN role');
+    }
+
     await this.findOne(id, userTenantId);
 
     return this.prisma.user.update({

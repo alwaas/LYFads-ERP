@@ -52,6 +52,6 @@ export class PaymentAllocationsController {
 
   @Delete(':id')
   remove(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
-    return this.paymentAllocationsService.remove(id, user.tenantId);
+    return this.paymentAllocationsService.remove(id, user.tenantId, user.userId);
   }
 }

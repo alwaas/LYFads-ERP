@@ -31,7 +31,23 @@ export class TenantStatusGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user: AuthenticatedUser = request.user;
 
-    if (!user || !user.tenantId) {
+    if (!user) {
+      return true;
+    }
+
+    const userId = user.userId || user.id;
+    if (userId) {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isActive: true },
+      });
+
+      if (!dbUser || !dbUser.isActive) {
+        throw new ForbiddenException('User account is inactive or disabled.');
+      }
+    }
+
+    if (!user.tenantId) {
       return true;
     }
 

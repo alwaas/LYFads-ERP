@@ -514,8 +514,12 @@ export class PaymentAllocationsService {
     return allocation;
   }
 
-  async remove(id: string, userTenantId: string) {
+  async remove(id: string, userTenantId: string, userId?: string) {
     const allocation = await this.findOne(id, userTenantId);
+
+    if (allocation.payment && allocation.payment.status === PaymentStatus.VOIDED) {
+      throw new ConflictException('Cannot remove allocation from a voided payment');
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.paymentAllocation.delete({
@@ -529,6 +533,14 @@ export class PaymentAllocationsService {
       } else if (allocation.expenseId) {
         await this.refreshExpense(allocation.expenseId, tx);
       }
+    });
+
+    await this.activityLogsService.log({
+      action: 'DELETE',
+      module: 'PAYMENT_ALLOCATION',
+      description: `Payment allocation ${id} removed.`,
+      userId,
+      tenantId: userTenantId,
     });
 
     return {

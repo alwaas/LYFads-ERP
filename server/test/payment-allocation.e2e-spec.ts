@@ -275,6 +275,48 @@ describe('Payment Allocation & Status E2E Tests', () => {
         })
         .expect(409);
     });
+
+    it('should delete payment allocation and refresh invoice balance', async () => {
+      const token = generateToken(testData.tenantAAdmin);
+      const paymentResponse = await request(app.getHttpServer())
+        .post('/payments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          amount: '100.00',
+          paymentDate: new Date().toISOString().split('T')[0],
+          method: 'CASH',
+        })
+        .expect(201);
+
+      const paymentId = paymentResponse.body.data.id;
+      const allocResponse = await request(app.getHttpServer())
+        .post('/payment-allocations')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          paymentId,
+          invoiceId: testData.tenantAInvoice.id,
+          amount: '50.00',
+        })
+        .expect(201);
+
+      const allocId = allocResponse.body.data.id;
+
+      // Delete allocation
+      const delResponse = await request(app.getHttpServer())
+        .delete(`/payment-allocations/${allocId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(delResponse.body.success).toBe(true);
+
+      // Verify invoice balance refreshed
+      const invoiceResponse = await request(app.getHttpServer())
+        .get(`/invoice/${testData.tenantAInvoice.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      expect(Number(invoiceResponse.body.data.paidAmount)).toBe(0);
+    });
   });
 
   describe('Cross-Tenant Isolation', () => {
@@ -324,6 +366,38 @@ describe('Payment Allocation & Status E2E Tests', () => {
           invoiceId: testData.tenantBInvoice.id,
           amount: '50.00',
         })
+        .expect(403);
+    });
+
+    it('should not allow tenant B to delete tenant A payment allocation', async () => {
+      const tokenA = generateToken(testData.tenantAAdmin);
+      const paymentResponse = await request(app.getHttpServer())
+        .post('/payments')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          amount: '100.00',
+          paymentDate: new Date().toISOString().split('T')[0],
+          method: 'CASH',
+        })
+        .expect(201);
+
+      const paymentId = paymentResponse.body.data.id;
+      const allocResponse = await request(app.getHttpServer())
+        .post('/payment-allocations')
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          paymentId,
+          invoiceId: testData.tenantAInvoice.id,
+          amount: '50.00',
+        })
+        .expect(201);
+
+      const allocId = allocResponse.body.data.id;
+      const tokenB = generateToken(testData.tenantBAdmin);
+
+      await request(app.getHttpServer())
+        .delete(`/payment-allocations/${allocId}`)
+        .set('Authorization', `Bearer ${tokenB}`)
         .expect(403);
     });
   });
