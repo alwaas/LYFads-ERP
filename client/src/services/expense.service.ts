@@ -9,6 +9,14 @@ export interface Expense {
   paymentMethod: PaymentMethod;
   referenceNo?: string;
   notes?: string;
+  status: string;
+  vendor?: string;
+  receiptUrl?: string;
+  user?: {
+    id: string;
+    fullName: string;
+    email?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

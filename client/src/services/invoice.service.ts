@@ -1,7 +1,12 @@
 import api from "./api";
-import type { Invoice, CreateInvoiceDto, UpdateInvoiceDto } from "../types/invoice";
+import type { Invoice, CreateInvoiceDto, UpdateInvoiceDto, ARSummary } from "../types/invoice";
 
 export const invoiceService = {
+  getARSummary: async (): Promise<ARSummary> => {
+    const response = await api.get("/invoice/summary/ar");
+    return response.data.data || response.data;
+  },
+
   getAllInvoices: async (page = 1, limit = 10, status?: string, search?: string) => {
     const params: Record<string, string | number> = { page, limit };
     if (status && status !== "all") params.status = status;

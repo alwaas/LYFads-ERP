@@ -25,6 +25,11 @@ export class CreateInvoiceItemDto {
   @IsDecimal()
   discount?: string;
 
+  @IsOptional()
   @IsDecimal()
-  lineTotal: string;
+  lineTotal?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  amount?: string;
 }

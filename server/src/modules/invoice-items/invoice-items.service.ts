@@ -35,7 +35,7 @@ export class InvoiceItemsService {
         description: dto.description,
         quantity: dto.quantity,
         unitPrice: dto.unitPrice,
-        amount: dto.amount,
+        amount: (dto.amount ?? dto.lineTotal ?? '0') as any,
         invoiceId: dto.invoiceId,
         tenantId: userTenantId,
       },
@@ -103,7 +103,9 @@ export class InvoiceItemsService {
         description: dto.description,
         quantity: dto.quantity,
         unitPrice: dto.unitPrice,
-        amount: dto.amount,
+        ...(dto.amount !== undefined || dto.lineTotal !== undefined
+          ? { amount: (dto.amount ?? dto.lineTotal) as any }
+          : {}),
       },
     });
   }

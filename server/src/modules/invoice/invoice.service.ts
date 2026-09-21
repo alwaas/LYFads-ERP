@@ -7,7 +7,7 @@ import { PrismaService } from '../../database/prisma.service';
 
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
-import { Prisma, InvoiceStatus } from '@prisma/client';
+import { Prisma, InvoiceStatus, PaymentStatus } from '@prisma/client';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { GlService } from '../gl/gl.service';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -357,6 +357,92 @@ export class InvoiceService {
     return {
       success: true,
       message: 'Invoice deleted successfully',
+    };
+  }
+
+  async getARSummary(tenantId: string) {
+    const invoices = await this.prisma.invoice.findMany({
+      where: {
+        tenantId,
+        status: { in: [InvoiceStatus.SENT, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.OVERDUE] },
+        balanceAmount: { gt: 0 },
+      },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        dueDate: true,
+        total: true,
+        paidAmount: true,
+        balanceAmount: true,
+        status: true,
+      },
+    });
+
+    const now = new Date();
+    let totalOutstanding = 0;
+    let totalOverdue = 0;
+    let currentReceivables = 0;
+    let partiallyPaid = 0;
+    let overdueInvoiceCount = 0;
+
+    const aging = {
+      '0-30': 0,
+      '31-60': 0,
+      '61-90': 0,
+      '90+': 0,
+    };
+
+    for (const inv of invoices) {
+      const balance = Number(inv.balanceAmount);
+      totalOutstanding += balance;
+
+      if (inv.status === InvoiceStatus.PARTIALLY_PAID) {
+        partiallyPaid++;
+      }
+
+      const dueDate = new Date(inv.dueDate);
+      const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysOverdue > 0 || inv.status === InvoiceStatus.OVERDUE) {
+        totalOverdue += balance;
+        overdueInvoiceCount++;
+      } else {
+        currentReceivables += balance;
+      }
+
+      if (daysOverdue <= 30) {
+        aging['0-30'] += balance;
+      } else if (daysOverdue <= 60) {
+        aging['31-60'] += balance;
+      } else if (daysOverdue <= 90) {
+        aging['61-90'] += balance;
+      } else {
+        aging['90+'] += balance;
+      }
+    }
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const paymentsThisMonth = await this.prisma.payment.aggregate({
+      where: {
+        tenantId,
+        paymentDate: { gte: startOfMonth },
+        status: PaymentStatus.ACTIVE,
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+    const paidThisPeriod = Number(paymentsThisMonth._sum.amount ?? 0);
+
+    return {
+      totalOutstanding,
+      totalOverdue,
+      currentReceivables,
+      partiallyPaid,
+      paidThisPeriod,
+      invoiceCount: invoices.length,
+      overdueInvoiceCount,
+      aging,
     };
   }
 }

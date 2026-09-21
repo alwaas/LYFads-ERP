@@ -48,6 +48,11 @@ export class InvoiceController {
     return this.invoiceService.findAll(pagination, search, status, user.tenantId);
   }
 
+  @Get('summary/ar')
+  getARSummary(@CurrentUser() user: AuthenticatedUser) {
+    return this.invoiceService.getARSummary(user.tenantId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.invoiceService.findOne(id, user.tenantId);
