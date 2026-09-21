@@ -60,6 +60,7 @@ import { GlModule } from './modules/gl/gl.module';
 import { TenantManagementModule } from './modules/tenant-management/tenant-management.module';
 import { PlansModule } from './modules/plans/plans.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { LifecycleModule } from './modules/lifecycle/lifecycle.module';
 
 @Module({
   imports: [
@@ -121,6 +122,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
     TenantManagementModule,
     PlansModule,
     SubscriptionsModule,
+    LifecycleModule,
   ],
   providers: [
     {
