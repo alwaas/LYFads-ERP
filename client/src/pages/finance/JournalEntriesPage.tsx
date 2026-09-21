@@ -1,19 +1,12 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Search,
-  Plus,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Search, Plus, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageLoader from "../../components/common/PageLoader";
 import Pagination from "../../components/ui/Pagination";
 import { financeService, type JournalEntry } from "../../services/finance.service";
 
 const JournalEntriesPage = () => {
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -33,6 +26,7 @@ const JournalEntriesPage = () => {
   });
 
   if (isLoading) return <PageLoader />;
+  if (isError) return <div className="p-6 text-red-600">Failed to load journal entries.</div>;
 
   const entries = result?.data || [];
 
@@ -107,8 +101,8 @@ const JournalEntriesPage = () => {
 
       {result && result.totalPages > 1 && (
         <Pagination
-          current={result.page}
-          total={result.totalPages}
+          page={result.page}
+          totalPages={result.totalPages}
           onPageChange={setPage}
         />
       )}

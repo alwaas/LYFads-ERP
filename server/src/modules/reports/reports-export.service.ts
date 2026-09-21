@@ -343,9 +343,9 @@ export class ReportsExportService {
           }
         });
 
-        doc.text(`${reportType.toUpperCase()} REPORT`, { align: 'center', fontSize: 18 });
+        doc.fontSize(18).text(`${reportType.toUpperCase()} REPORT`, { align: 'center' });
         doc.moveDown();
-        doc.text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+        doc.fontSize(12).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
         doc.moveDown();
 
         doc.end();

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageLoader from "../../components/common/PageLoader";
-import { financeService, type JournalEntry } from "../../services/finance.service";
+import { financeService, type JournalEntry, type JournalEntryLine } from "../../services/finance.service";
 
 const ViewJournalEntryPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,15 +11,15 @@ const ViewJournalEntryPage = () => {
   const {
     data: entries,
     isLoading,
-  } = useQuery({
-    queryKey: ["finance-journal-entries"],
-    queryFn: () => financeService.getJournalEntries(1, 100, { referenceId: id }),
+  } = useQuery<{ data: JournalEntry[] }>({
+    queryKey: ["finance-journal-entries", id],
+    queryFn: () => financeService.getJournalEntries(1, 100, id ? { referenceId: id } : undefined),
   });
 
   if (isLoading) return <PageLoader />;
 
-  const allEntries = entries?.data || [];
-  const entry = allEntries.find((e) => e.id === id) || allEntries[0];
+  const allEntries: JournalEntry[] = entries?.data || [];
+  const entry: JournalEntry | undefined = allEntries.find((e: JournalEntry) => e.id === id) || allEntries[0];
 
   if (!entry) {
     return (
@@ -29,8 +29,8 @@ const ViewJournalEntryPage = () => {
     );
   }
 
-  const totalDebit = entry.lines.reduce((sum, line) => sum + line.debitAmount, 0);
-  const totalCredit = entry.lines.reduce((sum, line) => sum + line.creditAmount, 0);
+  const totalDebit = entry.lines.reduce((sum: number, line: JournalEntryLine) => sum + Number(line.debitAmount), 0);
+  const totalCredit = entry.lines.reduce((sum: number, line: JournalEntryLine) => sum + Number(line.creditAmount), 0);
 
   return (
     <div className="container mx-auto p-6">
@@ -79,7 +79,7 @@ const ViewJournalEntryPage = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {entry.lines.map((line) => (
+            {entry.lines.map((line: JournalEntryLine) => (
               <tr key={line.id}>
                 <td className="px-6 py-4 text-sm">
                   <div className="font-mono text-gray-700">{line.account.code}</div>
@@ -87,10 +87,10 @@ const ViewJournalEntryPage = () => {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-700">{line.description || "—"}</td>
                 <td className="px-6 py-4 text-right text-sm text-gray-700">
-                  {line.debitAmount > 0 ? `$${line.debitAmount.toFixed(2)}` : "—"}
+                  {Number(line.debitAmount) > 0 ? `$${Number(line.debitAmount).toFixed(2)}` : "—"}
                 </td>
                 <td className="px-6 py-4 text-right text-sm text-gray-700">
-                  {line.creditAmount > 0 ? `$${line.creditAmount.toFixed(2)}` : "—"}
+                  {Number(line.creditAmount) > 0 ? `$${Number(line.creditAmount).toFixed(2)}` : "—"}
                 </td>
               </tr>
             ))}

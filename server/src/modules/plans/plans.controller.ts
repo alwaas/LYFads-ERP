@@ -11,6 +11,8 @@ import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/tenant.decorator';
+import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { PlansService } from './plans.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
@@ -28,8 +30,11 @@ export class PlansController {
   }
 
   @Post()
-  create(@Body() dto: CreatePlanDto) {
-    return this.plansService.create(dto);
+  create(
+    @Body() dto: CreatePlanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.plansService.create(dto, user);
   }
 
   @Get(':id')
@@ -38,7 +43,11 @@ export class PlansController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdatePlanDto) {
-    return this.plansService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlanDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.plansService.update(id, dto, user);
   }
 }

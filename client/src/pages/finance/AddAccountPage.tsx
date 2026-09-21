@@ -1,13 +1,9 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { financeService, type Account } from "../../services/finance.service";
-import {
-  AccountType,
-  NormalBalanceSide,
-} from "../../features/validation/chart-of-accounts.schema";
+import { financeService } from "../../services/finance.service";
 
 const accountTypes = ["ASSET", "LIABILITY", "EQUITY", "INCOME", "EXPENSE", "OTHER"];
 const balanceSides = ["DEBIT", "CREDIT"];

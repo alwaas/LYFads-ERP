@@ -38,7 +38,7 @@ export class PlansService {
     });
   }
 
-  async create(dto: CreatePlanDto) {
+  async create(dto: CreatePlanDto, user?: { id?: string; tenantId?: string }) {
     const existing = await this.prisma.plan.findUnique({
       where: { code: dto.code },
     });
@@ -75,11 +75,20 @@ export class PlansService {
       select: PLAN_SELECT,
     });
 
-    await this.activityLogsService.log({
+    const logData: any = {
       action: 'CREATE',
       module: 'PLAN',
       description: `Plan ${plan.name} (${plan.code}) created.`,
-    });
+    };
+    if (user?.id) {
+      logData.userId = user.id;
+    }
+    if (user?.tenantId) {
+      logData.tenantId = user.tenantId;
+    }
+    if (logData.userId || logData.tenantId) {
+      await this.activityLogsService.log(logData);
+    }
 
     return plan;
   }
@@ -97,7 +106,7 @@ export class PlansService {
     return plan;
   }
 
-  async update(id: string, dto: UpdatePlanDto) {
+  async update(id: string, dto: UpdatePlanDto, user?: { id?: string; tenantId?: string }) {
     const plan = await this.prisma.plan.findUnique({
       where: { id },
     });
@@ -161,11 +170,20 @@ export class PlansService {
       select: PLAN_SELECT,
     });
 
-    await this.activityLogsService.log({
+    const logData: any = {
       action: 'UPDATE',
       module: 'PLAN',
       description: `Plan ${updated.name} (${updated.code}) updated.`,
-    });
+    };
+    if (user?.id) {
+      logData.userId = user.id;
+    }
+    if (user?.tenantId) {
+      logData.tenantId = user.tenantId;
+    }
+    if (logData.userId || logData.tenantId) {
+      await this.activityLogsService.log(logData);
+    }
 
     return result;
   }

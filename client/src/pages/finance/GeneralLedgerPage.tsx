@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download, Filter } from "lucide-react";
+import { Download } from "lucide-react";
 import PageLoader from "../../components/common/PageLoader";
 import { financeService, type GeneralLedgerEntry } from "../../services/finance.service";
 

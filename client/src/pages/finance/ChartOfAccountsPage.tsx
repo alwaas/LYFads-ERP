@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Eye, Edit, RefreshCw } from "lucide-react";
+import { Plus, Search, Eye, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import PageLoader from "../../components/common/PageLoader";
@@ -25,7 +25,7 @@ const AccountTypeBadge = ({ type }: { type: string }) => {
 const ChartOfAccountsPage = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [page, setPage] = useState(1);
+  const [page] = useState(1);
   const limit = 50;
 
   const {
@@ -52,6 +52,7 @@ const ChartOfAccountsPage = () => {
   });
 
   if (isLoading) return <PageLoader />;
+  if (isError) return <div className="p-6 text-red-600">Failed to load chart of accounts.</div>;
 
   const filteredAccounts = (accounts?.data || []).filter((account) =>
     account.code.toLowerCase().includes(searchQuery.toLowerCase()) ||

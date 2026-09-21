@@ -40,6 +40,24 @@ export class TenantManagementController {
     return this.tenantManagementService.create(dto);
   }
 
+  @Get('tenants/current')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  getCurrentTenant(@CurrentUser() user: AuthenticatedUser) {
+    return this.tenantManagementService.getCurrentTenant(user.tenantId);
+  }
+
+  @Patch('tenants/current')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  updateCurrentTenant(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateTenantProfileDto,
+  ) {
+    return this.tenantManagementService.updateCurrentTenant(
+      user.tenantId,
+      dto,
+    );
+  }
+
   @Get('tenants/:id')
   @Roles(UserRole.SUPER_ADMIN)
   findOne(@Param('id') id: string) {
@@ -68,23 +86,5 @@ export class TenantManagementController {
   @Roles(UserRole.SUPER_ADMIN)
   deactivate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.tenantManagementService.deactivate(id, user.id);
-  }
-
-  @Get('tenants/current')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  getCurrentTenant(@CurrentUser() user: AuthenticatedUser) {
-    return this.tenantManagementService.getCurrentTenant(user.tenantId);
-  }
-
-  @Patch('tenants/current')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  updateCurrentTenant(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: UpdateTenantProfileDto,
-  ) {
-    return this.tenantManagementService.updateCurrentTenant(
-      user.tenantId,
-      dto,
-    );
   }
 }

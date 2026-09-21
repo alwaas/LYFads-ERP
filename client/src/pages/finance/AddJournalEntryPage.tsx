@@ -5,15 +5,6 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { financeService, type Account, type CreateJournalEntryDto } from "../../services/finance.service";
 
-const accountTypeMap: Record<string, string> = {
-  ASSET: "ASSET",
-  LIABILITY: "LIABILITY",
-  EQUITY: "EQUITY",
-  INCOME: "INCOME",
-  EXPENSE: "EXPENSE",
-  OTHER: "OTHER",
-};
-
 const AddJournalEntryPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
