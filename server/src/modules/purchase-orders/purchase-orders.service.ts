@@ -524,7 +524,7 @@ export class PurchaseOrdersService {
           data: { stockQuantity: { increment: qty } },
         });
 
-        await tx.stockMovement.create({
+        const movement = await tx.stockMovement.create({
           data: {
             tenantId: userTenantId,
             productId: ei.productId,
@@ -544,7 +544,7 @@ export class PurchaseOrdersService {
           {
             date: new Date(),
             description: `Inventory receipt for PO ${po.orderNumber} (product ${ei.productId})`,
-            referenceId: `inventory_receipt_${po.id}_${ei.productId}`,
+            referenceId: `inventory_receipt_${po.id}_${ei.productId}_${movement.id}`,
             posted: true,
             createdById: userId,
             lines: [
