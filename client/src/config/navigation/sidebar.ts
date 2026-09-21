@@ -246,7 +246,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
 
   {
-    title: "Purchases",
+    title: "Direct Purchases",
     path: "/purchases",
     icon: ShoppingCart,
     roles: [
