@@ -1,4 +1,4 @@
-import { IsDecimal, IsString } from 'class-validator';
+import { IsDecimal, IsOptional, IsString } from 'class-validator';
 
 export class CreateInvoiceItemDto {
   @IsString()
@@ -13,6 +13,18 @@ export class CreateInvoiceItemDto {
   @IsDecimal()
   unitPrice: string;
 
+  @IsOptional()
   @IsDecimal()
-  amount: string;
+  taxRate?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  taxAmount?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  discount?: string;
+
+  @IsDecimal()
+  lineTotal: string;
 }

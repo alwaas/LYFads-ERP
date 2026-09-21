@@ -3,6 +3,7 @@ export interface Invoice {
   invoiceNumber: string;
   clientId: string;
   projectId?: string;
+  salesOrderId?: string;
   issueDate: string;
   dueDate: string;
   subtotal: number;
@@ -15,6 +16,7 @@ export interface Invoice {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  issuedAt?: string;
   client?: {
     id: string;
     companyName: string;
@@ -23,18 +25,36 @@ export interface Invoice {
     id: string;
     name: string;
   };
+  salesOrder?: {
+    id: string;
+    orderNumber: string;
+  };
   items?: InvoiceItem[];
   payments?: Payment[];
+  createdBy?: {
+    id: string;
+    fullName: string;
+  };
 }
 
 export interface InvoiceItem {
   id: string;
   invoiceId: string;
+  salesOrderItemId?: string;
+  productId?: string;
   description: string;
   quantity: number;
   unitPrice: number;
-  amount: number;
+  taxRate?: number;
+  taxAmount?: number;
+  discount?: number;
+  lineTotal: number;
   createdAt: string;
+  product?: {
+    id: string;
+    name: string;
+    sku: string;
+  };
 }
 
 export interface Payment {
@@ -49,36 +69,58 @@ export interface Payment {
   updatedAt: string;
 }
 
-export type InvoiceStatus = "DRAFT" | "SENT" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CANCELLED";
+export type InvoiceStatus = "DRAFT" | "ISSUED" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "VOID";
 
 export interface CreateInvoiceDto {
-  invoiceNumber: string;
   clientId: string;
   projectId?: string;
   issueDate: string;
   dueDate: string;
-  subtotal: string;
-  tax?: string;
-  discount?: string;
-  total: string;
-  paidAmount?: string;
-  balanceAmount: string;
   status?: InvoiceStatus;
   notes?: string;
+  items: {
+    description: string;
+    quantity: string;
+    unitPrice: string;
+    taxRate?: string;
+    taxAmount?: string;
+    discount?: string;
+  }[];
 }
 
 export interface UpdateInvoiceDto {
-  invoiceNumber?: string;
   clientId?: string;
   projectId?: string;
   issueDate?: string;
   dueDate?: string;
-  subtotal?: string;
-  tax?: string;
-  discount?: string;
-  total?: string;
-  paidAmount?: string;
-  balanceAmount?: string;
   status?: InvoiceStatus;
   notes?: string;
+}
+
+export interface CreateInvoiceFromSalesOrderDto {
+  issueDate?: string;
+  dueDate?: string;
+  projectId?: string;
+  notes?: string;
+}
+
+export interface AllocatePaymentDto {
+  paymentId: string;
+  amount: string;
+}
+
+export interface ARSummary {
+  totalOutstanding: number;
+  totalOverdue: number;
+  currentReceivables: number;
+  partiallyPaid: number;
+  paidThisPeriod: number;
+  invoiceCount: number;
+  overdueInvoiceCount: number;
+  aging: {
+    '0-30': number;
+    '31-60': number;
+    '61-90': number;
+    '90+': number;
+  };
 }
