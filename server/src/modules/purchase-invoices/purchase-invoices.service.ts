@@ -354,7 +354,6 @@ export class PurchaseInvoicesService {
       ],
       [PurchaseInvoiceStatus.POSTED]: [
         PurchaseInvoiceStatus.VOIDED,
-        PurchaseInvoiceStatus.CANCELLED,
       ],
       [PurchaseInvoiceStatus.PARTIALLY_PAID]: [
         PurchaseInvoiceStatus.PAID,
@@ -419,8 +418,7 @@ export class PurchaseInvoicesService {
     }
 
     if (
-      (status === PurchaseInvoiceStatus.VOIDED ||
-        status === PurchaseInvoiceStatus.CANCELLED) &&
+      status === PurchaseInvoiceStatus.VOIDED &&
       bill.status === PurchaseInvoiceStatus.POSTED
     ) {
       const netAmount =

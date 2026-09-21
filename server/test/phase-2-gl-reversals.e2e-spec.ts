@@ -304,9 +304,9 @@ describe('Phase 2 GL Reversals & Financial Integrity E2E Tests', () => {
         .set('Authorization', `Bearer ${adminToken()}`)
         .expect(201);
 
-      // Cancel bill
+      // Void bill
       await request(app.getHttpServer())
-        .post(`/purchase-invoices/${bill.id}/cancel`)
+        .post(`/purchase-invoices/${bill.id}/void`)
         .set('Authorization', `Bearer ${adminToken()}`)
         .expect(201);
 
@@ -314,7 +314,7 @@ describe('Phase 2 GL Reversals & Financial Integrity E2E Tests', () => {
       const reversalJe = await prisma.journalEntry.findFirst({
         where: {
           tenantId: testData.tenantA.id,
-          referenceId: `bill_cancel_${bill.id}`,
+          referenceId: `bill_void_${bill.id}`,
         },
         include: { lines: true },
       });

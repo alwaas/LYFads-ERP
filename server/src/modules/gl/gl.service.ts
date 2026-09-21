@@ -773,7 +773,7 @@ for (const line of input.lines) {
     taxAmount?: Prisma.Decimal | number,
     userId?: string,
   ): Promise<JournalEntry> {
-    const referenceId = `bill_cancel_${billId}`;
+    const referenceId = `bill_void_${billId}`;
     const existing = await tx.journalEntry.findFirst({
       where: { tenantId, referenceId },
       include: { lines: { include: { account: true } } },
@@ -792,12 +792,12 @@ for (const line of input.lines) {
       {
         accountId: apAccount.id,
         debitAmount: totalDec,
-        description: `Vendor bill ${billId} cancelled - AP reversal`,
+        description: `Vendor bill ${billId} voided - AP reversal`,
       },
       {
         accountId: expenseAccount.id,
         creditAmount: amountDec,
-        description: `Vendor bill ${billId} cancelled - expense reversal`,
+        description: `Vendor bill ${billId} voided - expense reversal`,
       },
     ];
 
@@ -805,7 +805,7 @@ for (const line of input.lines) {
       lines.push({
         accountId: taxAccount.id,
         creditAmount: taxDec,
-        description: `Vendor bill ${billId} cancelled - tax reversal`,
+        description: `Vendor bill ${billId} voided - tax reversal`,
       });
     }
 
@@ -813,7 +813,7 @@ for (const line of input.lines) {
       tx,
       {
         date: new Date(),
-        description: `Vendor bill ${billId} cancelled reversal`,
+        description: `Vendor bill ${billId} voided reversal`,
         referenceId,
         lines,
         posted: true,
