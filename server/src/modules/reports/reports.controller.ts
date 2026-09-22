@@ -1,4 +1,5 @@
-import { Controller, Get, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query, Param, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -168,5 +169,24 @@ export class ReportsController {
     @Query() query: GeneralLedgerQueryDto,
   ) {
     return this.reportsService.getGeneralLedgerReport(user.tenantId, query);
+  }
+
+  @Get('export/:reportType/:format')
+  async exportReport(
+    @GetUser() user: AuthenticatedUser,
+    @Param('reportType') reportType: string,
+    @Param('format') format: string,
+    @Query() query: any,
+    @Res() res: Response,
+  ) {
+    const result = await this.reportsService.exportReport(
+      user.tenantId,
+      reportType,
+      format,
+      query,
+    );
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.send(result.buffer);
   }
 }

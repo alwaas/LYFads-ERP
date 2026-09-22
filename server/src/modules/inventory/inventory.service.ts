@@ -1,6 +1,4 @@
 import {
-  ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -19,59 +17,74 @@ export class InventoryService {
   ) {}
 
   async getByProduct(productId: string, userTenantId: string) {
-    const inventory = await this.prisma.inventory.findFirst({
+    const product = await this.prisma.product.findFirst({
       where: {
-        productId,
+        id: productId,
         tenantId: userTenantId,
-      },
-      include: {
-        product: true,
       },
     });
 
-    if (!inventory) {
+    if (!product) {
       return null;
     }
 
-    return inventory;
+    return {
+      id: product.id,
+      tenantId: product.tenantId,
+      productId: product.id,
+      quantity: product.stockQuantity,
+      reservedQuantity: 0,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+      product: {
+        id: product.id,
+        sku: product.sku,
+        name: product.name,
+        reorderLevel: product.minStockLevel,
+        status: product.isActive ? 'ACTIVE' : 'INACTIVE',
+      },
+    };
   }
 
   async getByTenant(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
     const { skip, limit } = pagination;
 
-    const where: Prisma.InventoryWhereInput = {
+    const where: Prisma.ProductWhereInput = {
       tenantId: userTenantId,
-      ...(search.search && {
-        product: {
-          OR: [
-            { name: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-            { sku: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-          ],
-        },
+      ...(search?.search && {
+        OR: [
+          { name: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
+          { sku: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
+        ],
       }),
     };
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.inventory.findMany({
+    const [products, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
         where,
         skip,
         take: limit,
-        include: {
-          product: {
-            select: {
-              id: true,
-              sku: true,
-              name: true,
-              unit: true,
-              reorderLevel: true,
-              status: true,
-            },
-          },
-        },
         orderBy: { updatedAt: 'desc' },
       }),
-      this.prisma.inventory.count({ where }),
+      this.prisma.product.count({ where }),
     ]);
+
+    const data = products.map((p) => ({
+      id: p.id,
+      tenantId: p.tenantId,
+      productId: p.id,
+      quantity: p.stockQuantity,
+      reservedQuantity: 0,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      product: {
+        id: p.id,
+        sku: p.sku,
+        name: p.name,
+        reorderLevel: p.minStockLevel,
+        status: p.isActive ? 'ACTIVE' : 'INACTIVE',
+      },
+    }));
 
     return {
       total,
@@ -96,15 +109,6 @@ export class InventoryService {
         productId,
         tenantId: userTenantId,
       },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
-        },
-      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -115,20 +119,20 @@ export class InventoryService {
     });
 
     if (!product) {
-      throw new NotFoundException('Product not found.');
+      return {
+        status: 'OUT_OF_STOCK',
+        quantity: 0,
+        reorderLevel: null,
+      };
     }
 
-    const inventory = await this.prisma.inventory.findFirst({
-      where: { productId, tenantId: userTenantId },
-    });
+    const quantity = product.stockQuantity;
+    const reorderLevel = product.minStockLevel;
 
-    const quantity = inventory?.quantity ?? 0;
-    const reorderLevel = product.reorderLevel;
-
-    let status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' = 'IN_STOCK';
+    let status = 'IN_STOCK';
     if (quantity <= 0) {
       status = 'OUT_OF_STOCK';
-    } else if (reorderLevel != null && quantity <= reorderLevel) {
+    } else if (reorderLevel !== null && quantity <= reorderLevel) {
       status = 'LOW_STOCK';
     }
 
@@ -141,7 +145,7 @@ export class InventoryService {
 
   async adjustStock(
     productId: string,
-    type: StockMovementType,
+    type: string | StockMovementType,
     quantity: number,
     note: string,
     userTenantId: string,
@@ -155,7 +159,7 @@ export class InventoryService {
       throw new NotFoundException('Product not found.');
     }
 
-    if (product.status !== 'ACTIVE') {
+    if (!product.isActive) {
       throw new BadRequestException('Cannot adjust stock for inactive product.');
     }
 
@@ -167,54 +171,44 @@ export class InventoryService {
       throw new BadRequestException('Note is required for stock adjustments.');
     }
 
-    const updatedInventory = await this.prisma.$transaction(async (tx) => {
-      let inventory = await tx.inventory.findFirst({
-        where: { productId, tenantId: userTenantId },
-      });
-
-      if (!inventory) {
-        inventory = await tx.inventory.create({
-          data: {
-            productId,
-            tenantId: userTenantId,
-            quantity: new Prisma.Decimal(0),
-            reservedQuantity: new Prisma.Decimal(0),
-          },
-        });
-      }
-
-      const currentQty = Number(inventory.quantity);
+    const updatedProduct = await this.prisma.$transaction(async (tx) => {
+      const currentQty = product.stockQuantity;
       let newQty = currentQty;
+      let movementType: StockMovementType = StockMovementType.ADJUST;
 
-      if (type === StockMovementType.ADJUSTMENT_IN) {
+      if (type === 'ADJUSTMENT_IN' || type === StockMovementType.IN) {
         newQty = currentQty + quantity;
-      } else if (type === StockMovementType.ADJUSTMENT_OUT) {
+        movementType = StockMovementType.IN;
+      } else if (type === 'ADJUSTMENT_OUT' || type === StockMovementType.OUT) {
         newQty = currentQty - quantity;
+        movementType = StockMovementType.OUT;
         if (newQty < 0) {
           throw new BadRequestException('Insufficient stock for this adjustment.');
         }
+      } else {
+        newQty = quantity;
+        movementType = StockMovementType.ADJUST;
       }
 
-      const updated = await tx.inventory.update({
-        where: { id: inventory.id },
-        data: { quantity: new Prisma.Decimal(newQty) },
+      const updated = await tx.product.update({
+        where: { id: product.id },
+        data: { stockQuantity: newQty },
       });
 
       await tx.stockMovement.create({
         data: {
           productId,
           tenantId: userTenantId,
-          type,
-          quantity: new Prisma.Decimal(quantity),
-          note: note.trim(),
-          createdById: userId,
+          type: movementType,
+          quantity,
+          notes: note.trim(),
         },
       });
 
       return updated;
     });
 
-    await this.activityLogs.create({
+    await this.activityLogs.log({
       action: 'ADJUST',
       module: 'INVENTORY',
       description: `Stock adjusted for product "${product.name}" (${type}: ${quantity})`,
@@ -222,36 +216,21 @@ export class InventoryService {
       tenantId: userTenantId,
     });
 
-    return updatedInventory;
-  }
-
-  async getStockStatus(productId: string, userTenantId: string) {
-    const inventory = await this.getByProduct(productId, userTenantId);
-
-    if (!inventory) {
-      return {
-        status: 'OUT_OF_STOCK',
-        quantity: 0,
-        reorderLevel: null,
-      };
-    }
-
-    const quantity = Number(inventory.quantity);
-    const reorderLevel = inventory.product.reorderLevel
-      ? Number(inventory.product.reorderLevel)
-      : null;
-
-    let status = 'IN_STOCK';
-    if (quantity <= 0) {
-      status = 'OUT_OF_STOCK';
-    } else if (reorderLevel !== null && quantity <= reorderLevel) {
-      status = 'LOW_STOCK';
-    }
-
     return {
-      status,
-      quantity,
-      reorderLevel,
+      id: updatedProduct.id,
+      tenantId: updatedProduct.tenantId,
+      productId: updatedProduct.id,
+      quantity: updatedProduct.stockQuantity,
+      reservedQuantity: 0,
+      createdAt: updatedProduct.createdAt,
+      updatedAt: updatedProduct.updatedAt,
+      product: {
+        id: updatedProduct.id,
+        sku: updatedProduct.sku,
+        name: updatedProduct.name,
+        reorderLevel: updatedProduct.minStockLevel,
+        status: updatedProduct.isActive ? 'ACTIVE' : 'INACTIVE',
+      },
     };
   }
 }

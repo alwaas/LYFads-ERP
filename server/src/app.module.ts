@@ -49,6 +49,7 @@ import { WarehousesModule } from './modules/warehouses/warehouses.module';
 import { StockMovementsModule } from './modules/stock-movements/stock-movements.module';
 import { StockCountsModule } from './modules/stock-counts/stock-counts.module';
 import { InventoryValuationModule } from './modules/inventory-valuation/inventory-valuation.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { LeaveBalancesModule } from './modules/leave-balances/leave-balances.module';
 import { SalaryStructuresModule } from './modules/salary-structures/salary-structures.module';
 import { PayrollItemsModule } from './modules/payroll-items/payroll-items.module';
@@ -111,6 +112,7 @@ import { LifecycleModule } from './modules/lifecycle/lifecycle.module';
     StockMovementsModule,
     StockCountsModule,
     InventoryValuationModule,
+    InventoryModule,
     LeaveBalancesModule,
     SalaryStructuresModule,
     PayrollItemsModule,

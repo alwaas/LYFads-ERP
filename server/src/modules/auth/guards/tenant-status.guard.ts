@@ -36,12 +36,37 @@ export class TenantStatusGuard implements CanActivate {
     }
 
     const userId = user.userId || user.id;
-    if (userId) {
-      const dbUser = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { isActive: true },
-      });
 
+    // Run user, tenant, and subscription checks concurrently to eliminate sequential DB round-trip latency
+    const userPromise = userId
+      ? this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { isActive: true },
+        })
+      : Promise.resolve(null);
+
+    const tenantPromise = user.tenantId
+      ? this.prisma.tenant.findUnique({
+          where: { id: user.tenantId },
+          select: { id: true, status: true },
+        })
+      : Promise.resolve(null);
+
+    const subPromise =
+      user.tenantId && user.role !== 'SUPER_ADMIN'
+        ? this.prisma.tenantSubscription.findUnique({
+            where: { tenantId: user.tenantId },
+            select: { id: true, status: true, trialEndDate: true, endDate: true },
+          })
+        : Promise.resolve(null);
+
+    const [dbUser, tenant, subscription] = await Promise.all([
+      userPromise,
+      tenantPromise,
+      subPromise,
+    ]);
+
+    if (userId) {
       if (!dbUser || !dbUser.isActive) {
         throw new ForbiddenException('User account is inactive or disabled.');
       }
@@ -50,16 +75,6 @@ export class TenantStatusGuard implements CanActivate {
     if (!user.tenantId) {
       return true;
     }
-
-    const tenant = await this.prisma.tenant.findUnique({
-      where: {
-        id: user.tenantId,
-      },
-      select: {
-        id: true,
-        status: true,
-      },
-    });
 
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
@@ -72,11 +87,6 @@ export class TenantStatusGuard implements CanActivate {
     }
 
     if (user.role !== 'SUPER_ADMIN') {
-      const subscription = await this.prisma.tenantSubscription.findUnique({
-        where: { tenantId: user.tenantId },
-        select: { id: true, status: true, trialEndDate: true, endDate: true },
-      });
-
       if (!subscription) {
         throw new ForbiddenException(
           'No subscription found for this tenant. Please contact support.',

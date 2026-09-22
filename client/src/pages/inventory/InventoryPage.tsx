@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Search, RefreshCw } from "lucide-react";
 
-import DashboardLayout from "../../layouts/DashboardLayout";
-import PageContainer from "../../components/layout/PageContainer";
+
 import { inventoryService } from "../../services/inventory.service";
 import type { Inventory } from "../../types/inventory";
 
@@ -65,9 +64,7 @@ function InventoryPage() {
   });
 
   return (
-    <DashboardLayout>
-      <PageContainer>
-        <div className="w-full space-y-6">
+    <div className="w-full space-y-6">
 
           {/* Header Section */}
           <div className="rounded-2xl bg-white border border-slate-200 shadow-2xs p-5 sm:p-8">
@@ -182,8 +179,6 @@ function InventoryPage() {
             </div>
           )}
         </div>
-      </PageContainer>
-    </DashboardLayout>
   );
 }
 
