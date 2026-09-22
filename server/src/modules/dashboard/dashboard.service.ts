@@ -558,4 +558,34 @@ export class DashboardService {
       },
     });
   }
+
+  async getPendingTasks(userTenantId: string) {
+    return this.prisma.task.findMany({
+      where: {
+        tenantId: userTenantId,
+        status: { not: TaskStatus.COMPLETED },
+      },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        employee: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
 }

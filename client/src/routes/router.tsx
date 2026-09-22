@@ -1,5 +1,6 @@
 import PageLoader from "../components/common/PageLoader";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Outlet } from "react-router-dom";
+import DashboardLayout from "../layouts/DashboardLayout";
 import { lazy, Suspense } from "react";
 import { ROLES } from "../constants/roles";
 
@@ -543,6 +544,14 @@ const InventoryReportPage = lazy(
   () => import("../pages/reports/InventoryReportPage")
 );
 
+const InventoryPage = lazy(
+  () => import("../pages/inventory/InventoryPage")
+);
+
+const ViewInventoryPage = lazy(
+  () => import("../pages/inventory/ViewInventoryPage")
+);
+
 const InventorySettingsPage = lazy(
   () => import("../pages/settings/InventorySettingsPage")
 );
@@ -567,6 +576,27 @@ const ViewInvoicePage = lazy(
   () => import("../pages/invoices/ViewInvoicePage")
 );
 
+
+const ARDashboardPage = lazy(
+  () => import("../pages/ar/ARDashboardPage")
+);
+
+const ViewExpensePage = lazy(
+  () => import("../pages/expenses/ViewExpensePage")
+);
+
+const ProtectedLayout = () => {
+  return (
+    <ProtectedRoute>
+      <DashboardLayout>
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+};
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -578,6 +608,9 @@ const router = createBrowserRouter([
     element: <LoginPage />,
   },
 
+  {
+    element: <ProtectedLayout />,
+    children: [
   {
     path: "/dashboard",
     element: (
@@ -2099,6 +2132,87 @@ const router = createBrowserRouter([
     ),
   },
 
+    {
+      path: "/kanban",
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]}>
+          <Suspense fallback={<PageLoader />}>
+            <KanbanPage />
+          </Suspense>
+        </ProtectedRoute>
+      ),
+    },
+
+
+    {
+      path: "/ar",
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+          <Suspense fallback={<PageLoader />}>
+            <ARDashboardPage />
+          </Suspense>
+        </ProtectedRoute>
+      ),
+    },
+
+    {
+      path: "/ar/dashboard",
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+          <Suspense fallback={<PageLoader />}>
+            <ARDashboardPage />
+          </Suspense>
+        </ProtectedRoute>
+      ),
+    },
+
+
+    {
+      path: "/expenses/:id",
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+          <Suspense fallback={<PageLoader />}>
+            <ViewExpensePage />
+          </Suspense>
+        </ProtectedRoute>
+      ),
+    },
+
+    {
+      path: "/expenses/view/:id",
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+          <Suspense fallback={<PageLoader />}>
+            <ViewExpensePage />
+          </Suspense>
+        </ProtectedRoute>
+      ),
+    },
+
+
+    {
+      path: "/inventory",
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+          <Suspense fallback={<PageLoader />}>
+            <InventoryPage />
+          </Suspense>
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/inventory/:productId",
+      element: (
+        <ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER]}>
+          <Suspense fallback={<PageLoader />}>
+            <ViewInventoryPage />
+          </Suspense>
+        </ProtectedRoute>
+      ),
+    },
+
+    ],
+  },
   {
     path: "*",
     element: <NotFoundPage />,

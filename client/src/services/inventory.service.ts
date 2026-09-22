@@ -4,22 +4,26 @@ import type { Inventory, StockMovement, StockStatus } from "../types/inventory";
 export const inventoryService = {
   getInventory: async (): Promise<Inventory[]> => {
     const response = await api.get("/inventory");
-    return response.data.data.data;
+    if (Array.isArray(response.data?.data)) return response.data.data;
+    if (Array.isArray(response.data)) return response.data;
+    return [];
   },
 
   getInventoryByProduct: async (productId: string): Promise<Inventory | null> => {
     const response = await api.get(`/inventory/${productId}`);
-    return response.data.data || null;
+    return response.data?.data || response.data || null;
   },
 
   getStockMovements: async (productId: string): Promise<StockMovement[]> => {
     const response = await api.get(`/inventory/${productId}/movements`);
-    return response.data.data;
+    if (Array.isArray(response.data?.data)) return response.data.data;
+    if (Array.isArray(response.data)) return response.data;
+    return [];
   },
 
   getStockStatus: async (productId: string): Promise<StockStatus> => {
     const response = await api.get(`/inventory/${productId}/status`);
-    return response.data.data;
+    return response.data?.data || response.data;
   },
 
   adjustStock: async (

@@ -8,5 +8,5 @@ export async function getProjectTimeline(
     `/project-timeline/${projectId}`
   );
 
-  return res.data.data;
+  return res.data?.data ?? res.data;
 }

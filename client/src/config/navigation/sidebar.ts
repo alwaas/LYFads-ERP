@@ -87,7 +87,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
 
   {
     title: "Kanban",
-    path: "/projects/:projectId/kanban",
+    path: "/kanban",
     icon: FolderKanban,
     roles: [
       "SUPER_ADMIN",
@@ -205,6 +205,17 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Receivables",
     path: "/reports/receivables",
     icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "AR Dashboard",
+    path: "/ar",
+    icon: TrendingUp,
     roles: [
       "SUPER_ADMIN",
       "ADMIN",

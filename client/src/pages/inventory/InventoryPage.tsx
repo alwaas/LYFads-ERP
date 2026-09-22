@@ -21,7 +21,7 @@ function InventoryPage() {
     try {
       setLoading(true);
       const data = await inventoryService.getInventory();
-      setInventory(data);
+      setInventory(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load inventory.");
@@ -34,7 +34,7 @@ function InventoryPage() {
     try {
       setRefreshing(true);
       const data = await inventoryService.getInventory();
-      setInventory(data);
+      setInventory(Array.isArray(data) ? data : []);
       toast.success("Inventory refreshed successfully.");
     } catch (error) {
       console.error(error);
