@@ -19,10 +19,14 @@ function KanbanPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
   // Fetch all projects for selection
-  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
+  const { data: rawProjects, isLoading: projectsLoading } = useQuery<any>({
     queryKey: ["projects-kanban"],
-    queryFn: () => projectService.getAllProjects(),
+    queryFn: () => projectService.getAllProjects(1, 100),
   });
+
+  const projects: Project[] = Array.isArray(rawProjects)
+    ? rawProjects
+    : (rawProjects?.data || []);
 
   // Determine active project ID
   useEffect(() => {

@@ -47,15 +47,21 @@ const AddSalesOrderPage = () => {
   const [headerDiscount, setHeaderDiscount] = useState("0");
   const [headerTax, setHeaderTax] = useState("0");
 
-  const { data: clients = [], isLoading: isLoadingClients } = useQuery<Client[]>({
+  const { data: clientsData, isLoading: isLoadingClients } = useQuery<any>({
     queryKey: ["clients"],
-    queryFn: () => getClients(),
+    queryFn: () => getClients(1, 100),
   });
 
-  const { data: products = [], isLoading: isLoadingProducts } = useQuery<any[]>({
+  const { data: productsResp, isLoading: isLoadingProducts } = useQuery<any>({
     queryKey: ["products"],
     queryFn: () => productService.getAllProducts(),
   });
+
+  const clients: Client[] = Array.isArray(clientsData)
+    ? clientsData
+    : (clientsData?.data || []);
+
+  const products = (productsResp as any)?.data?.data || (productsResp as any)?.data || (Array.isArray(productsResp) ? productsResp : []);
 
   const {
     register,
@@ -104,7 +110,7 @@ const AddSalesOrderPage = () => {
       const next = [...prev];
       const cur = { ...next[index], [field]: value };
       if (field === "productId") {
-        const p = products.find((p) => p.id === value);
+        const p = products.find((p: any) => p.id === value);
         if (p) cur.unitPrice = p.unitPrice?.toString() ?? cur.unitPrice;
       }
       cur.lineTotal = computeLine(cur);
@@ -358,7 +364,7 @@ const AddSalesOrderPage = () => {
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     >
                       <option value="">Select a product</option>
-                      {products.map((product) => (
+                      {products.map((product: any) => (
                         <option key={product.id} value={product.id}>
                           {product.name} ({product.sku})
                         </option>

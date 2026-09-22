@@ -15,10 +15,14 @@ import type { Invoice } from "../../types/invoice";
 const AddPaymentPage = () => {
   const navigate = useNavigate();
 
-  const { data: invoices = [], isLoading: isLoadingInvoices, isError: isInvoicesError } = useQuery<Invoice[]>({
+  const { data: rawInvoices, isLoading: isLoadingInvoices, isError: isInvoicesError } = useQuery<any>({
     queryKey: ["invoices"],
-    queryFn: () => invoiceService.getAllInvoices(),
+    queryFn: () => invoiceService.getAllInvoices(1, 100),
   });
+
+  const invoices: Invoice[] = Array.isArray(rawInvoices)
+    ? rawInvoices
+    : (rawInvoices?.data || []);
 
   const createMutation = useMutation({
     mutationFn: (dto: CreatePaymentDto) => paymentService.createPayment(dto),

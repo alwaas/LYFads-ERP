@@ -56,10 +56,11 @@ const AddPurchaseOrderPage = () => {
   });
   const vendors = (vendorsResp as any)?.data || [];
 
-  const { data: products = [] } = useQuery<any[]>({
+  const { data: productsResp } = useQuery({
     queryKey: ["products"],
     queryFn: () => productService.getAllProducts(),
   });
+  const products = (productsResp as any)?.data?.data || (productsResp as any)?.data || (Array.isArray(productsResp) ? productsResp : []);
 
   const { data: warehousesResp } = useQuery({
     queryKey: ["warehouses-all"],
@@ -114,7 +115,7 @@ const AddPurchaseOrderPage = () => {
       const next = [...prev];
       const cur = { ...next[index], [field]: value };
       if (field === "productId") {
-        const p = products.find((p) => p.id === value);
+        const p = products.find((p: any) => p.id === value);
         if (p) cur.unitCost = p.costPrice?.toString() ?? cur.unitCost;
       }
       cur.lineTotal = computeLine(cur);
@@ -331,7 +332,7 @@ const AddPurchaseOrderPage = () => {
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     >
                       <option value="">Select a product</option>
-                      {products.map((p) => (
+                      {products.map((p: any) => (
                         <option key={p.id} value={p.id}>
                           {p.name} ({p.sku})
                         </option>

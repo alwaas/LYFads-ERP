@@ -64,15 +64,21 @@ const EditSalesOrderPage = () => {
     enabled: !!id,
   });
 
-  const { data: clients = [], isLoading: isLoadingClients } = useQuery<Client[]>({
+  const { data: clientsData, isLoading: isLoadingClients } = useQuery<any>({
     queryKey: ["clients"],
-    queryFn: () => getClients(),
+    queryFn: () => getClients(1, 100),
   });
 
-  const { data: products = [], isLoading: isLoadingProducts } = useQuery<any[]>({
+  const { data: productsResp, isLoading: isLoadingProducts } = useQuery<any>({
     queryKey: ["products"],
     queryFn: () => productService.getAllProducts(),
   });
+
+  const clients: Client[] = Array.isArray(clientsData)
+    ? clientsData
+    : (clientsData?.data || []);
+
+  const products = (productsResp as any)?.data?.data || (productsResp as any)?.data || (Array.isArray(productsResp) ? productsResp : []);
 
   useEffect(() => {
     if (salesOrder) {
