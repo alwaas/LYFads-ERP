@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -92,5 +93,16 @@ export class LeavesController {
     @GetUser() user: AuthenticatedUser,
   ) {
     return this.leavesService.updateStatus(id, dto, user.tenantId, user.userId);
+  }
+
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ADMIN,
+    UserRole.MANAGER,
+    UserRole.EMPLOYEE,
+  )
+  @Delete(':id')
+  remove(@Param('id') id: string, @GetUser() user: AuthenticatedUser) {
+    return this.leavesService.remove(id, user.tenantId, user.userId, user.role);
   }
 }

@@ -1,4 +1,4 @@
-﻿import {
+import {
   Activity,
   RefreshCw,
   ShieldCheck,
@@ -33,15 +33,22 @@ const TimelinePage = () => {
     useState<TimelineFiltersType>(INITIAL_FILTERS);
 
   const {
-    data: activities = [],
+    data: rawData,
     isLoading,
     isFetching,
     isError,
     refetch,
-  } = useQuery<TimelineItem[]>({
+  } = useQuery<any>({
     queryKey: ["timeline"],
-    queryFn: () => getTimeline(),
+    queryFn: () => getTimeline(1, 100),
   });
+
+  const activities: TimelineItem[] = useMemo(() => {
+    if (!rawData) return [];
+    if (Array.isArray(rawData)) return rawData;
+    if (Array.isArray(rawData.data)) return rawData.data;
+    return [];
+  }, [rawData]);
 
   const modules = useMemo(() => {
     return Array.from(

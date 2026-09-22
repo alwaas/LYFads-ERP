@@ -61,7 +61,7 @@ export interface PurchaseQueryParams {
 export const purchaseService = {
   getAllPurchases: async (params?: PurchaseQueryParams) => {
     const response = await api.get("/purchases", { params });
-    return response.data.data;
+    return response.data;
   },
 
   getPurchaseById: async (id: string): Promise<Purchase> => {

@@ -109,6 +109,36 @@ export class InventoryService {
     });
   }
 
+  async getStockStatus(productId: string, userTenantId: string) {
+    const product = await this.prisma.product.findFirst({
+      where: { id: productId, tenantId: userTenantId },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found.');
+    }
+
+    const inventory = await this.prisma.inventory.findFirst({
+      where: { productId, tenantId: userTenantId },
+    });
+
+    const quantity = inventory?.quantity ?? 0;
+    const reorderLevel = product.reorderLevel;
+
+    let status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' = 'IN_STOCK';
+    if (quantity <= 0) {
+      status = 'OUT_OF_STOCK';
+    } else if (reorderLevel != null && quantity <= reorderLevel) {
+      status = 'LOW_STOCK';
+    }
+
+    return {
+      status,
+      quantity,
+      reorderLevel,
+    };
+  }
+
   async adjustStock(
     productId: string,
     type: StockMovementType,

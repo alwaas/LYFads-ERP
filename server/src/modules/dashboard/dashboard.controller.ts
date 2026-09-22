@@ -33,6 +33,11 @@ export class DashboardController {
     return this.dashboardService.getRecentTasks(user.tenantId);
   }
 
+  @Get('pending-tasks')
+  getPendingTasks(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getPendingTasks(user.tenantId);
+  }
+
   @Get('activity-summary')
   getActivitySummary(@CurrentUser() user: AuthenticatedUser) {
     return this.dashboardService.getActivitySummary(user.tenantId);

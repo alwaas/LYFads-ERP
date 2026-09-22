@@ -24,7 +24,7 @@ import { CreatePurchaseInvoiceDto } from './dto/create-purchase-invoice.dto';
 import { UpdatePurchaseInvoiceDto } from './dto/update-purchase-invoice.dto';
 import { PurchaseInvoiceQueryDto } from './dto/purchase-invoice-query.dto';
 
-@Controller('purchase-invoices')
+@Controller(['purchase-invoices', 'vendor-bills'])
 @UseGuards(JwtAuthGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
 export class PurchaseInvoicesController {

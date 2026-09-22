@@ -48,6 +48,11 @@ export class InventoryController {
     return this.inventoryService.getMovements(productId, user.tenantId);
   }
 
+  @Get(':productId/status')
+  getStatus(@Param('productId') productId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.inventoryService.getStockStatus(productId, user.tenantId);
+  }
+
   @Post(':productId/adjust')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
   adjust(

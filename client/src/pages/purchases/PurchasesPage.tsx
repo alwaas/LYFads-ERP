@@ -58,8 +58,8 @@ const PurchasesPage = () => {
       }),
   });
 
-  const purchases = result?.data || [];
-  const totalPages = result?.totalPages || 1;
+  const purchases = Array.isArray(result) ? result : (result?.data || []);
+  const totalPages = result?.totalPages || Math.ceil((result?.total || purchases.length) / limit) || 1;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => purchaseService.deletePurchase(id),

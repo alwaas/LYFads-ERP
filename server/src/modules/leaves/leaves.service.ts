@@ -449,4 +449,71 @@ export class LeavesService {
 
     return leave;
   }
+
+  async remove(id: string, userTenantId: string, userId?: string, userRole?: string) {
+    const leave = await this.prisma.leave.findUnique({
+      where: { id },
+      include: {
+        employee: true,
+      },
+    });
+
+    if (!leave) {
+      throw new NotFoundException('Leave request not found.');
+    }
+
+    if (leave.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this leave request');
+    }
+
+    if (userRole === 'EMPLOYEE' && userId && leave.employee.userId !== userId) {
+      throw new ForbiddenException('You can only delete your own leave requests');
+    }
+
+    if (leave.status === LeaveStatus.APPROVED) {
+      const days = Math.max(
+        1,
+        Math.ceil(
+          (new Date(leave.endDate).getTime() - new Date(leave.startDate).getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1,
+      );
+      const year = new Date(leave.startDate).getFullYear();
+
+      const balance = await this.prisma.leaveBalance.findUnique({
+        where: {
+          employeeId_leaveType_year_tenantId: {
+            employeeId: leave.employeeId,
+            leaveType: leave.leaveType,
+            year,
+            tenantId: userTenantId,
+          },
+        },
+      });
+
+      if (balance) {
+        await this.prisma.leaveBalance.update({
+          where: { id: balance.id },
+          data: {
+            used: Math.max(0, balance.used - days),
+            remaining: balance.remaining + days,
+          },
+        });
+      }
+    }
+
+    await this.prisma.leave.delete({
+      where: { id },
+    });
+
+    await this.activityLogsService.log({
+      action: 'DELETE',
+      module: 'LEAVE',
+      description: `Leave request ${id} deleted.`,
+      userId: userId || leave.employee.userId,
+      tenantId: userTenantId,
+    });
+
+    return { message: 'Leave deleted successfully' };
+  }
 }

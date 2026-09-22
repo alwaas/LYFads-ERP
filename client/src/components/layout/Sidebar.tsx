@@ -1,9 +1,15 @@
 import { NavLink } from "react-router-dom";
+import { ChevronLeft, ChevronRight, LayoutDashboard } from "lucide-react";
 
 import { SIDEBAR_ITEMS } from "../../config/navigation/sidebar";
 import { useAuthStore } from "../../stores/auth.store";
 
-function Sidebar() {
+type SidebarProps = {
+  collapsed?: boolean;
+  onToggle?: () => void;
+};
+
+function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const role =
     useAuthStore((state) => state.user?.role) ??
     "SUPER_ADMIN";
@@ -13,44 +19,87 @@ function Sidebar() {
   );
 
   return (
-    <aside className="w-64 min-h-screen bg-slate-900 text-white border-r border-slate-800">
+    <aside
+      className={`sticky top-0 h-screen bg-slate-900 text-white border-r border-slate-800 flex flex-col transition-all duration-300 z-30 ${
+        collapsed ? "w-20" : "w-64"
+      }`}
+    >
+      {/* Brand Header */}
+      <div className="px-4 py-5 border-b border-slate-800 flex items-center justify-between">
+        {!collapsed ? (
+          <div className="overflow-hidden">
+            <h1 className="text-xl font-bold tracking-tight text-white whitespace-nowrap">
+              LYFads ERP
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">
+              {role.replaceAll("_", " ")}
+            </p>
+          </div>
+        ) : (
+          <div className="mx-auto">
+            <div className="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm shadow-md" title="LYFads ERP">
+              LYF
+            </div>
+          </div>
+        )}
 
-      <div className="px-6 py-6 border-b border-slate-800">
-        <h1 className="text-2xl font-bold">
-          LYFads ERP
-        </h1>
-
-        <p className="text-sm text-slate-400 mt-1">
-          {role.replaceAll("_", " ")}
-        </p>
+        {onToggle && !collapsed && (
+          <button
+            onClick={onToggle}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
       </div>
 
-      <nav className="p-4 space-y-2">
-
+      {/* Navigation List */}
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
         {menus.map((item) => {
-          const Icon = item.icon;
+          const Icon = item.icon || LayoutDashboard;
 
           return (
             <NavLink
               key={item.path}
               to={item.path}
+              title={collapsed ? item.title : undefined}
               className={({ isActive }) =>
                 [
-                  "flex items-center gap-3 rounded-lg px-4 py-3 transition-all",
+                  "flex items-center rounded-lg transition-all",
+                  collapsed
+                    ? "justify-center p-3"
+                    : "gap-3 px-3 py-2.5 text-sm",
                   isActive
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-600 text-white shadow-sm font-medium"
                     : "text-slate-300 hover:bg-slate-800 hover:text-white",
                 ].join(" ")
               }
             >
-              <Icon size={20} />
+              <Icon size={collapsed ? 22 : 18} className="shrink-0" />
 
-              <span>{item.title}</span>
+              {!collapsed && (
+                <span className="truncate">{item.title}</span>
+              )}
             </NavLink>
           );
         })}
-
       </nav>
+
+      {/* Bottom Toggle for Collapsed State */}
+      {onToggle && collapsed && (
+        <div className="p-3 border-t border-slate-800 flex justify-center">
+          <button
+            onClick={onToggle}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Expand sidebar"
+            aria-label="Expand sidebar"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

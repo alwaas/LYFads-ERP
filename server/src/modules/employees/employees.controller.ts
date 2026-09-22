@@ -64,16 +64,6 @@ export class EmployeesController {
     return this.employeesService.findOne(id, user.tenantId, user.role);
   }
 
-  @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateEmployeeDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.employeesService.update(id, dto, user.tenantId);
-  }
-
   @Patch('profile/me')
   @Roles(
     UserRole.SUPER_ADMIN,
@@ -86,6 +76,16 @@ export class EmployeesController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.employeesService.updateSelfProfile(user, dto);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateEmployeeDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.employeesService.update(id, dto, user.tenantId);
   }
 
   @Delete(':id')

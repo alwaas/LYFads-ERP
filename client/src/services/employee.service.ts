@@ -50,7 +50,7 @@ export const getMyProfile = async (userId: string): Promise<Employee | undefined
 };
 
 export const updateSelfProfile = async (data: unknown) => {
-  const response = await api.patch("employees/profile/me", data);
+  const response = await api.patch("/employees/profile/me", data);
 
   return response.data.data;
 };

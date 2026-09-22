@@ -12,6 +12,12 @@ import { ProjectTimelineService } from './project-timeline.service';
 export class ProjectTimelineController {
   constructor(private readonly service: ProjectTimelineService) {}
 
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
+  @Get('deadlines/upcoming')
+  upcomingDeadlines(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.getUpcomingDeadlines(user.tenantId);
+  }
+
   @Roles(
     UserRole.SUPER_ADMIN,
     UserRole.ADMIN,
@@ -24,11 +30,5 @@ export class ProjectTimelineController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.service.getTimeline(projectId, user.tenantId);
-  }
-
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
-  @Get('deadlines/upcoming')
-  upcomingDeadlines(@CurrentUser() user: AuthenticatedUser) {
-    return this.service.getUpcomingDeadlines(user.tenantId);
   }
 }
