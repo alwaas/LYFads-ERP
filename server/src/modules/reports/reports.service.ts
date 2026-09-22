@@ -1050,4 +1050,78 @@ export class ReportsService {
   async getGeneralLedgerReport(tenantId: string, query?: { dateFrom?: string; dateTo?: string; accountId?: string; referenceId?: string }) {
     return this.glService.getGeneralLedger(tenantId, query);
   }
+
+  async exportReport(
+    tenantId: string,
+    reportType: string,
+    format: string,
+    query: any,
+  ) {
+    const csvRows: string[] = [];
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `${reportType}-report-${dateStr}.csv`;
+
+    switch (reportType) {
+      case 'inventory': {
+        const rep = await this.getInventoryReport(tenantId, query || {});
+        csvRows.push('SKU,Product Name,Quantity,Reorder Level,Status,Total Value');
+        for (const p of rep.products || []) {
+          csvRows.push(
+            `"${p.sku}","${p.name}",${p.stockQuantity},${p.minStockLevel},${p.isActive ? 'ACTIVE' : 'INACTIVE'},${p.totalValue}`,
+          );
+        }
+        break;
+      }
+      case 'sales': {
+        const rep = await this.getSalesReport(tenantId, query || {});
+        csvRows.push('Invoice Number,Client,Issue Date,Due Date,Status,Total,Paid,Balance');
+        for (const inv of (rep as any).invoices || []) {
+          csvRows.push(
+            `"${inv.invoiceNumber}","${inv.client?.companyName || ''}",${inv.issueDate},${inv.dueDate},${inv.status},${inv.total},${inv.paidAmount},${inv.balanceAmount}`,
+          );
+        }
+        break;
+      }
+      case 'expenses': {
+        const rep = await this.getExpenseReport(tenantId, query || {});
+        csvRows.push('Category,Total');
+        for (const row of rep.byCategory || []) {
+          csvRows.push(`"${row.category}",${row.total}`);
+        }
+        break;
+      }
+      case 'customers': {
+        const rep = await this.getCustomerReport(tenantId, query || {});
+        csvRows.push('Customer,Contact Person,Email,Sales,Paid,Outstanding');
+        for (const c of rep.customers || []) {
+          csvRows.push(
+            `"${c.clientName}","${c.contactPerson || ''}","${c.email || ''}",${c.sales},${c.paid},${c.outstanding}`,
+          );
+        }
+        break;
+      }
+      case 'vendors': {
+        const rep = await this.getVendorReport(tenantId, query || {});
+        csvRows.push('Vendor Name,Contact Person,Email,Purchases Count,Total Purchases');
+        for (const v of rep.vendors || []) {
+          csvRows.push(
+            `"${v.name}","${v.contactPerson || ''}","${v.email || ''}",${v.purchaseCount},${v.totalPurchases}`,
+          );
+        }
+        break;
+      }
+      default: {
+        csvRows.push('Report Type,Export Date,Tenant ID');
+        csvRows.push(`"${reportType}","${dateStr}","${tenantId}"`);
+        break;
+      }
+    }
+
+    const csvContent = csvRows.join('\n');
+    return {
+      buffer: Buffer.from(csvContent, 'utf-8'),
+      filename,
+      contentType: 'text/csv',
+    };
+  }
 }

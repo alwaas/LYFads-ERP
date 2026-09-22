@@ -34,6 +34,9 @@ model User {
   createdExpenses    Expense[] @relation("CreatedExpenses")
   approvedExpenses   Expense[] @relation("ApprovedExpenses")
 
+  @@index([tenantId])
+  @@index([tenantId, role])
+  @@index([tenantId, isActive])
   @@map("users")
 }
 
@@ -77,6 +80,8 @@ model Employee {
 
   @@index([userId, tenantId])
   @@index([tenantId])
+  @@index([managerId, tenantId])
+  @@index([status, tenantId])
   @@map("employees")
 }
 
@@ -104,6 +109,9 @@ model Client {
   projects         Project[]
   salesOrders      SalesOrder[]
 
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@index([accountManagerId, tenantId])
   @@map("clients")
 }
 
@@ -137,6 +145,7 @@ model Project {
   @@unique([projectCode, tenantId])
   @@index([clientId, tenantId])
   @@index([tenantId])
+  @@index([managerId, tenantId])
   @@map("projects")
 }
 
@@ -166,6 +175,8 @@ model Task {
   @@unique([taskCode, tenantId])
   @@index([projectId, tenantId])
   @@index([tenantId])
+  @@index([employeeId, tenantId])
+  @@index([status, tenantId])
   @@map("tasks")
 }
 
@@ -294,6 +305,8 @@ model DailyWorkReport {
 
   @@index([employeeId, tenantId])
   @@index([reportDate, tenantId])
+  @@index([projectId, tenantId])
+  @@index([taskId, tenantId])
   @@index([tenantId])
   @@map("daily_work_reports")
 }
@@ -323,6 +336,9 @@ model Timesheet {
 
   @@index([employeeId, tenantId])
   @@index([workDate, tenantId])
+  @@index([projectId, tenantId])
+  @@index([taskId, tenantId])
+  @@index([approvedById, tenantId])
   @@index([tenantId])
 }
 
@@ -393,6 +409,8 @@ model Attachment {
   @@index([uploadedBy, tenantId])
   @@index([projectId, tenantId])
   @@index([taskId, tenantId])
+  @@index([milestoneId, tenantId])
+  @@index([commentId, tenantId])
   @@index([tenantId])
 }
 
@@ -414,6 +432,9 @@ model Lead {
   assignedTo     User?      @relation(fields: [assignedToId], references: [id])
   tenant         Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([assignedToId, tenantId])
   @@map("leads")
 }
 
@@ -474,6 +495,7 @@ model Payroll {
   @@unique([employeeId, month, year, tenantId])
   @@index([employeeId, tenantId])
   @@index([month, year, tenantId])
+  @@index([approvedById, tenantId])
   @@index([tenantId])
 }
 
@@ -548,9 +570,14 @@ model Invoice {
   payments      Payment[]
   allocations   PaymentAllocation[]
 
-  @@index([clientId])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, dueDate])
+  @@index([tenantId, balanceAmount])
+  @@index([clientId, tenantId])
+  @@index([projectId, tenantId])
+  @@index([salesOrderId, tenantId])
   @@index([status])
-  @@index([salesOrderId])
 }
 
 model InvoiceItem {
@@ -598,9 +625,11 @@ model Payment {
   @@index([purchaseInvoiceId, tenantId])
   @@index([expenseId, tenantId])
   @@index([payrollId, tenantId])
-  @@index([paymentDate, tenantId])
   @@index([tenantId])
-  @@index([status, tenantId])
+  @@index([tenantId, paymentDate])
+  @@index([tenantId, status])
+  @@index([tenantId, status, paymentDate])
+  @@index([paymentDate, tenantId])
 }
 
 model PaymentAllocation {
@@ -665,13 +694,15 @@ model Expense {
   payments      Payment[]
   allocations   PaymentAllocation[]
 
-  @@index([expenseDate, tenantId])
-  @@index([category, tenantId])
-  @@index([status, tenantId])
+  @@index([tenantId])
+  @@index([tenantId, expenseDate])
+  @@index([tenantId, category])
+  @@index([tenantId, status])
   @@index([vendorId, tenantId])
   @@index([employeeId, tenantId])
   @@index([createdById, tenantId])
-  @@index([tenantId])
+  @@index([approvedById, tenantId])
+  @@index([glAccountId, tenantId])
   @@map("expenses")
 }
 
@@ -751,6 +782,7 @@ model PurchaseOrder {
   @@unique([orderNumber, tenantId])
   @@index([tenantId])
   @@index([vendorId, tenantId])
+  @@index([warehouseId, tenantId])
   @@index([status, tenantId])
   @@index([orderDate, tenantId])
   @@map("purchase_orders")
@@ -774,6 +806,7 @@ model PurchaseOrderItem {
   tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([purchaseOrderId, tenantId])
+  @@index([productId, tenantId])
   @@index([tenantId])
   @@map("purchase_order_items")
 }
@@ -974,6 +1007,7 @@ model TenantSubscription {
 
   @@index([planId])
   @@index([status])
+  @@index([tenantId, status])
   @@map("tenant_subscriptions")
 }
 
@@ -1001,6 +1035,7 @@ model Product {
   @@unique([sku, tenantId])
   @@index([tenantId])
   @@index([name, tenantId])
+  @@index([tenantId, isActive])
   @@map("products")
 }
 
@@ -1083,6 +1118,7 @@ model StockCountLine {
   tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, stockCountId])
+  @@index([productId, tenantId])
   @@map("stock_count_lines")
 }
 
@@ -1131,6 +1167,8 @@ model StockMovement {
 
   @@index([tenantId, productId])
   @@index([tenantId, warehouseId])
+  @@index([sourceWarehouseId, tenantId])
+  @@index([destinationWarehouseId, tenantId])
   @@index([tenantId, createdAt])
   @@map("stock_movements")
 }
@@ -1195,6 +1233,7 @@ model JournalEntry {
   @@index([tenantId, posted])
   @@index([tenantId, referenceId])
   @@index([tenantId, fiscalYearId])
+  @@index([createdById, tenantId])
   @@map("journal_entries")
 }
 
@@ -1263,6 +1302,7 @@ model SalesOrderItem {
   tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([salesOrderId, tenantId])
+  @@index([productId, tenantId])
   @@index([tenantId])
   @@map("sales_order_items")
 }
