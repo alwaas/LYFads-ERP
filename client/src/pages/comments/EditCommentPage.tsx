@@ -6,6 +6,8 @@ import PageContainer from "../../components/layout/PageContainer";
 import CommentForm from "../../components/comments/CommentForm";
 import { commentService } from "../../services/comment.service";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function EditCommentPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -14,6 +16,7 @@ function EditCommentPage() {
   const [comment, setComment] = useState({
     content: "",
   });
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const fetchComment = async () => {
@@ -23,7 +26,7 @@ function EditCommentPage() {
         const response = await commentService.getComment(id);
 
         setComment({
-          content: response.content,
+          content: response.message || response.content || "",
         });
 
       } catch (error) {
@@ -42,14 +45,22 @@ function EditCommentPage() {
     try {
       if (!id) return;
 
-      await commentService.updateComment(id, data);
+      setServerErrors({});
+      await commentService.updateComment(id, {
+        content: data.content,
+      });
 
       toast.success("Comment updated successfully");
 
       navigate("/comments");
-
-    } catch (error) {
-      toast.error("Failed to update comment");
+    } catch (error: unknown) {
+      console.error(error);
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error("Failed to update comment");
+      }
     }
   };
 
@@ -73,6 +84,7 @@ function EditCommentPage() {
         <CommentForm
           initialData={comment}
           onSubmit={handleSubmit}
+          serverErrors={serverErrors}
         />
       </div>
     </PageContainer>

@@ -6,6 +6,7 @@ import { Plus, Search, RefreshCw } from "lucide-react";
 import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
 import EmployeeTable from "../../components/employees/EmployeeTable";
+import Pagination from "../../components/ui/Pagination";
 
 import { getEmployees, deleteEmployee } from "../../services/employee.service";
 import type { Employee } from "../../types/employee";
@@ -17,13 +18,16 @@ function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // Function declared BEFORE useEffect
   const loadEmployees = async () => {
     try {
       setLoading(true);
-      const data: any = await getEmployees();
-      setEmployees(Array.isArray(data) ? data : data?.employees || []);
+      const result: any = await getEmployees(page, limit, search);
+      setEmployees(result.data || []);
+      setTotalPages(result.totalPages || 1);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load employees.");
@@ -35,13 +39,14 @@ function EmployeesPage() {
 
   useEffect(() => {
     loadEmployees();
-  }, []);
+  }, [page, limit]);
 
   const refresh = async () => {
     try {
       setRefreshing(true);
-      const data: any = await getEmployees();
-      setEmployees(Array.isArray(data) ? data : data?.employees || []);
+      const result: any = await getEmployees(page, limit, search);
+      setEmployees(result.data || []);
+      setTotalPages(result.totalPages || 1);
       toast.success("Employees refreshed successfully.");
     } catch (error) {
       console.error(error);
@@ -56,7 +61,7 @@ function EmployeesPage() {
 
     try {
       await deleteEmployee(id);
-      setEmployees((prev) => (Array.isArray(prev) ? prev.filter((x) => x.id !== id) : []));
+      setEmployees((prev) => prev.filter((x) => x.id !== id));
       toast.success("Employee deleted successfully.");
     } catch (error) {
       console.error(error);
@@ -64,21 +69,25 @@ function EmployeesPage() {
     }
   };
 
-  const safeEmployees = Array.isArray(employees) ? employees : [];
-  const filteredEmployees = safeEmployees.filter((emp: any) => {
-    const keyword = search.toLowerCase();
-    const fullName = emp.fullName || emp.user?.fullName || "";
-    const email = emp.email || emp.user?.email || "";
-    const employeeCode = emp.employeeCode || "";
-    const department = emp.department || "";
-    
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  if (loading) {
     return (
-      fullName.toLowerCase().includes(keyword) ||
-      email.toLowerCase().includes(keyword) ||
-      employeeCode.toLowerCase().includes(keyword) ||
-      department.toLowerCase().includes(keyword)
+      <DashboardLayout>
+        <PageContainer>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+              <p className="mt-4 text-sm text-slate-500">Loading employees...</p>
+            </div>
+          </div>
+        </PageContainer>
+      </DashboardLayout>
     );
-  });
+  }
 
   return (
     <DashboardLayout>
@@ -123,18 +132,14 @@ function EmployeesPage() {
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search by name, email, employee code or department..."
               className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none shadow-2xs transition"
             />
           </div>
 
           {/* Table Content */}
-          {loading ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-2xs">
-              <p className="text-slate-500 text-base animate-pulse font-medium">Loading Employees...</p>
-            </div>
-          ) : filteredEmployees.length === 0 ? (
+          {employees.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-12 sm:p-16 text-center shadow-2xs space-y-3">
               <h3 className="text-lg sm:text-xl font-bold text-slate-800">No Employees Found</h3>
               <p className="text-slate-500 text-sm max-w-sm mx-auto">
@@ -152,11 +157,21 @@ function EmployeesPage() {
           ) : (
             <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
               <div className="w-full overflow-x-auto">
-                <EmployeeTable employees={filteredEmployees} onDelete={handleDelete} />
+                <EmployeeTable employees={employees} onDelete={handleDelete} />
               </div>
             </div>
           )}
 
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            limit={limit}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setPage(1);
+            }}
+          />
         </div>
       </PageContainer>
     </DashboardLayout>

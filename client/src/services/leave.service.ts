@@ -9,10 +9,13 @@ import type {
    Get All Leaves
 =========================== */
 
-export const getLeaves = async (): Promise<Leave[]> => {
-  const response = await api.get("/leaves");
-
-  return response.data.data.data;
+export const getLeaves = async (page = 1, limit = 10, search?: string, status?: string, leaveType?: string): Promise<any> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (search) params.search = search;
+  if (status) params.status = status;
+  if (leaveType) params.leaveType = leaveType;
+  const response = await api.get("/leaves", { params });
+  return response.data.data;
 };
 
 /* ===========================

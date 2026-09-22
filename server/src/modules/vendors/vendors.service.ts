@@ -4,87 +4,76 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { SearchDto } from '../../common/dto/search.dto';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { UpdateVendorDto } from './dto/update-vendor.dto';
-import { ActivityLogsService } from '../activity-logs/activity-logs.service';
-import { Prisma } from '@prisma/client';
+import { VendorQueryDto } from './dto/vendor-query.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Injectable()
 export class VendorsService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly activityLogs: ActivityLogsService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateVendorDto, userTenantId: string, userId?: string) {
-    if (dto.tenantId && dto.tenantId !== userTenantId) {
-      throw new ForbiddenException(
-        'Cannot create vendor for a different tenant',
-      );
-    }
+  async create(dto: CreateVendorDto, userTenantId: string) {
+    if (dto.email) {
+      const existing = await this.prisma.vendor.findFirst({
+        where: {
+          email: dto.email,
+          tenantId: userTenantId,
+        },
+      });
 
-    const existing = await this.prisma.vendor.findFirst({
-      where: {
-        vendorCode: dto.vendorCode,
-        tenantId: userTenantId,
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException(
-        'Vendor code already exists in this tenant.',
-      );
+      if (existing) {
+        throw new ConflictException(
+          'A vendor with this email already exists in your organization.',
+        );
+      }
     }
 
     const vendor = await this.prisma.vendor.create({
       data: {
         name: dto.name,
-        vendorCode: dto.vendorCode,
         contactPerson: dto.contactPerson,
         email: dto.email,
         phone: dto.phone,
-        alternatePhone: dto.alternatePhone,
         address: dto.address,
         city: dto.city,
         state: dto.state,
         country: dto.country,
-        postalCode: dto.postalCode,
-        taxNumber: dto.taxNumber,
-        paymentTerms: dto.paymentTerms,
+        pincode: dto.pincode,
+        gstNumber: dto.gstNumber,
         notes: dto.notes,
-        status: dto.status,
         tenantId: userTenantId,
-        createdById: userId,
       },
-    });
-
-    await this.activityLogs.create({
-      action: 'CREATE',
-      module: 'VENDORS',
-      description: `Vendor "${vendor.name}" created`,
-      userId,
-      tenantId: userTenantId,
     });
 
     return vendor;
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    query: VendorQueryDto,
+    userTenantId: string,
+  ) {
     const { skip, limit } = pagination;
 
-    const where: Prisma.VendorWhereInput = {
+    const where: Record<string, unknown> = {
       tenantId: userTenantId,
     };
 
+    if (query.isActive !== undefined) {
+      const isActive = query.isActive === 'true';
+      where.isActive = isActive;
+    }
+
     if (search.search) {
       where.OR = [
-        { name: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-        { vendorCode: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-        { contactPerson: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-        { email: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
+        { name: { contains: search.search, mode: 'insensitive' } },
+        { contactPerson: { contains: search.search, mode: 'insensitive' } },
+        { email: { contains: search.search, mode: 'insensitive' } },
+        { phone: { contains: search.search, mode: 'insensitive' } },
       ];
     }
 
@@ -93,28 +82,21 @@ export class VendorsService {
         where,
         skip,
         take: limit,
-        include: {
-          createdByUser: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-        },
         orderBy: {
-          createdAt: 'desc',
+          name: 'asc',
         },
       }),
       this.prisma.vendor.count({ where }),
     ]);
 
     return {
-      total,
-      page: pagination.page,
-      limit: pagination.limit,
-      totalPages: Math.ceil(total / pagination.limit),
       data,
+      meta: {
+        total,
+        page: pagination.page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -122,18 +104,14 @@ export class VendorsService {
     const vendor = await this.prisma.vendor.findUnique({
       where: { id },
       include: {
-        createdByUser: {
-          select: {
-            id: true,
-            fullName: true,
-            email: true,
-          },
+        _count: {
+          select: { purchases: true },
         },
       },
     });
 
     if (!vendor) {
-      throw new NotFoundException('Vendor not found.');
+      throw new NotFoundException('Vendor not found');
     }
 
     if (vendor.tenantId !== userTenantId) {
@@ -143,76 +121,78 @@ export class VendorsService {
     return vendor;
   }
 
-  async update(id: string, dto: UpdateVendorDto, userTenantId: string, userId?: string) {
-    const vendor = await this.findOne(id, userTenantId);
+  async update(id: string, dto: UpdateVendorDto, userTenantId: string) {
+    await this.findOne(id, userTenantId);
 
-    if (dto.vendorCode && dto.vendorCode !== vendor.vendorCode) {
+    if (dto.email) {
       const existing = await this.prisma.vendor.findFirst({
         where: {
-          vendorCode: dto.vendorCode,
+          email: dto.email,
           tenantId: userTenantId,
-          id: { not: id },
+          NOT: { id },
         },
-        select: { id: true },
       });
 
       if (existing) {
         throw new ConflictException(
-          'Vendor code already exists in this tenant.',
+          'A vendor with this email already exists in your organization.',
         );
       }
     }
 
-    const updatedVendor = await this.prisma.vendor.update({
+    const vendor = await this.prisma.vendor.update({
       where: { id },
       data: {
         name: dto.name,
-        vendorCode: dto.vendorCode,
         contactPerson: dto.contactPerson,
         email: dto.email,
         phone: dto.phone,
-        alternatePhone: dto.alternatePhone,
         address: dto.address,
         city: dto.city,
         state: dto.state,
         country: dto.country,
-        postalCode: dto.postalCode,
-        taxNumber: dto.taxNumber,
-        paymentTerms: dto.paymentTerms,
+        pincode: dto.pincode,
+        gstNumber: dto.gstNumber,
         notes: dto.notes,
-        status: dto.status,
+        isActive: dto.isActive,
+      },
+      include: {
+        _count: {
+          select: { purchases: true },
+        },
       },
     });
 
-    await this.activityLogs.create({
-      action: 'UPDATE',
-      module: 'VENDORS',
-      description: `Vendor "${updatedVendor.name}" updated`,
-      userId,
-      tenantId: userTenantId,
-    });
-
-    return updatedVendor;
+    return vendor;
   }
 
-  async remove(id: string, userTenantId: string, userId?: string) {
+  async remove(id: string, userTenantId: string) {
     const vendor = await this.findOne(id, userTenantId);
+
+    const purchaseCount = await this.prisma.purchase.count({
+      where: { vendorId: id },
+    });
+
+    if (purchaseCount > 0) {
+      await this.prisma.vendor.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      return {
+        success: true,
+        message: `Vendor deactivated because it is referenced by ${purchaseCount} purchase record(s).`,
+        deactivated: true,
+      };
+    }
 
     await this.prisma.vendor.delete({
       where: { id },
     });
 
-    await this.activityLogs.create({
-      action: 'DELETE',
-      module: 'VENDORS',
-      description: `Vendor "${vendor.name}" deleted`,
-      userId,
-      tenantId: userTenantId,
-    });
-
     return {
+      success: true,
       message: 'Vendor deleted successfully',
-      id,
     };
   }
 }

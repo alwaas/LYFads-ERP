@@ -4,6 +4,7 @@ import {
   IsDecimal,
   IsDateString,
   IsEnum,
+  Length,
 } from 'class-validator';
 
 import { PaymentMethod } from '@prisma/client';
@@ -15,7 +16,15 @@ export class CreatePaymentDto {
 
   @IsOptional()
   @IsString()
-  clientId?: string;
+  purchaseInvoiceId?: string;
+
+  @IsOptional()
+  @IsString()
+  expenseId?: string;
+
+  @IsOptional()
+  @IsString()
+  payrollId?: string;
 
   @IsDecimal()
   amount: string;
@@ -33,4 +42,9 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsString()
   remarks?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
 }

@@ -1,114 +1,92 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useParams } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 import { Wallet, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
-import PageLoader from "../../components/common/PageLoader";
 import { expenseService } from "../../services/expense.service";
-import { vendorService } from "../../services/vendor.service";
-import type { UpdateExpenseDto, ExpenseCategory, ExpenseStatus, PaymentMethod } from "../../types/expense";
-import type { Vendor } from "../../types/vendor";
-
-const categories: { value: ExpenseCategory; label: string }[] = [
-  { value: "SALARY", label: "Salary" },
-  { value: "RENT", label: "Rent" },
-  { value: "UTILITIES", label: "Utilities" },
-  { value: "SUPPLIES", label: "Supplies" },
-  { value: "MARKETING", label: "Marketing" },
-  { value: "TRAVEL", label: "Travel" },
-  { value: "MAINTENANCE", label: "Maintenance" },
-  { value: "OTHER", label: "Other" },
-];
-
-const paymentMethods: { value: PaymentMethod; label: string }[] = [
-  { value: "CASH", label: "Cash" },
-  { value: "BANK_TRANSFER", label: "Bank Transfer" },
-  { value: "UPI", label: "UPI" },
-  { value: "CARD", label: "Card" },
-  { value: "CHEQUE", label: "Cheque" },
-];
-
-const statuses: { value: ExpenseStatus; label: string }[] = [
-  { value: "PENDING", label: "Pending" },
-  { value: "APPROVED", label: "Approved" },
-  { value: "REJECTED", label: "Rejected" },
-  { value: "PAID", label: "Paid" },
-];
+import { mapServerValidationErrors } from "../../features/validation/errors";
+import { editExpenseSchema, type EditExpenseFormData } from "../../features/validation/expense.schema";
+import type { UpdateExpenseDto } from "../../types/expense";
 
 const EditExpensePage = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
 
-  const [formData, setFormData] = useState<UpdateExpenseDto>({});
-
-  const { data: expense, isLoading } = useQuery({
-    queryKey: ["expenses", id],
-    queryFn: () => expenseService.getExpenseById(id!),
-    enabled: !!id,
-  });
-
-  const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ["vendors"],
-    queryFn: () => vendorService.getAllVendors(),
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<EditExpenseFormData>({
+    resolver: zodResolver(editExpenseSchema) as any,
+    defaultValues: {
+      expenseDate: "",
+      category: "",
+      description: "",
+      amount: 0,
+      paymentMethod: "CASH",
+      referenceNo: "",
+      notes: "",
+    },
   });
 
   useEffect(() => {
-    if (expense) {
-      setFormData({
-        description: expense.description,
-        amount: expense.amount.toString(),
-        expenseDate: expense.expenseDate.split("T")[0],
-        category: expense.category,
-        paymentMethod: expense.paymentMethod,
-        vendor: expense.vendor,
-        vendorId: expense.vendorId,
-        receiptUrl: expense.receiptUrl,
-        notes: expense.notes,
-        status: expense.status,
-      });
-    }
-  }, [expense]);
+    const loadExpense = async () => {
+      if (!id) return;
+      try {
+        const expense = await expenseService.getExpenseById(id);
+        reset({
+          expenseDate: expense.expenseDate.split("T")[0],
+          category: expense.category,
+          description: expense.description,
+          amount: expense.amount,
+          paymentMethod: expense.paymentMethod,
+          referenceNo: expense.referenceNo || "",
+          notes: expense.notes || "",
+        });
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to load expense");
+        navigate("/expenses");
+      }
+    };
+
+    loadExpense();
+  }, [id, navigate, reset]);
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: UpdateExpenseDto }) =>
-      expenseService.updateExpense(id, dto),
+    mutationFn: (dto: UpdateExpenseDto) => expenseService.updateExpense(id!, dto),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       toast.success("Expense updated successfully");
       navigate("/expenses");
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || error.message || "Failed to update expense";
-      toast.error(message);
+    onError: (error: unknown) => {
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const message = axiosError.response?.data?.message || "Failed to update expense";
+        toast.error(message);
+      } else {
+        const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+        const message = axiosError.response?.data?.message || axiosError.message || "Failed to update expense";
+        toast.error(message);
+      }
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id) return;
-    updateMutation.mutate({ id, dto: formData });
+  const onSubmit = async (data: EditExpenseFormData) => {
+    const payload: UpdateExpenseDto = {
+      ...data,
+      amount: data.amount !== undefined ? String(data.amount) : undefined,
+    };
+    updateMutation.mutate(payload);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  if (isLoading) {
-    return <PageLoader />;
-  }
-
-  if (!expense) {
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-        <h2 className="text-sm font-semibold text-red-800">Expense not found</h2>
-      </div>
-    );
+  if (!id) {
+    return null;
   }
 
   return (
@@ -122,7 +100,7 @@ const EditExpensePage = () => {
         </button>
         <div>
           <div className="flex items-center gap-2">
-            <Wallet className="h-6 w-6 text-emerald-600" />
+            <Wallet className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Edit Expense
             </h1>
@@ -134,21 +112,53 @@ const EditExpensePage = () => {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div>
+              <label htmlFor="expenseDate" className="block text-sm font-medium text-slate-700 mb-2">
+                Expense Date *
+              </label>
+              <input
+                type="date"
+                id="expenseDate"
+                {...register("expenseDate")}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              {errors.expenseDate && (
+                <p className="mt-1 text-xs text-red-600">{errors.expenseDate.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-2">
+                Category *
+              </label>
+              <input
+                type="text"
+                id="category"
+                {...register("category")}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="e.g. Office Supplies, Travel, Utilities"
+              />
+              {errors.category && (
+                <p className="mt-1 text-xs text-red-600">{errors.category.message}</p>
+              )}
+            </div>
+
             <div className="lg:col-span-2">
               <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-2">
                 Description *
               </label>
-              <input
-                type="text"
+              <textarea
                 id="description"
-                name="description"
-                value={formData.description || ""}
-                onChange={handleChange}
-                required
+                {...register("description")}
+                rows={3}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Enter expense description"
               />
+              {errors.description && (
+                <p className="mt-1 text-xs text-red-600">{errors.description.message}</p>
+              )}
             </div>
 
             <div>
@@ -158,48 +168,14 @@ const EditExpensePage = () => {
               <input
                 type="number"
                 id="amount"
-                name="amount"
-                value={formData.amount || ""}
-                onChange={handleChange}
-                required
                 step="0.01"
-                min="0"
+                {...register("amount", { valueAsNumber: true })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="0.00"
               />
-            </div>
-
-            <div>
-              <label htmlFor="expenseDate" className="block text-sm font-medium text-slate-700 mb-2">
-                Expense Date *
-              </label>
-              <input
-                type="date"
-                id="expenseDate"
-                name="expenseDate"
-                value={formData.expenseDate || ""}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-2">
-                Category *
-              </label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
+              {errors.amount && (
+                <p className="mt-1 text-xs text-red-600">{errors.amount.message}</p>
+              )}
             </div>
 
             <div>
@@ -208,91 +184,51 @@ const EditExpensePage = () => {
               </label>
               <select
                 id="paymentMethod"
-                name="paymentMethod"
-                value={formData.paymentMethod}
-                onChange={handleChange}
+                {...register("paymentMethod")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                {paymentMethods.map((method) => (
-                  <option key={method.value} value={method.value}>
-                    {method.label}
-                  </option>
-                ))}
+                <option value="CASH">Cash</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+                <option value="CHEQUE">Cheque</option>
               </select>
+              {errors.paymentMethod && (
+                <p className="mt-1 text-xs text-red-600">{errors.paymentMethod.message}</p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="vendorId" className="block text-sm font-medium text-slate-700 mb-2">
-                Vendor
-              </label>
-              <select
-                id="vendorId"
-                name="vendorId"
-                value={formData.vendorId}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">Select a vendor (optional)</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>
-                    {vendor.name} ({vendor.vendorCode})
-                  </option>
-                ))}
-              </select>
-              <input
-                type="hidden"
-                name="vendor"
-                value={formData.vendor || ""}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="status" className="block text-sm font-medium text-slate-700 mb-2">
-                Status
-              </label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                {statuses.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="lg:col-span-2">
-              <label htmlFor="receiptUrl" className="block text-sm font-medium text-slate-700 mb-2">
-                Receipt URL
+              <label htmlFor="referenceNo" className="block text-sm font-medium text-slate-700 mb-2">
+                Reference Number
               </label>
               <input
                 type="text"
-                id="receiptUrl"
-                name="receiptUrl"
-                value={formData.receiptUrl || ""}
-                onChange={handleChange}
+                id="referenceNo"
+                {...register("referenceNo")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Enter reference number"
               />
+              {errors.referenceNo && (
+                <p className="mt-1 text-xs text-red-600">{errors.referenceNo.message}</p>
+              )}
             </div>
+          </div>
 
-            <div className="lg:col-span-2">
-              <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
-                Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes || ""}
-                onChange={handleChange}
-                rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
+          <div>
+            <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
+              Notes
+            </label>
+            <textarea
+              id="notes"
+              {...register("notes")}
+              rows={3}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Enter any additional notes"
+            />
+            {errors.notes && (
+              <p className="mt-1 text-xs text-red-600">{errors.notes.message}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3">

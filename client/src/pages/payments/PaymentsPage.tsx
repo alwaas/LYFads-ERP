@@ -1,11 +1,20 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, Plus, Search, Filter, Edit, Trash2, Eye } from "lucide-react";
+import { CreditCard, Plus, Search, Filter, Edit, Trash2, Eye, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 import PageLoader from "../../components/common/PageLoader";
+import Pagination from "../../components/ui/Pagination";
 import { paymentService } from "../../services/payment.service";
-import type { Payment, PaymentMethod } from "../../types/payment";
+import type { PaymentMethod } from "../../types/payment";
+
+type PagedResponse = {
+  data: any[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 
 const methodColors: Record<PaymentMethod, string> = {
   CASH: "bg-green-100 text-green-800",
@@ -15,15 +24,25 @@ const methodColors: Record<PaymentMethod, string> = {
   CHEQUE: "bg-gray-100 text-gray-800",
 };
 
+const statusColors: Record<string, string> = {
+  ACTIVE: "bg-green-100 text-green-800",
+  VOIDED: "bg-red-100 text-red-800",
+};
+
 const PaymentsPage = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [methodFilter, setMethodFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
-  const { data: payments = [], isLoading, isError } = useQuery<Payment[]>({
-    queryKey: ["payments"],
-    queryFn: () => paymentService.getAllPayments(),
+  const { data: result, isLoading, isError } = useQuery<PagedResponse>({
+    queryKey: ["payments", page, limit, searchQuery, methodFilter],
+    queryFn: () => paymentService.getAllPayments(page, limit, methodFilter, searchQuery),
   });
+
+  const payments = result?.data || [];
+  const totalPages = result?.totalPages || 1;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => paymentService.deletePayment(id),
@@ -36,20 +55,27 @@ const PaymentsPage = () => {
     },
   });
 
-  const filteredPayments = payments.filter((payment) => {
-    const matchesSearch =
-      payment.referenceNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.invoice?.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.invoice?.client?.companyName.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesMethod = methodFilter === "all" || payment.method === methodFilter;
-
-    return matchesSearch && matchesMethod;
+  const voidMutation = useMutation({
+    mutationFn: (id: string) => paymentService.voidPayment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      toast.success("Payment voided successfully");
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.message || error.message || "Failed to void payment";
+      toast.error(message);
+    },
   });
 
   const handleDelete = (id: string) => {
     if (window.confirm("Are you sure you want to delete this payment?")) {
       deleteMutation.mutate(id);
+    }
+  };
+
+  const handleVoid = (id: string) => {
+    if (window.confirm("Are you sure you want to void this payment? This will affect the invoice balance.")) {
+      voidMutation.mutate(id);
     }
   };
 
@@ -98,7 +124,7 @@ const PaymentsPage = () => {
                 Total Payments
               </p>
               <p className="mt-2 text-2xl font-bold text-slate-900">
-                {payments.length}
+                {result?.total || 0}
               </p>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50">
@@ -169,7 +195,10 @@ const PaymentsPage = () => {
                 type="text"
                 placeholder="Search payments..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -178,7 +207,10 @@ const PaymentsPage = () => {
               <Filter className="h-4 w-4 text-slate-400" />
               <select
                 value={methodFilter}
-                onChange={(e) => setMethodFilter(e.target.value)}
+                onChange={(e) => {
+                  setMethodFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">All Methods</option>
@@ -214,20 +246,23 @@ const PaymentsPage = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Reference
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Status
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredPayments.length === 0 ? (
+              {payments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
                     No payments found
                   </td>
                 </tr>
               ) : (
-                filteredPayments.map((payment) => (
+                payments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm font-medium text-slate-900">
                       {payment.invoice?.invoiceNumber || "-"}
@@ -239,7 +274,7 @@ const PaymentsPage = () => {
                       ${Number(payment.amount).toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${methodColors[payment.method]}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${methodColors[payment.method as PaymentMethod] || "bg-gray-100 text-gray-800"}`}>
                         {payment.method.replace("_", " ")}
                       </span>
                     </td>
@@ -248,6 +283,11 @@ const PaymentsPage = () => {
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">
                       {payment.referenceNo || "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[payment.status as string] || "bg-gray-100 text-gray-800"}`}>
+                        {payment.status}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -265,9 +305,20 @@ const PaymentsPage = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </a>
+                        {payment.status === "ACTIVE" && (
+                          <button
+                            onClick={() => handleVoid(payment.id)}
+                            disabled={voidMutation.isPending}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                            title="Void"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(payment.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          disabled={deleteMutation.isPending}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
                           title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -281,6 +332,17 @@ const PaymentsPage = () => {
           </table>
         </div>
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        limit={limit}
+        onLimitChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
+      />
     </div>
   );
 };

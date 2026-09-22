@@ -85,6 +85,7 @@ export class UploadsController {
 
     const uploadedFile = await this.uploadsService.uploadFile(
       file,
+      req.user.tenantId,
       'attachments',
     );
 

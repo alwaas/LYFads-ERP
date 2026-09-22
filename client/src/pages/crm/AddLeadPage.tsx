@@ -11,22 +11,28 @@ import LeadForm, {
 
 import { createLead } from "../../services/crm.service";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function AddLeadPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (values: LeadFormData) => {
+    setServerErrors({});
     try {
       setLoading(true);
       await createLead(values);
       toast.success("Lead created successfully.");
       navigate("/crm");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(
-        error?.response?.data?.message ??
-          "Failed to create lead.",
-      );
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error((error as any)?.response?.data?.message ?? "Failed to create lead.");
+      }
     } finally {
       setLoading(false);
     }
@@ -61,6 +67,7 @@ function AddLeadPage() {
             <LeadForm
               loading={loading}
               onSubmit={handleSubmit}
+              serverErrors={serverErrors}
             />
           </div>
 

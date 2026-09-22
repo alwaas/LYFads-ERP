@@ -19,6 +19,8 @@ import { getEmployees } from "../../services/employee.service";
 import { getProjects } from "../../services/project.service";
 import { getTasks } from "../../services/task.service";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function EditDailyWorkReportPage() {
   const { id } = useParams();
 
@@ -31,6 +33,9 @@ function EditDailyWorkReportPage() {
   const [report, setReport] = useState<DailyWorkReport | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadData();
@@ -62,17 +67,30 @@ function EditDailyWorkReportPage() {
   };
 
   const handleSubmit = async (data: any) => {
+    if (!id) return;
+
+    setServerErrors({});
     try {
-      await updateDailyWorkReport(id!, data);
+      setSaving(true);
+      await updateDailyWorkReport(id, data);
 
       toast.success("Report Updated");
 
       navigate("/daily-work-reports");
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ??
-          "Update failed"
-      );
+    } catch (error: unknown) {
+      console.error(error);
+
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error(
+          (error as any)?.response?.data?.message ??
+            "Update failed"
+        );
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -95,6 +113,8 @@ function EditDailyWorkReportPage() {
         projects={projects}
         tasks={tasks}
         onSubmit={handleSubmit}
+        loading={saving}
+        serverErrors={serverErrors}
       />
     </DashboardLayout>
   );

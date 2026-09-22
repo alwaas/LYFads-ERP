@@ -20,6 +20,8 @@ import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 import { AttachmentsService } from './attachments.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
 import { UpdateAttachmentDto } from './dto/update-attachment.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('attachments')
 @UseGuards(JwtAuthGuard)
@@ -63,16 +65,18 @@ export class AttachmentsController {
   )
   @Get()
   findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Query()
-    filters: {
+    @Query() filters: {
       projectId?: string;
       taskId?: string;
       milestoneId?: string;
       commentId?: string;
+      mimeType?: string;
     },
   ) {
-    return this.attachmentsService.findAll(user.tenantId, filters);
+    return this.attachmentsService.findAll(pagination, search, user.tenantId, filters);
   }
 
   @Roles(

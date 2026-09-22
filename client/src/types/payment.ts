@@ -6,6 +6,9 @@ export interface Payment {
   method: PaymentMethod;
   referenceNo?: string;
   remarks?: string;
+  status: PaymentStatus;
+  voidedAt?: string;
+  voidedById?: string;
   createdAt: string;
   updatedAt: string;
   invoice?: {
@@ -16,9 +19,40 @@ export interface Payment {
       companyName: string;
     };
   };
+  allocations?: PaymentAllocation[];
 }
 
 export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "UPI" | "CARD" | "CHEQUE";
+
+export type PaymentStatus = "ACTIVE" | "VOIDED";
+
+export interface PaymentAllocation {
+  id: string;
+  paymentId: string;
+  invoiceId: string;
+  amount: number;
+  createdAt: string;
+  updatedAt: string;
+  tenantId: string;
+  payment?: {
+    id: string;
+    amount: number;
+    paymentDate: string;
+    method: PaymentMethod;
+    referenceNo?: string;
+    status: PaymentStatus;
+  };
+  invoice?: {
+    id: string;
+    invoiceNumber: string;
+    total: number;
+    balanceAmount: number;
+    client?: {
+      id: string;
+      companyName: string;
+    };
+  };
+}
 
 export interface CreatePaymentDto {
   invoiceId: string;
@@ -42,4 +76,10 @@ export interface PaymentResponse {
   total?: number;
   page?: number;
   limit?: number;
+}
+
+export interface CreatePaymentAllocationDto {
+  paymentId: string;
+  invoiceId: string;
+  amount: string;
 }

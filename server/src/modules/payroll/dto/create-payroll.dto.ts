@@ -1,12 +1,4 @@
-import {
-  IsInt,
-  IsOptional,
-  IsString,
-  IsDecimal,
-  IsEnum,
-} from 'class-validator';
-
-import { PayrollStatus } from '@prisma/client';
+import { IsInt, IsOptional, IsString, IsDecimal } from 'class-validator';
 
 export class CreatePayrollDto {
   @IsString()
@@ -75,10 +67,6 @@ export class CreatePayrollDto {
 
   @IsDecimal()
   netSalary: string;
-
-  @IsOptional()
-  @IsEnum(PayrollStatus)
-  status?: PayrollStatus;
 
   @IsOptional()
   @IsString()

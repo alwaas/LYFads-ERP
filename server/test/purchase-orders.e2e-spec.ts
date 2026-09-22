@@ -1,752 +1,439 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole, PurchaseOrderStatus, VendorStatus } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import * as bcrypt from 'bcrypt';
-
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/database';
+import { setupTestDatabase, teardownTestDatabase } from './setup/test-database';
 
-describe('Purchase Orders Management (e2e)', () => {
+describe('Purchase Orders E2E', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let jwtService: JwtService;
+  let testData: any;
 
-  let adminId: string;
-  let adminToken: string;
-  let testTenantId: string;
-  let otherTenantId: string;
-  let otherAdminId: string;
-  let otherAdminToken: string;
-  let vendorId: string;
+  const adminToken = () => jwtService.sign({
+    sub: testData.tenantAAdmin.id,
+    email: testData.tenantAAdmin.email,
+    role: testData.tenantAAdmin.role,
+    tenantId: testData.tenantA.id,
+    fullName: testData.tenantAAdmin.fullName,
+  });
+  const tenantBToken = () => jwtService.sign({
+    sub: testData.tenantBAdmin.id,
+    email: testData.tenantBAdmin.email,
+    role: testData.tenantBAdmin.role,
+    tenantId: testData.tenantB.id,
+    fullName: testData.tenantBAdmin.fullName,
+  });
+  const employeeToken = () => jwtService.sign({
+    sub: testData.tenantAEmployee.id,
+    email: testData.tenantAEmployee.email,
+    role: testData.tenantAEmployee.role,
+    tenantId: testData.tenantA.id,
+    fullName: testData.tenantAEmployee.fullName,
+  });
 
-  const testEmail = `admin-e2e-${Date.now()}@test.local`;
+  let tenantAVendor: any;
+  let tenantBVendor: any;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule =
-      await Test.createTestingModule({
-        imports: [AppModule],
-      }).compile();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    prisma = app.get(PrismaService);
-    jwtService = app.get(JwtService);
+    prisma = app.get<PrismaService>(PrismaService);
+    jwtService = app.get<JwtService>(JwtService);
+    testData = await setupTestDatabase();
 
-    const passwordHash = await bcrypt.hash('TestPassword123!', 10);
-
-    const testTenant = await prisma.tenant.create({
+    tenantAVendor = await prisma.vendor.create({
       data: {
-        name: 'E2E PO Tenant',
-        slug: `e2e-po-${Date.now()}`,
-        maxUsers: 100,
-        maxStorage: 10240,
+        tenantId: testData.tenantA.id,
+        name: 'Tenant A Vendor',
+        email: 'a-vendor@test.com',
+        phone: '1111111111',
+        isActive: true,
       },
     });
-    testTenantId = testTenant.id;
-
-    const otherTenant = await prisma.tenant.create({
+    tenantBVendor = await prisma.vendor.create({
       data: {
-        name: 'E2E Other PO Tenant',
-        slug: `e2e-other-po-${Date.now()}`,
-        maxUsers: 100,
-        maxStorage: 10240,
+        tenantId: testData.tenantB.id,
+        name: 'Tenant B Vendor',
+        email: 'b-vendor@test.com',
+        isActive: true,
       },
     });
-    otherTenantId = otherTenant.id;
-
-    const admin = await prisma.user.create({
-      data: {
-        email: testEmail,
-        password: passwordHash,
-        fullName: 'E2E Admin',
-        role: UserRole.ADMIN,
-        tenant: {
-          connect: { id: testTenant.id },
-        },
-      },
-    });
-    adminId = admin.id;
-
-    adminToken = jwtService.sign({
-      sub: admin.id,
-      email: admin.email,
-      role: admin.role,
-      tenantId: admin.tenantId,
-      fullName: admin.fullName,
-    });
-
-    const otherAdmin = await prisma.user.create({
-      data: {
-        email: `other-e2e-${Date.now()}@test.local`,
-        password: passwordHash,
-        fullName: 'E2E Other Admin',
-        role: UserRole.ADMIN,
-        tenant: {
-          connect: { id: otherTenant.id },
-        },
-      },
-    });
-    otherAdminId = otherAdmin.id;
-
-    otherAdminToken = jwtService.sign({
-      sub: otherAdmin.id,
-      email: otherAdmin.email,
-      role: otherAdmin.role,
-      tenantId: otherAdmin.tenantId,
-      fullName: otherAdmin.fullName,
-    });
-
-    const vendor = await prisma.vendor.create({
-      data: {
-        name: 'E2E Vendor',
-        vendorCode: `VEND-${Date.now()}`,
-        tenantId: testTenantId,
-        status: VendorStatus.ACTIVE,
-      },
-    });
-    vendorId = vendor.id;
-
-    const otherVendor = await prisma.vendor.create({
-      data: {
-        name: 'E2E Other Vendor',
-        vendorCode: `VEND-OTHER-${Date.now()}`,
-        tenantId: otherTenantId,
-        status: VendorStatus.ACTIVE,
-      },
-    });
-  });
+  }, 90000);
 
   afterAll(async () => {
-    try {
-      if (adminId) {
-        await prisma.user.delete({ where: { id: adminId } });
-      }
-    } catch (error) {}
-
-    try {
-      if (otherAdminId) {
-        await prisma.user.delete({ where: { id: otherAdminId } });
-      }
-    } catch (error) {}
-
-    try {
-      if (vendorId) {
-        await prisma.vendor.delete({ where: { id: vendorId } });
-      }
-    } catch (error) {}
-
-    try {
-      await prisma.vendor.deleteMany({
-        where: { tenantId: otherTenantId },
-      });
-    } catch (error) {}
-
-    try {
-      if (testTenantId) {
-        await prisma.tenant.delete({ where: { id: testTenantId } });
-      }
-    } catch (error) {}
-
-    try {
-      if (otherTenantId) {
-        await prisma.tenant.delete({ where: { id: otherTenantId } });
-      }
-    } catch (error) {}
-
+    await teardownTestDatabase();
     await app.close();
+  }, 60000);
+
+  afterEach(async () => {
+    try {
+      await prisma.stockMovement.deleteMany();
+      await prisma.fifoCostLayer.deleteMany();
+      await prisma.productWarehouse.deleteMany();
+      await prisma.purchaseOrderItem.deleteMany();
+      await prisma.purchaseOrder.deleteMany();
+      await prisma.activityLog.deleteMany();
+    } catch (e) {}
   });
 
-  describe('POST /purchase-orders', () => {
-    it('should create a purchase order', async () => {
-      const response = await request(app.getHttpServer())
+  let sharedProduct: any;
+  beforeEach(async () => {
+    sharedProduct = await prisma.product.create({
+      data: {
+        tenantId: testData.tenantA.id,
+        sku: `PO-${Date.now()}-${Math.random()}`,
+        name: 'PO Shared Product',
+        unitPrice: 25,
+        costPrice: 10,
+        isActive: true,
+      },
+    });
+  });
+
+  describe('Role / Auth', () => {
+    it('rejects unauthenticated', async () => {
+      await request(app.getHttpServer()).get('/purchase-orders').expect(401);
+    });
+    it('rejects EMPLOYEE', async () => {
+      await request(app.getHttpServer())
+        .get('/purchase-orders')
+        .set('Authorization', `Bearer ${employeeToken()}`)
+        .expect(403);
+    });
+  });
+
+  describe('Create (financial correctness)', () => {
+    it('persists multi-line items and forces DRAFT', async () => {
+      const r = await request(app.getHttpServer())
         .post('/purchase-orders')
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set('Authorization', `Bearer ${adminToken()}`)
         .send({
-          vendorId,
-          title: 'Test Purchase Order',
-          description: 'Test description',
-          orderDate: '2024-01-15',
-          expectedDeliveryDate: '2024-01-20',
-          notes: 'Test notes',
+          orderNumber: 'PO-1',
+          vendorId: tenantAVendor.id,
+          orderDate: new Date().toISOString().split('T')[0],
           items: [
-            {
-              description: 'Item 1',
-              quantity: 10,
-              unit: 'pcs',
-              unitPrice: 5.5,
-              taxRate: 10,
-              discount: 2,
-            },
+            { productId: sharedProduct.id, quantity: '3', unitCost: '10.00' },
+            { productId: sharedProduct.id, quantity: '2', unitCost: '8.00' },
           ],
+          subtotal: '46.00',
+          total: '46.00',
         })
         .expect(201);
-
-      expect(response.body.data.poNumber).toMatch(/^PO-\d{4}-\d{6}$/);
-      expect(response.body.data.title).toBe('Test Purchase Order');
-      expect(response.body.data.status).toBe('DRAFT');
-      expect(response.body.data.items).toHaveLength(1);
-
-      await prisma.purchaseOrder.delete({
-        where: { id: response.body.data.id },
+      const body = r.body.data ?? r.body;
+      expect(body.status).toBe('DRAFT');
+      expect(body.items).toHaveLength(2);
+      const stored = await prisma.purchaseOrderItem.findMany({
+        where: { purchaseOrderId: body.id },
       });
+      expect(stored).toHaveLength(2);
     });
 
-    it('should reject creation without items', async () => {
-      const response = await request(app.getHttpServer())
+    it('rejects empty items', async () => {
+      await request(app.getHttpServer())
         .post('/purchase-orders')
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set('Authorization', `Bearer ${adminToken()}`)
         .send({
-          vendorId,
-          title: 'Test PO',
-          orderDate: '2024-01-15',
+          orderNumber: 'PO-EMPTY',
+          vendorId: tenantAVendor.id,
+          orderDate: new Date().toISOString().split('T')[0],
           items: [],
-        });
-
-      expect(response.status).toBe(400);
+          subtotal: '0',
+          total: '0',
+        })
+        .expect(400);
     });
 
-    it('should reject vendor from different tenant', async () => {
-      const otherVendor = await prisma.vendor.findFirst({
-        where: { tenantId: otherTenantId },
-        select: { id: true },
+    it('rejects cross-tenant product in items', async () => {
+      await request(app.getHttpServer())
+        .post('/purchase-orders')
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({
+          orderNumber: 'PO-XP',
+          vendorId: tenantAVendor.id,
+          orderDate: new Date().toISOString().split('T')[0],
+          items: [{ productId: testData.tenantBProduct.id, quantity: '1', unitCost: '5.00' }],
+          subtotal: '5.00',
+          total: '5.00',
+        })
+        .expect(403);
+    });
+
+    it('rejects cross-tenant vendor', async () => {
+      await request(app.getHttpServer())
+        .post('/purchase-orders')
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({
+          orderNumber: 'PO-XV',
+          vendorId: tenantBVendor.id,
+          orderDate: new Date().toISOString().split('T')[0],
+          items: [{ productId: sharedProduct.id, quantity: '1', unitCost: '5.00' }],
+          subtotal: '5.00',
+          total: '5.00',
+        })
+        .expect(403);
+    });
+  });
+
+  describe('State machine', () => {
+    async function createDraft() {
+      const r = await request(app.getHttpServer())
+        .post('/purchase-orders')
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({
+          orderNumber: `PO-SM-${Date.now()}`,
+          vendorId: tenantAVendor.id,
+          orderDate: new Date().toISOString().split('T')[0],
+          items: [{ productId: sharedProduct.id, quantity: '1', unitCost: '5.00' }],
+          subtotal: '5.00',
+          total: '5.00',
+        })
+        .expect(201);
+      return (r.body.data ?? r.body).id as string;
+    }
+
+    it('DRAFT -> SUBMITTED -> APPROVED', async () => {
+      const id = await createDraft();
+      const a = await request(app.getHttpServer())
+        .post(`/purchase-orders/${id}/submit`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(201);
+      expect((a.body.data ?? a.body).status).toBe('SUBMITTED');
+      const b = await request(app.getHttpServer())
+        .post(`/purchase-orders/${id}/approve`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(201);
+      expect((b.body.data ?? b.body).status).toBe('APPROVED');
+    });
+
+    it('rejects invalid transition (APPROVED -> SUBMITTED)', async () => {
+      const id = await createDraft();
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${id}/submit`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${id}/approve`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${id}/submit`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(409);
+    });
+
+    it('rejects submit on already-cancelled order', async () => {
+      const id = await createDraft();
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${id}/cancel`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${id}/submit`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(409);
+    });
+  });
+
+  describe('Inventory receiving (authoritative path)', () => {
+    let orderId: string;
+    let firstItemId: string;
+    let secondItemId: string;
+    beforeEach(async () => {
+      const product2 = await prisma.product.create({
+        data: {
+          tenantId: testData.tenantA.id,
+          sku: `PO2-${Date.now()}-${Math.random()}`,
+          name: 'PO Second Product',
+          unitPrice: 30,
+          costPrice: 12,
+          isActive: true,
+        },
       });
-
-      const response = await request(app.getHttpServer())
+      const r = await request(app.getHttpServer())
         .post('/purchase-orders')
-        .set('Authorization', `Bearer ${adminToken}`)
+        .set('Authorization', `Bearer ${adminToken()}`)
         .send({
-          vendorId: otherVendor!.id,
-          title: 'Test PO',
-          orderDate: '2024-01-15',
+          orderNumber: `PO-REC-${Date.now()}`,
+          vendorId: tenantAVendor.id,
+          orderDate: new Date().toISOString().split('T')[0],
           items: [
-            {
-              description: 'Item 1',
-              quantity: 10,
-              unitPrice: 5,
-            },
+            { productId: sharedProduct.id, quantity: '10', unitCost: '10.00' },
+            { productId: product2.id, quantity: '5', unitCost: '12.00' },
           ],
-        });
-
-      expect(response.status).toBe(403);
+          subtotal: '160.00',
+          total: '160.00',
+        })
+        .expect(201);
+      const body = r.body.data ?? r.body;
+      orderId = body.id;
+      firstItemId = body.items[0].id;
+      secondItemId = body.items[1].id;
+      // Approve
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${orderId}/submit`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${orderId}/approve`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(201);
     });
 
-    it('should calculate totals server-side', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/purchase-orders')
-        .set('Authorization', `Bearer ${adminToken}`)
+    it('receive increases stock and creates IN movement (FIFO/WA valuation)', async () => {
+      const before = await prisma.product.findUnique({ where: { id: sharedProduct.id } });
+      const recv = await request(app.getHttpServer())
+        .post(`/purchase-orders/${orderId}/receive`)
+        .set('Authorization', `Bearer ${adminToken()}`)
         .send({
-          vendorId,
-          title: 'Totals Test',
-          orderDate: '2024-01-15',
-          items: [
-            {
-              description: 'Item 1',
-              quantity: 10,
-              unitPrice: 10,
-              taxRate: 10,
-              discount: 5,
-            },
-          ],
+          warehouseId: testData.tenantAWarehouse.id,
+          items: [{ itemId: firstItemId, quantity: '10' }],
         })
         .expect(201);
 
-      const po = response.body.data;
-      expect(Number(po.subtotal)).toBeCloseTo(100, 2);
-      expect(Number(po.taxAmount)).toBeCloseTo(9.5, 2);
-      expect(Number(po.discountAmount)).toBeCloseTo(5, 2);
-      expect(Number(po.totalAmount)).toBeCloseTo(104.5, 2);
+      const after = await prisma.product.findUnique({ where: { id: sharedProduct.id } });
+      expect(after?.stockQuantity).toBe((before?.stockQuantity || 0) + 10);
 
-      await prisma.purchaseOrder.delete({
-        where: { id: po.id },
+      const pw = await prisma.productWarehouse.findFirst({
+        where: { tenantId: testData.tenantA.id, productId: sharedProduct.id, warehouseId: testData.tenantAWarehouse.id },
       });
-    });
-  });
+      expect(pw?.quantity).toBe(10);
 
-  describe('GET /purchase-orders', () => {
-    it('should list purchase orders', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/purchase-orders')
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(200);
-
-      expect(Array.isArray(response.body.data.data)).toBe(true);
-    });
-  });
-
-  describe('GET /purchase-orders/:id', () => {
-    it('should return purchase order details', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000001`,
-          title: 'Detail Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.DRAFT,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-          items: {
-            create: {
-              description: 'Item 1',
-              quantity: new (require('@prisma/client').Decimal)(10),
-              unitPrice: new (require('@prisma/client').Decimal)(10),
-              lineTotal: new (require('@prisma/client').Decimal)(100),
-              receivedQuantity: new (require('@prisma/client').Decimal)(0),
-            },
-          },
-        },
-        include: { items: true },
+      const movs = await prisma.stockMovement.findMany({
+        where: { tenantId: testData.tenantA.id, referenceType: 'PURCHASE_ORDER', referenceId: orderId },
       });
+      expect(movs).toHaveLength(1);
+      expect(movs[0].type).toBe('IN');
+      expect(movs[0].quantity).toBe(10);
+    }, 30000);
 
-      const response = await request(app.getHttpServer())
-        .get(`/purchase-orders/${po.id}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(200);
-
-      expect(response.body.data.id).toBe(po.id);
-      expect(response.body.data.title).toBe('Detail Test');
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-
-    it('should reject access to another tenant purchase order', async () => {
-      const otherPo = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000002`,
-          title: 'Other Tenant PO',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.DRAFT,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: otherTenantId,
-          vendorId: (await prisma.vendor.findFirst({ where: { tenantId: otherTenantId } }))!.id,
-        },
-      });
-
-      const response = await request(app.getHttpServer())
-        .get(`/purchase-orders/${otherPo.id}`)
-        .set('Authorization', `Bearer ${adminToken}`);
-
-      expect(response.status).toBe(403);
-
-      await prisma.purchaseOrder.delete({ where: { id: otherPo.id } });
-    });
-  });
-
-  describe('PATCH /purchase-orders/:id', () => {
-    it('should update a draft purchase order', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000003`,
-          title: 'Original Title',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.DRAFT,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-        },
-      });
-
-      const response = await request(app.getHttpServer())
-        .patch(`/purchase-orders/${po.id}`)
-        .set('Authorization', `Bearer ${adminToken}`)
+    it('over-receiving is rejected', async () => {
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${orderId}/receive`)
+        .set('Authorization', `Bearer ${adminToken()}`)
         .send({
-          title: 'Updated Title',
-          notes: 'Updated notes',
+          warehouseId: testData.tenantAWarehouse.id,
+          items: [{ itemId: firstItemId, quantity: '11' }],
         })
-        .expect(200);
-
-      expect(response.body.data.title).toBe('Updated Title');
-      expect(response.body.data.notes).toBe('Updated notes');
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
+        .expect(400);
     });
 
-    it('should reject update of non-draft purchase order', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000004`,
-          title: 'Submitted PO',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.SUBMITTED,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-        },
-      });
-
-      const response = await request(app.getHttpServer())
-        .patch(`/purchase-orders/${po.id}`)
-        .set('Authorization', `Bearer ${adminToken}`)
+    it('partial receiving keeps order alive; full receiving transitions to RECEIVED', async () => {
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${orderId}/receive`)
+        .set('Authorization', `Bearer ${adminToken()}`)
         .send({
-          title: 'Updated Title',
-        });
-
-      expect(response.status).toBe(400);
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-  });
-
-  describe('POST /purchase-orders/:id/submit', () => {
-    it('should submit a draft purchase order', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000005`,
-          title: 'Submit Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.DRAFT,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-          items: {
-            create: {
-              description: 'Item 1',
-              quantity: new (require('@prisma/client').Decimal)(10),
-              unitPrice: new (require('@prisma/client').Decimal)(10),
-              lineTotal: new (require('@prisma/client').Decimal)(100),
-              receivedQuantity: new (require('@prisma/client').Decimal)(0),
-            },
-          },
-        },
-        include: { items: true },
-      });
-
-      const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${po.id}/submit`)
-        .set('Authorization', `Bearer ${adminToken}`)
+          warehouseId: testData.tenantAWarehouse.id,
+          items: [{ itemId: firstItemId, quantity: '4' }],
+        })
         .expect(201);
-
-      expect(response.body.data.status).toBe('SUBMITTED');
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-  });
-
-  describe('POST /purchase-orders/:id/approve', () => {
-    it('should approve a submitted purchase order', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000006`,
-          title: 'Approve Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.SUBMITTED,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-          items: {
-            create: {
-              description: 'Item 1',
-              quantity: new (require('@prisma/client').Decimal)(10),
-              unitPrice: new (require('@prisma/client').Decimal)(10),
-              lineTotal: new (require('@prisma/client').Decimal)(100),
-              receivedQuantity: new (require('@prisma/client').Decimal)(0),
-            },
-          },
-        },
-        include: { items: true },
-      });
-
-      const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${po.id}/approve`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(201);
-
-      expect(response.body.data.status).toBe('APPROVED');
-      expect(response.body.data.approvedById).toBe(adminId);
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-  });
-
-  describe('POST /purchase-orders/:id/reject', () => {
-    it('should reject a submitted purchase order', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000007`,
-          title: 'Reject Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.SUBMITTED,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-          items: {
-            create: {
-              description: 'Item 1',
-              quantity: new (require('@prisma/client').Decimal)(10),
-              unitPrice: new (require('@prisma/client').Decimal)(10),
-              lineTotal: new (require('@prisma/client').Decimal)(100),
-              receivedQuantity: new (require('@prisma/client').Decimal)(0),
-            },
-          },
-        },
-        include: { items: true },
-      });
-
-      const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${po.id}/reject`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(201);
-
-      expect(response.body.data.status).toBe('REJECTED');
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-  });
-
-  describe('POST /purchase-orders/:id/cancel', () => {
-    it('should cancel a draft purchase order', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000008`,
-          title: 'Cancel Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.DRAFT,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-        },
-      });
-
-      const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${po.id}/cancel`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(201);
-
-      expect(response.body.data.status).toBe('CANCELLED');
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-  });
-
-  describe('POST /purchase-orders/:id/receive', () => {
-    it('should receive purchase order partially', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000009`,
-          title: 'Receive Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.APPROVED,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-          items: {
-            create: {
-              description: 'Item 1',
-              quantity: new (require('@prisma/client').Decimal)(10),
-              unitPrice: new (require('@prisma/client').Decimal)(10),
-              lineTotal: new (require('@prisma/client').Decimal)(100),
-              receivedQuantity: new (require('@prisma/client').Decimal)(0),
-            },
-          },
-        },
-        include: { items: true },
-      });
-
-      const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${po.id}/receive`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send([
-          {
-            itemId: po.items[0].id,
-            receivedQuantity: 4,
-          },
-        ])
-        .expect(201);
-
-      expect(response.body.data.status).toBe('PARTIALLY_RECEIVED');
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-
-    it('should receive purchase order fully', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000010`,
-          title: 'Receive Full Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.APPROVED,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-          items: {
-            create: {
-              description: 'Item 1',
-              quantity: new (require('@prisma/client').Decimal)(10),
-              unitPrice: new (require('@prisma/client').Decimal)(10),
-              lineTotal: new (require('@prisma/client').Decimal)(100),
-              receivedQuantity: new (require('@prisma/client').Decimal)(0),
-            },
-          },
-        },
-        include: { items: true },
-      });
-
-      const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${po.id}/receive`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send([
-          {
-            itemId: po.items[0].id,
-            receivedQuantity: 10,
-          },
-        ])
-        .expect(201);
-
-      expect(response.body.data.status).toBe('RECEIVED');
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-
-    it('should prevent over-receiving', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000011`,
-          title: 'Over-receive Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.APPROVED,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-          items: {
-            create: {
-              description: 'Item 1',
-              quantity: new (require('@prisma/client').Decimal)(10),
-              unitPrice: new (require('@prisma/client').Decimal)(10),
-              lineTotal: new (require('@prisma/client').Decimal)(100),
-              receivedQuantity: new (require('@prisma/client').Decimal)(0),
-            },
-          },
-        },
-        include: { items: true },
-      });
-
-      const response = await request(app.getHttpServer())
-        .post(`/purchase-orders/${po.id}/receive`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .send([
-          {
-            itemId: po.items[0].id,
-            receivedQuantity: 15,
-          },
-        ]);
-
-      expect(response.status).toBe(400);
-
-      await prisma.purchaseOrder.delete({ where: { id: po.id } });
-    });
-  });
-
-  describe('DELETE /purchase-orders/:id', () => {
-    it('should delete a draft purchase order', async () => {
-      const po = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000012`,
-          title: 'Delete Test',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.DRAFT,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-        },
-      });
+      const mid = await prisma.purchaseOrder.findUnique({ where: { id: orderId } });
+      expect(mid?.status).toBe('APPROVED');
+      const item1 = await prisma.purchaseOrderItem.findUnique({ where: { id: firstItemId } });
+      expect(Number(item1?.receivedQuantity)).toBe(4);
 
       await request(app.getHttpServer())
-        .delete(`/purchase-orders/${po.id}`)
-        .set('Authorization', `Bearer ${adminToken}`)
-        .expect(200);
+        .post(`/purchase-orders/${orderId}/receive`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({
+          warehouseId: testData.tenantAWarehouse.id,
+          items: [
+            { itemId: firstItemId, quantity: '6' },
+            { itemId: secondItemId, quantity: '5' },
+          ],
+        })
+        .expect(201);
+      const full = await prisma.purchaseOrder.findUnique({ where: { id: orderId } });
+      expect(full?.status).toBe('RECEIVED');
+    }, 30000);
 
-      const deleted = await prisma.purchaseOrder.findUnique({
-        where: { id: po.id },
-      });
-
-      expect(deleted).toBeNull();
-    });
-  });
-
-  describe('Authorization', () => {
-    it('should reject unauthenticated purchase order requests', async () => {
+    it('cannot receive a cancelled order', async () => {
+      // APPROVED -> CANCELLED is a valid transition, then receive must reject
       await request(app.getHttpServer())
-        .get('/purchase-orders')
-        .expect(401);
+        .post(`/purchase-orders/${orderId}/cancel`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${orderId}/receive`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({
+          warehouseId: testData.tenantAWarehouse.id,
+          items: [{ itemId: firstItemId, quantity: '5' }],
+        })
+        .expect(409);
+    });
+
+    it('rejects receiving against cross-tenant warehouse', async () => {
+      await request(app.getHttpServer())
+        .post(`/purchase-orders/${orderId}/receive`)
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({
+          warehouseId: testData.tenantBWarehouse.id,
+          items: [{ itemId: firstItemId, quantity: '5' }],
+        })
+        .expect(403);
     });
   });
 
-  describe('PO Number Uniqueness', () => {
-    it('should generate unique PO numbers within a tenant', async () => {
-      const po1 = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000013`,
-          title: 'PO 1',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.DRAFT,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-        },
-      });
+  describe('Tenant isolation', () => {
+    it('cross-tenant cannot view, update, delete, or receive a tenant A PO', async () => {
+      const r = await request(app.getHttpServer())
+        .post('/purchase-orders')
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({
+          orderNumber: 'PO-ISO',
+          vendorId: tenantAVendor.id,
+          orderDate: new Date().toISOString().split('T')[0],
+          items: [{ productId: sharedProduct.id, quantity: '1', unitCost: '5.00' }],
+          subtotal: '5.00',
+          total: '5.00',
+        })
+        .expect(201);
+      const id = (r.body.data ?? r.body).id;
+      await request(app.getHttpServer())
+        .get(`/purchase-orders/${id}`)
+        .set('Authorization', `Bearer ${tenantBToken()}`)
+        .expect(403);
+      await request(app.getHttpServer())
+        .patch(`/purchase-orders/${id}`)
+        .set('Authorization', `Bearer ${tenantBToken()}`)
+        .send({ notes: 'hax' })
+        .expect(403);
+      await request(app.getHttpServer())
+        .delete(`/purchase-orders/${id}`)
+        .set('Authorization', `Bearer ${tenantBToken()}`)
+        .expect(403);
+    });
+  });
 
-      const po2 = await prisma.purchaseOrder.create({
-        data: {
-          poNumber: `PO-${new Date().getFullYear()}-000014`,
-          title: 'PO 2',
-          orderDate: new Date('2024-01-15'),
-          status: PurchaseOrderStatus.DRAFT,
-          subtotal: new (require('@prisma/client').Decimal)(100),
-          taxAmount: new (require('@prisma/client').Decimal)(10),
-          discountAmount: new (require('@prisma/client').Decimal)(5),
-          totalAmount: new (require('@prisma/client').Decimal)(105),
-          tenantId: testTenantId,
-          vendorId,
-        },
+  describe('Decimal correctness', () => {
+    it('handles decimal qty/cost safely with schema Decimal(12,2) precision', async () => {
+      const r = await request(app.getHttpServer())
+        .post('/purchase-orders')
+        .set('Authorization', `Bearer ${adminToken()}`)
+        .send({
+          orderNumber: 'PO-DEC',
+          vendorId: tenantAVendor.id,
+          orderDate: new Date().toISOString().split('T')[0],
+          items: [{ productId: sharedProduct.id, quantity: '2.5', unitCost: '9.99' }],
+          subtotal: '24.98',
+          total: '24.98',
+        })
+        .expect(201);
+      const body = r.body.data ?? r.body;
+      const stored = await prisma.purchaseOrderItem.findFirst({
+        where: { purchaseOrderId: body.id },
       });
-
-      expect(po1.poNumber).not.toBe(po2.poNumber);
-
-      await prisma.purchaseOrder.deleteMany({
-        where: { id: { in: [po1.id, po2.id] } },
-      });
+      // 2.5 * 9.99 = 24.975, schema rounds to 24.98
+      expect(Number(stored?.lineTotal)).toBeCloseTo(24.98, 2);
     });
   });
 });

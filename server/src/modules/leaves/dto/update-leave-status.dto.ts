@@ -8,4 +8,8 @@ export class UpdateLeaveStatusDto {
   @IsOptional()
   @IsString()
   remarks?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionReason?: string;
 }

@@ -1,67 +1,42 @@
 export interface Expense {
   id: string;
+  expenseDate: string;
+  category: string;
   description: string;
   amount: number;
-  expenseDate: string;
-  category: ExpenseCategory;
   paymentMethod: PaymentMethod;
-  vendor: string;
-  vendorId?: string;
-  receiptUrl?: string;
+  referenceNo?: string;
   notes?: string;
-  status: ExpenseStatus;
-  tenantId: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
+  status: string;
+  vendor?: string;
+  receiptUrl?: string;
   user?: {
     id: string;
     fullName: string;
-    email: string;
+    email?: string;
   };
-  vendorRef?: {
-    id: string;
-    name: string;
-    vendorCode: string;
-  };
+  createdAt: string;
+  updatedAt: string;
 }
-
-export type ExpenseCategory =
-  | "SALARY"
-  | "RENT"
-  | "UTILITIES"
-  | "SUPPLIES"
-  | "MARKETING"
-  | "TRAVEL"
-  | "MAINTENANCE"
-  | "OTHER";
-
-export type ExpenseStatus = "PENDING" | "APPROVED" | "REJECTED" | "PAID";
 
 export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "UPI" | "CARD" | "CHEQUE";
 
 export interface CreateExpenseDto {
+  expenseDate: string;
+  category: string;
   description: string;
   amount: string;
-  expenseDate: string;
-  category: ExpenseCategory;
   paymentMethod: PaymentMethod;
-  vendor: string;
-  vendorId?: string;
-  receiptUrl?: string;
+  referenceNo?: string;
   notes?: string;
-  status?: ExpenseStatus;
 }
 
 export interface UpdateExpenseDto {
+  expenseDate?: string;
+  category?: string;
   description?: string;
   amount?: string;
-  expenseDate?: string;
-  category?: ExpenseCategory;
   paymentMethod?: PaymentMethod;
-  vendor?: string;
-  vendorId?: string;
-  receiptUrl?: string;
+  referenceNo?: string;
   notes?: string;
-  status?: ExpenseStatus;
 }

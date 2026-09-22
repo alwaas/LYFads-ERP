@@ -112,6 +112,27 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('User account is inactive.');
+    }
+
+    if (user.tenantId && user.role !== UserRole.SUPER_ADMIN) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: user.tenantId },
+        select: { status: true },
+      });
+
+      if (!tenant) {
+        throw new NotFoundException('Tenant not found.');
+      }
+
+      if (tenant.status !== 'ACTIVE') {
+        throw new ForbiddenException(
+          'Tenant account is not active. Please contact support.',
+        );
+      }
+    }
+
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
       email: user.email,

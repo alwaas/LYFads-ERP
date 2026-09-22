@@ -34,6 +34,16 @@ function EmployeeEmploymentInfo({ employee }: Props) {
         </div>
 
         <div>
+          <strong>Status:</strong>
+          <p>{employee.status || "-"}</p>
+        </div>
+
+        <div>
+          <strong>Manager:</strong>
+          <p>{employee.manager?.user?.fullName || "-"}</p>
+        </div>
+
+        <div>
           <strong>Joining Date:</strong>
           <p>{employee.joiningDate || "-"}</p>
         </div>

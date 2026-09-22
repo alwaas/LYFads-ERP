@@ -13,6 +13,8 @@ import {
   updateLead,
 } from "../../services/crm.service";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function EditLeadPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -20,6 +22,7 @@ function EditLeadPage() {
   const [lead, setLead] = useState<LeadFormData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) {
@@ -43,17 +46,20 @@ function EditLeadPage() {
   const handleSubmit = async (values: LeadFormData) => {
     if (!id) return;
 
+    setServerErrors({});
     try {
       setSubmitting(true);
       await updateLead(id, values);
       toast.success("Lead updated successfully.");
       navigate("/crm");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(
-        error?.response?.data?.message ??
-          "Failed to update lead.",
-      );
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error((error as any)?.response?.data?.message ?? "Failed to update lead.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -101,6 +107,7 @@ function EditLeadPage() {
             initialValues={lead || undefined}
             loading={submitting}
             onSubmit={handleSubmit}
+            serverErrors={serverErrors}
           />
         </div>
 

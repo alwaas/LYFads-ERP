@@ -9,6 +9,7 @@ import ProjectForm, { type ProjectFormData } from "../../components/projects/Pro
 import { getProject, updateProject } from "../../services/project.service";
 import { getClients } from "../../services/client.service";
 import { getEmployees } from "../../services/employee.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
 
 function EditProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,7 @@ function EditProjectPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) {
@@ -43,14 +45,20 @@ function EditProjectPage() {
 
   const handleSubmit = async (values: ProjectFormData) => {
     if (!id) return;
+    setServerErrors({});
     try {
       setSubmitting(true);
       await updateProject(id, values);
       toast.success("Project updated successfully.");
       navigate("/projects");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.response?.data?.message ?? "Failed to update project.");
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error((error as any)?.response?.data?.message ?? "Failed to update project.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -97,6 +105,7 @@ function EditProjectPage() {
               onSubmit={handleSubmit}
               clients={clients}
               employees={employees}
+              serverErrors={serverErrors}
             />
           </div>
         </div>

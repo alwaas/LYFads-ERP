@@ -310,35 +310,39 @@ export class DailyWorkReportsService {
   async findAll(
     pagination: PaginationDto,
     search: SearchDto,
-    userTenantId: string,
+    status?: string,
+    userTenantId?: string,
   ) {
     const { skip, limit } = pagination;
 
-    const where: Prisma.DailyWorkReportWhereInput = search.search
-      ? {
-          tenantId: userTenantId,
-          OR: [
-            {
-              todayWork: {
+    const where: Record<string, unknown> = {
+      ...(userTenantId ? { tenantId: userTenantId } : {}),
+    };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search.search) {
+      where.OR = [
+        {
+          todayWork: {
+            contains: search.search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          employee: {
+            user: {
+              fullName: {
                 contains: search.search,
-                mode: Prisma.QueryMode.insensitive,
+                mode: 'insensitive',
               },
             },
-            {
-              employee: {
-                user: {
-                  fullName: {
-                    contains: search.search,
-                    mode: Prisma.QueryMode.insensitive,
-                  },
-                },
-              },
-            },
-          ],
-        }
-      : {
-          tenantId: userTenantId,
-        };
+          },
+        },
+      ];
+    }
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.dailyWorkReport.findMany({

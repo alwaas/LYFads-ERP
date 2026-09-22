@@ -43,6 +43,27 @@ function EmployeePersonalInfo({ employee }: Props) {
           <p>{employee.country || "-"}</p>
         </div>
 
+        <div>
+          <strong>Bank Name:</strong>
+          <p>{employee.bankName || "-"}</p>
+        </div>
+
+        <div>
+          <strong>Bank Account Number:</strong>
+          <p>{employee.bankAccountNumber || "-"}</p>
+        </div>
+
+        <div>
+          <strong>IFSC Code:</strong>
+          <p>{employee.ifscCode || "-"}</p>
+        </div>
+
+        <div>
+          <strong>Emergency Contact:</strong>
+          <p>{employee.emergencyContactName || "-"}</p>
+          <p className="text-sm text-gray-500">{employee.emergencyContactPhone || ""}</p>
+        </div>
+
       </div>
     </div>
   );

@@ -9,10 +9,13 @@ import type {
 // ===========================
 // GET ALL REPORTS
 // ===========================
-export const getDailyWorkReports = async (): Promise<DailyWorkReport[]> => {
-  const response = await api.get("/daily-work-reports");
+export const getDailyWorkReports = async (page = 1, limit = 10, search?: string, status?: string): Promise<any> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (search) params.search = search;
+  if (status) params.status = status;
 
-  return response.data.data.data;
+  const response = await api.get("/daily-work-reports", { params });
+  return response.data.data;
 };
 
 // ===========================
@@ -22,7 +25,6 @@ export const getDailyWorkReportById = async (
   id: string
 ): Promise<DailyWorkReport> => {
   const response = await api.get(`/daily-work-reports/${id}`);
-
   return response.data.data;
 };
 

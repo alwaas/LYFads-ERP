@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { PassportModule } from '@nestjs/passport';
 
 import { PrismaModule } from './database';
 import { AuthModule } from './modules/auth/auth.module';
@@ -29,7 +31,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { MilestonesModule } from './modules/milestones/milestones.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
-import { ReportsModule } from './reports/reports.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { CrmModule } from './/modules/crm/crm.module';
 import { ProjectTimelineModule } from './modules/project-timeline/project-timeline.module';
 import { KanbanModule } from './modules/kanban/kanban.module';
@@ -38,18 +40,40 @@ import { PayrollModule } from './modules/payroll/payroll.module';
 import { InvoiceModule } from './modules/invoice/invoice.module';
 import { InvoiceItemsModule } from './modules/invoice-items/invoice-items.module';
 import { PaymentsModule } from './modules/payments/payments.module';
-import { TenantsModule } from './modules/tenants/tenants.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { PurchasesModule } from './modules/purchases/purchases.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
-import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.module';
 import { ProductsModule } from './modules/products/products.module';
-import { InventoryModule } from './modules/inventory/inventory.module';
+import { WarehousesModule } from './modules/warehouses/warehouses.module';
+import { StockMovementsModule } from './modules/stock-movements/stock-movements.module';
+import { StockCountsModule } from './modules/stock-counts/stock-counts.module';
+import { InventoryValuationModule } from './modules/inventory-valuation/inventory-valuation.module';
+import { LeaveBalancesModule } from './modules/leave-balances/leave-balances.module';
+import { SalaryStructuresModule } from './modules/salary-structures/salary-structures.module';
+import { PayrollItemsModule } from './modules/payroll-items/payroll-items.module';
 import { SalesOrdersModule } from './modules/sales-orders/sales-orders.module';
+import { PaymentAllocationsModule } from './modules/payment-allocations/payment-allocations.module';
+import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.module';
+import { PurchaseInvoicesModule } from './modules/purchase-invoices/purchase-invoices.module';
+import { GlModule } from './modules/gl/gl.module';
+import { TenantManagementModule } from './modules/tenant-management/tenant-management.module';
+import { PlansModule } from './modules/plans/plans.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { LifecycleModule } from './modules/lifecycle/lifecycle.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        { limit: 100, ttl: 60000 },
+        { limit: 5, ttl: 60000, name: 'auth' },
+      ],
+      ignoreUserAgents: [/swagger/i],
     }),
     PrismaModule,
     HealthModule,
@@ -78,13 +102,27 @@ import { SalesOrdersModule } from './modules/sales-orders/sales-orders.module';
     InvoiceModule,
     InvoiceItemsModule,
     PaymentsModule,
-    TenantsModule,
+    SettingsModule,
     ExpensesModule,
+    PurchasesModule,
     VendorsModule,
-    PurchaseOrdersModule,
     ProductsModule,
-    InventoryModule,
+    WarehousesModule,
+    StockMovementsModule,
+    StockCountsModule,
+    InventoryValuationModule,
+    LeaveBalancesModule,
+    SalaryStructuresModule,
+    PayrollItemsModule,
     SalesOrdersModule,
+    PaymentAllocationsModule,
+    PurchaseOrdersModule,
+    PurchaseInvoicesModule,
+    GlModule,
+    TenantManagementModule,
+    PlansModule,
+    SubscriptionsModule,
+    LifecycleModule,
   ],
   providers: [
     {

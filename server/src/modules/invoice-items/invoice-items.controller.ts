@@ -6,7 +6,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
+
+import { UserRole } from '@prisma/client';
+
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { InvoiceItemsService } from './invoice-items.service';
 
@@ -14,8 +21,12 @@ import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
 import { UpdateInvoiceItemDto } from './dto/update-invoice-item.dto';
 import { GetUser } from '../../modules/auth/decorators/get-user.decorator';
 import type { AuthenticatedUser } from '../../common/types/auth-user.type';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('invoice-items')
+@UseGuards(JwtAuthGuard)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
 export class InvoiceItemsController {
   constructor(private readonly service: InvoiceItemsService) {}
 
@@ -28,8 +39,12 @@ export class InvoiceItemsController {
   }
 
   @Get()
-  findAll(@GetUser() user: AuthenticatedUser) {
-    return this.service.findAll(user.tenantId);
+  findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
+    @GetUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findAll(pagination, search, user.tenantId);
   }
 
   @Get(':id')

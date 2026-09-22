@@ -21,11 +21,14 @@ import {
   GitBranch,
   Receipt,
   Wallet,
-  Store,
   ShoppingCart,
+  Store,
+  TrendingUp,
   Package,
   Warehouse,
-  ShoppingBag,
+  ArrowLeftRight,
+  Building2,
+  Tag,
 } from "lucide-react";
 
 export type SidebarItem = {
@@ -45,7 +48,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
       "ADMIN",
       "MANAGER",
       "EMPLOYEE",
-      "CLIENT",
     ],
   },
   
@@ -74,6 +76,18 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   {
     title: "Projects",
     path: "/projects",
+    icon: FolderKanban,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+      "EMPLOYEE",
+    ],
+  },
+
+  {
+    title: "Kanban",
+    path: "/projects/:projectId/kanban",
     icon: FolderKanban,
     roles: [
       "SUPER_ADMIN",
@@ -114,6 +128,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     roles: [
       "SUPER_ADMIN",
       "ADMIN",
+      "MANAGER",
       "EMPLOYEE",
     ],
   },
@@ -125,6 +140,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     roles: [
       "SUPER_ADMIN",
       "ADMIN",
+      "MANAGER",
       "EMPLOYEE",
     ],
   },
@@ -138,6 +154,17 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
       "ADMIN",
       "MANAGER",
       "EMPLOYEE",
+    ],
+  },
+
+  {
+    title: "Payroll",
+    path: "/payroll",
+    icon: Wallet,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
     ],
   },
 
@@ -156,6 +183,192 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Reports",
     path: "/reports",
     icon: BarChart3,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Sales Report",
+    path: "/reports/sales",
+    icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Receivables",
+    path: "/reports/receivables",
+    icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Payables",
+    path: "/reports/payables",
+    icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Customers",
+    path: "/reports/customers",
+    icon: Briefcase,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Expenses",
+    path: "/expenses",
+    icon: Wallet,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Direct Purchases",
+    path: "/purchases",
+    icon: ShoppingCart,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Purchase Orders",
+    path: "/purchase-orders",
+    icon: ShoppingCart,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Vendors",
+    path: "/vendors",
+    icon: Store,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Vendor Bills",
+    path: "/vendor-bills",
+    icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Products",
+    path: "/products",
+    icon: Package,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Warehouses",
+    path: "/warehouses",
+    icon: Warehouse,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Stock Movements",
+    path: "/stock-movements",
+    icon: ArrowLeftRight,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Stock Counts",
+    path: "/stock-counts",
+    icon: ClipboardList,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Inventory Report",
+    path: "/reports/inventory",
+    icon: Package,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Inventory Settings",
+    path: "/inventory-settings",
+    icon: Settings,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+    ],
+  },
+
+  {
+    title: "Profitability",
+    path: "/reports/profitability",
+    icon: TrendingUp,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Sales Orders",
+    path: "/sales-orders",
+    icon: ShoppingCart,
     roles: [
       "SUPER_ADMIN",
       "ADMIN",
@@ -204,7 +417,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
       "ADMIN",
       "MANAGER",
       "EMPLOYEE",
-      "CLIENT",
     ],
   },
 
@@ -217,7 +429,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
       "ADMIN",
       "MANAGER",
       "EMPLOYEE",
-      "CLIENT",
     ],
   },
 
@@ -257,75 +468,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
 
   {
-    title: "Vendors",
-    path: "/vendors",
-    icon: Store,
-    roles: [
-      "SUPER_ADMIN",
-      "ADMIN",
-      "MANAGER",
-    ],
-  },
-
-  {
-    title: "Purchase Orders",
-    path: "/purchase-orders",
-    icon: ShoppingCart,
-    roles: [
-      "SUPER_ADMIN",
-      "ADMIN",
-      "MANAGER",
-    ],
-  },
-
-  {
-    title: "Products",
-    path: "/products",
-    icon: Package,
-    roles: [
-      "SUPER_ADMIN",
-      "ADMIN",
-      "MANAGER",
-      "EMPLOYEE",
-    ],
-  },
-
-  {
-    title: "Inventory",
-    path: "/inventory",
-    icon: Warehouse,
-    roles: [
-      "SUPER_ADMIN",
-      "ADMIN",
-      "MANAGER",
-      "EMPLOYEE",
-    ],
-  },
-
-  {
-    title: "Sales Orders",
-    path: "/sales-orders",
-    icon: ShoppingBag,
-    roles: [
-      "SUPER_ADMIN",
-      "ADMIN",
-      "MANAGER",
-      "EMPLOYEE",
-    ],
-  },
-
-  {
-    title: "Expenses",
-    path: "/expenses",
-    icon: Wallet,
-    roles: [
-      "SUPER_ADMIN",
-      "ADMIN",
-      "MANAGER",
-    ],
-  },
-
-  {
     title: "Attachments",
     path: "/attachments",
     icon: Paperclip,
@@ -341,6 +483,44 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Settings",
     path: "/settings",
     icon: Settings,
+    roles: [
+      "SUPER_ADMIN",
+    ],
+  },
+
+  {
+    title: "General Ledger",
+    path: "/finance",
+    icon: Receipt,
+    roles: [
+      "SUPER_ADMIN",
+      "ADMIN",
+      "MANAGER",
+    ],
+  },
+
+  {
+    title: "Tenant Management",
+    path: "/tenants",
+    icon: Building2,
+    roles: [
+      "SUPER_ADMIN",
+    ],
+  },
+
+  {
+    title: "Plan Management",
+    path: "/plans",
+    icon: Tag,
+    roles: [
+      "SUPER_ADMIN",
+    ],
+  },
+
+  {
+    title: "My Plan",
+    path: "/my-plan",
+    icon: CreditCard,
     roles: [
       "SUPER_ADMIN",
       "ADMIN",

@@ -1,92 +1,85 @@
-import {
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsDateString,
-  IsEnum,
-  IsArray,
-  ValidateNested,
-  Min,
-} from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsDateString,
+  IsDecimal,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+  ValidateNested,
+} from 'class-validator';
 
-import { SalesOrderStatus } from '@prisma/client';
-
-export class SalesOrderItemDto {
+export class CreateSalesOrderItemDto {
   @IsString()
-  productId!: string;
+  @IsNotEmpty()
+  productId: string;
 
-  @IsString()
-  description!: string;
+  @IsDecimal()
+  quantity: string;
 
-  @IsNumber()
-  @Min(0)
-  quantity!: number;
+  @IsDecimal()
+  unitPrice: string;
 
   @IsOptional()
-  @IsString()
-  unit?: string;
-
-  @IsNumber()
-  @Min(0)
-  unitPrice!: number;
+  @IsDecimal()
+  discount?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  taxRate?: number;
+  @IsDecimal()
+  tax?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  discount?: number;
+  @IsDecimal()
+  lineTotal?: string;
+
+  @IsOptional()
+  sequence?: number;
 }
 
 export class CreateSalesOrderDto {
   @IsString()
-  clientId!: string;
+  @IsNotEmpty()
+  orderNumber: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  clientId: string;
 
   @IsDateString()
-  orderDate!: string;
+  orderDate: string;
 
   @IsOptional()
   @IsDateString()
   expectedDeliveryDate?: string;
 
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
   @IsArray()
+  @ArrayMinSize(1, { message: 'At least one item is required' })
   @ValidateNested({ each: true })
-  @Type(() => SalesOrderItemDto)
-  items!: SalesOrderItemDto[];
-}
+  @Type(() => CreateSalesOrderItemDto)
+  items!: CreateSalesOrderItemDto[];
 
-export class UpdateSalesOrderDto {
-  @IsOptional()
-  @IsString()
-  clientId?: string;
+  @IsDecimal()
+  subtotal: string;
 
   @IsOptional()
-  @IsDateString()
-  orderDate?: string;
+  @IsDecimal()
+  discount?: string;
 
   @IsOptional()
-  @IsDateString()
-  expectedDeliveryDate?: string;
+  @IsDecimal()
+  tax?: string;
+
+  @IsDecimal()
+  total: string;
 
   @IsOptional()
   @IsString()
   notes?: string;
-
-  @IsOptional()
-  @IsEnum(SalesOrderStatus)
-  status?: SalesOrderStatus;
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SalesOrderItemDto)
-  items?: SalesOrderItemDto[];
 }

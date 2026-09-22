@@ -58,10 +58,30 @@ export async function cleanDatabase() {
 
   // Clean all tables in dependency order (children first)
   try {
+    await prisma.journalEntryLine.deleteMany().catch(() => {});
+    await prisma.journalEntry.deleteMany().catch(() => {});
+    await prisma.account.deleteMany().catch(() => {});
+    await prisma.fiscalYear.deleteMany().catch(() => {});
+    await prisma.stockMovement.deleteMany();
+    await prisma.fifoCostLayer.deleteMany();
+    await prisma.stockCountLine.deleteMany();
+    await prisma.stockCount.deleteMany();
+    await prisma.productWarehouse.deleteMany();
+    await prisma.salesOrderItem.deleteMany();
+    await prisma.salesOrder.deleteMany();
+    await prisma.purchaseInvoiceItem.deleteMany();
+    await prisma.purchaseInvoice.deleteMany();
+    await prisma.purchaseOrderItem.deleteMany();
+    await prisma.purchaseOrder.deleteMany();
+    await prisma.product.deleteMany();
+    await prisma.warehouse.deleteMany();
+    await prisma.purchase.deleteMany();
+    await prisma.vendor.deleteMany();
     await prisma.attachment.deleteMany();
     await prisma.comment.deleteMany();
     await prisma.invoiceItem.deleteMany();
     await prisma.payment.deleteMany();
+    await prisma.paymentAllocation.deleteMany();
     await prisma.invoice.deleteMany();
     await prisma.task.deleteMany();
     await prisma.milestone.deleteMany();
@@ -78,7 +98,25 @@ export async function cleanDatabase() {
     await prisma.notification.deleteMany();
     await prisma.tenantMembership.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.tenantSubscription.deleteMany();
     await prisma.tenant.deleteMany();
+
+    // Clean SaaS tables
+    try {
+      await prisma.planFeature.deleteMany();
+      await prisma.planLimit.deleteMany();
+      await prisma.plan.deleteMany();
+    } catch (error) {
+      // Tables may not exist if migration hasn't been applied
+    }
+
+    // Clean sales order tables if they exist (Step 4.8)
+    try {
+      await prisma.salesOrderItem.deleteMany();
+      await prisma.salesOrder.deleteMany();
+    } catch (error) {
+      // Tables may not exist if migration hasn't been applied
+    }
 
     console.log('✓ Test database cleaned');
   } catch (error) {
@@ -377,7 +415,7 @@ export async function setupTestDatabase() {
       description: 'Tenant A Invoice Item',
       quantity: 10,
       unitPrice: 500,
-      lineTotal: 5000,
+      amount: 5000,
       invoiceId: tenantAInvoice.id,
       tenantId: tenantA.id,
     },
@@ -389,7 +427,7 @@ export async function setupTestDatabase() {
       description: 'Tenant B Invoice Item',
       quantity: 10,
       unitPrice: 500,
-      lineTotal: 5000,
+      amount: 5000,
       invoiceId: tenantBInvoice.id,
       tenantId: tenantB.id,
     },
@@ -597,6 +635,240 @@ export async function setupTestDatabase() {
     },
   });
 
+  // Create warehouses for Tenant A
+  const tenantAWarehouse = await prisma.warehouse.create({
+    data: {
+      name: 'Tenant A Warehouse',
+      location: '123 Main St',
+      isDefault: true,
+      isActive: true,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create warehouses for Tenant B
+  const tenantBWarehouse = await prisma.warehouse.create({
+    data: {
+      name: 'Tenant B Warehouse',
+      location: '456 Oak Ave',
+      isDefault: true,
+      isActive: true,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create products for Tenant A
+  const tenantAProduct = await prisma.product.create({
+    data: {
+      sku: 'PROD-A-001',
+      name: 'Tenant A Product',
+      description: 'Test product for Tenant A',
+      unitPrice: 100.00,
+      costPrice: 50.00,
+      stockQuantity: 100,
+      minStockLevel: 10,
+      isActive: true,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create products for Tenant B
+  const tenantBProduct = await prisma.product.create({
+    data: {
+      sku: 'PROD-B-001',
+      name: 'Tenant B Product',
+      description: 'Test product for Tenant B',
+      unitPrice: 200.00,
+      costPrice: 100.00,
+      stockQuantity: 200,
+      minStockLevel: 20,
+      isActive: true,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create product warehouses for Tenant A
+  await prisma.productWarehouse.create({
+    data: {
+      productId: tenantAProduct.id,
+      warehouseId: tenantAWarehouse.id,
+      quantity: 100,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create product warehouses for Tenant B
+  await prisma.productWarehouse.create({
+    data: {
+      productId: tenantBProduct.id,
+      warehouseId: tenantBWarehouse.id,
+      quantity: 200,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create stock movements for Tenant A
+  const tenantAStockMovement = await prisma.stockMovement.create({
+    data: {
+      productId: tenantAProduct.id,
+      warehouseId: tenantAWarehouse.id,
+      type: 'IN',
+      quantity: 100,
+      notes: 'Initial stock',
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create stock movements for Tenant B
+  const tenantBStockMovement = await prisma.stockMovement.create({
+    data: {
+      productId: tenantBProduct.id,
+      warehouseId: tenantBWarehouse.id,
+      type: 'IN',
+      quantity: 200,
+      notes: 'Initial stock',
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create SUPER_ADMIN user for platform administration
+  const superAdmin = await prisma.user.create({
+    data: {
+      fullName: 'Platform Super Admin',
+      email: 'superadmin@platform.com',
+      password: '$2b$10$dummy.hash.for.testing',
+      role: 'SUPER_ADMIN',
+      isActive: true,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create default SaaS plan
+  const defaultPlan = await prisma.plan.create({
+    data: {
+      name: 'Professional',
+      code: 'PRO',
+      description: 'Professional plan with standard features',
+      price: 29.99,
+      billingInterval: 'MONTHLY',
+      isActive: true,
+      features: {
+        create: [
+          { featureCode: 'PROJECTS', description: 'Project management' },
+          { featureCode: 'PAYROLL', description: 'Payroll processing' },
+          { featureCode: 'REPORTS', description: 'Advanced reports' },
+        ],
+      },
+      limits: {
+        create: [
+          { resourceCode: 'MAX_USERS', limitValue: 50 },
+          { resourceCode: 'MAX_PRODUCTS', limitValue: 1000 },
+          { resourceCode: 'MAX_PROJECTS', limitValue: 100 },
+        ],
+      },
+    },
+  });
+
+  // Create subscription for Tenant A
+  const tenantASubscription = await prisma.tenantSubscription.create({
+    data: {
+      tenantId: tenantA.id,
+      planId: defaultPlan.id,
+      status: 'ACTIVE',
+      startDate: new Date('2024-01-01'),
+      autoRenew: true,
+    },
+  });
+
+  // Create subscription for Tenant B (TRIAL)
+  const tenantBSubscription = await prisma.tenantSubscription.create({
+    data: {
+      tenantId: tenantB.id,
+      planId: defaultPlan.id,
+      status: 'TRIAL',
+      startDate: new Date('2024-01-01'),
+      trialEndDate: new Date('2027-02-01'),
+      autoRenew: true,
+    },
+  });
+
+  // Create vendors for Tenant A
+  const tenantAVendor = await prisma.vendor.create({
+    data: {
+      name: 'Tenant A Vendor',
+      contactPerson: 'Vendor Contact A',
+      email: 'vendor@tenant-a.com',
+      phone: '5555555555',
+      address: '123 Vendor St',
+      isActive: true,
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Create vendors for Tenant B
+  const tenantBVendor = await prisma.vendor.create({
+    data: {
+      name: 'Tenant B Vendor',
+      contactPerson: 'Vendor Contact B',
+      email: 'vendor@tenant-b.com',
+      phone: '6666666666',
+      address: '456 Vendor Ave',
+      isActive: true,
+      tenantId: tenantB.id,
+    },
+  });
+
+  // Create fiscal year for Tenant A
+  const tenantAFiscalYear = await prisma.fiscalYear.create({
+    data: {
+      year: 2024,
+      startDate: new Date('2024-01-01'),
+      endDate: new Date('2024-12-31'),
+      status: 'OPEN',
+      tenantId: tenantA.id,
+    },
+  });
+
+  // Seed default chart of accounts for both tenants
+  const DEFAULT_ACCOUNTS = [
+    { code: '1000', name: 'Cash', type: 'ASSET', normalBalanceSide: 'DEBIT' },
+    { code: '1010', name: 'Accounts Receivable', type: 'ASSET', normalBalanceSide: 'DEBIT' },
+    { code: '1020', name: 'Inventory', type: 'ASSET', normalBalanceSide: 'DEBIT' },
+    { code: '1030', name: 'Prepaid Expenses', type: 'ASSET', normalBalanceSide: 'DEBIT' },
+    { code: '2000', name: 'Accounts Payable', type: 'LIABILITY', normalBalanceSide: 'CREDIT' },
+    { code: '2010', name: 'Accrued Expenses', type: 'LIABILITY', normalBalanceSide: 'CREDIT' },
+    { code: '2020', name: 'Taxes Payable', type: 'LIABILITY', normalBalanceSide: 'CREDIT' },
+    { code: '3000', name: 'Retained Earnings', type: 'EQUITY', normalBalanceSide: 'CREDIT' },
+    { code: '4000', name: 'Sales Revenue', type: 'INCOME', normalBalanceSide: 'CREDIT' },
+    { code: '5000', name: 'Cost of Goods Sold', type: 'EXPENSE', normalBalanceSide: 'DEBIT' },
+    { code: '5010', name: 'Operating Expenses', type: 'EXPENSE', normalBalanceSide: 'DEBIT' },
+    { code: '5040', name: 'Salaries Expense', type: 'EXPENSE', normalBalanceSide: 'DEBIT' },
+    { code: '2100', name: 'Salaries Payable', type: 'LIABILITY', normalBalanceSide: 'CREDIT' },
+  ];
+
+  for (const acc of DEFAULT_ACCOUNTS) {
+    await prisma.account.create({
+      data: {
+        code: acc.code,
+        name: acc.name,
+        type: acc.type as any,
+        normalBalanceSide: acc.normalBalanceSide as any,
+        isActive: true,
+        tenantId: tenantA.id,
+      },
+    });
+    await prisma.account.create({
+      data: {
+        code: acc.code,
+        name: acc.name,
+        type: acc.type as any,
+        normalBalanceSide: acc.normalBalanceSide as any,
+        isActive: true,
+        tenantId: tenantB.id,
+      },
+    });
+  }
+
   return {
     tenantA,
     tenantB,
@@ -638,6 +910,19 @@ export async function setupTestDatabase() {
     tenantBPayroll,
     tenantBDailyWorkReport,
     tenantBMilestone,
+    tenantAProduct,
+    tenantBProduct,
+    tenantAVendor,
+    tenantBVendor,
+    tenantAWarehouse,
+    tenantBWarehouse,
+    tenantAStockMovement,
+    tenantBStockMovement,
+    superAdmin,
+    defaultPlan,
+    tenantASubscription,
+    tenantBSubscription,
+    tenantAFiscalYear,
   };
 }
 

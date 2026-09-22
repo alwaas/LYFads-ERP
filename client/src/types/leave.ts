@@ -44,6 +44,15 @@ export interface Leave {
 
   status: LeaveStatus;
 
+  leaveBalance?: {
+    id: string;
+    leaveType: LeaveType;
+    total: number;
+    used: number;
+    remaining: number;
+    year: number;
+  };
+
   createdAt: string;
 
   updatedAt: string;

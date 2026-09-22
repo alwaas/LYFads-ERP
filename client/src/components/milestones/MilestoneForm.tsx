@@ -1,5 +1,8 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { createMilestoneSchema, editMilestoneSchema, type CreateMilestoneFormData, type EditMilestoneFormData } from "../../features/validation/milestone.schema";
 
 export type MilestoneFormData = {
   title: string;
@@ -23,20 +26,29 @@ type Props = {
   projects: Project[];
   onSubmit: (data: MilestoneFormData) => void;
   initialValues?: Partial<MilestoneFormData>;
+  serverErrors?: Record<string, string>;
 };
+
+type FormData = CreateMilestoneFormData | EditMilestoneFormData;
 
 function MilestoneForm({
   loading,
   projects,
   onSubmit,
   initialValues,
+  serverErrors,
 }: Props) {
+  const schema = initialValues ? editMilestoneSchema : createMilestoneSchema;
+
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<MilestoneFormData>({
+    setError,
+    clearErrors,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
     defaultValues: {
       title: "",
       description: "",
@@ -47,7 +59,7 @@ function MilestoneForm({
       startDate: "",
       deadline: "",
       ...initialValues,
-    },
+    } as any,
   });
 
   useEffect(() => {
@@ -62,13 +74,26 @@ function MilestoneForm({
         startDate: "",
         deadline: "",
         ...initialValues,
-      });
+      } as any);
     }
   }, [initialValues, reset]);
 
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      clearErrors();
+      Object.entries(serverErrors).forEach(([field, message]) => {
+        setError(field as keyof FormData, { message });
+      });
+    }
+  }, [serverErrors, setError, clearErrors]);
+
+  const handleFormSubmit = (data: FormData) => {
+    onSubmit(data as unknown as MilestoneFormData);
+  };
+
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(handleFormSubmit)}
       className="space-y-6"
     >
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -79,9 +104,7 @@ function MilestoneForm({
           </label>
 
           <input
-            {...register("title", {
-              required: "Milestone title is required",
-            })}
+            {...register("title")}
             className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             placeholder="Enter milestone title"
           />
@@ -105,6 +128,11 @@ function MilestoneForm({
             className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             placeholder="Enter milestone description"
           />
+          {errors.description && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.description.message}
+            </p>
+          )}
         </div>
 
         {/* Project */}
@@ -114,9 +142,7 @@ function MilestoneForm({
           </label>
 
           <select
-            {...register("projectId", {
-              required: "Project is required",
-            })}
+            {...register("projectId")}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           >
             <option value="">Select Project</option>
@@ -166,6 +192,11 @@ function MilestoneForm({
               ON HOLD
             </option>
           </select>
+          {errors.status && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.status.message}
+            </p>
+          )}
         </div>
 
         {/* Priority */}
@@ -183,6 +214,11 @@ function MilestoneForm({
             <option value="HIGH">HIGH</option>
             <option value="URGENT">URGENT</option>
           </select>
+          {errors.priority && (
+            <p className="mt-1 text-sm text-red-600">
+              {errors.priority.message}
+            </p>
+          )}
         </div>
 
         {/* Progress */}
@@ -197,14 +233,6 @@ function MilestoneForm({
             max={100}
             {...register("progress", {
               valueAsNumber: true,
-              min: {
-                value: 0,
-                message: "Minimum progress is 0",
-              },
-              max: {
-                value: 100,
-                message: "Maximum progress is 100",
-              },
             })}
             className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             placeholder="0"
@@ -225,9 +253,7 @@ function MilestoneForm({
 
           <input
             type="date"
-            {...register("startDate", {
-              required: "Start date is required",
-            })}
+            {...register("startDate")}
             className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
 
@@ -246,9 +272,7 @@ function MilestoneForm({
 
           <input
             type="date"
-            {...register("deadline", {
-              required: "Deadline is required",
-            })}
+            {...register("deadline")}
             className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-slate-900 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
 

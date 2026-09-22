@@ -9,12 +9,17 @@ import { getEmployees } from "../../services/employee.service";
 
 import type { Employee } from "../../types/employee";
 
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { createAttendanceSchema, type CreateAttendanceFormData } from "../../features/validation/attendance.schema";
+
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function AddAttendancePage() {
   const navigate = useNavigate();
 
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [employeeId, setEmployeeId] = useState("");
-  const [remarks, setRemarks] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,35 +39,46 @@ function AddAttendancePage() {
     loadEmployees();
   }, []);
 
-  const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+  } = useForm<CreateAttendanceFormData>({
+    resolver: zodResolver(createAttendanceSchema) as any,
+    defaultValues: {
+      employeeId: "",
+      remarks: "",
+    },
+  });
 
-    if (!employeeId) {
-      toast.error("Please select an employee.");
-      return;
-    }
+  const onSubmit = async (data: CreateAttendanceFormData) => {
+    setSubmitting(true);
 
     try {
-      setSubmitting(true);
-
       await checkIn({
-        employeeId,
-        remarks: remarks.trim() || undefined,
+        employeeId: data.employeeId,
+        remarks: data.remarks || undefined,
       });
 
       toast.success("Attendance added successfully.");
       navigate("/attendance");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
 
-      const message =
-        error?.response?.data?.message?.[0] ??
-        error?.response?.data?.message ??
-        "Failed to add attendance.";
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field as keyof CreateAttendanceFormData, { message });
+        });
+      } else {
+        const message =
+          (error as any)?.response?.data?.message?.[0] ??
+          (error as any)?.response?.data?.message ??
+          "Failed to add attendance.";
 
-      toast.error(message);
+        toast.error(message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -82,7 +98,7 @@ function AddAttendancePage() {
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={handleSubmit(onSubmit)}
           className="bg-white rounded-xl shadow-sm border p-6 space-y-5"
         >
           <div>
@@ -91,13 +107,9 @@ function AddAttendancePage() {
             </label>
 
             <select
-              value={employeeId}
-              onChange={(event) =>
-                setEmployeeId(event.target.value)
-              }
+              {...register("employeeId")}
               disabled={loading || submitting}
               className="w-full border rounded-lg px-4 py-3"
-              required
             >
               <option value="">
                 {loading
@@ -115,6 +127,9 @@ function AddAttendancePage() {
                 </option>
               ))}
             </select>
+            {errors.employeeId && (
+              <p className="mt-1 text-sm text-red-600">{errors.employeeId.message}</p>
+            )}
           </div>
 
           <div>
@@ -124,24 +139,20 @@ function AddAttendancePage() {
 
             <textarea
               rows={4}
-              value={remarks}
-              onChange={(event) =>
-                setRemarks(event.target.value)
-              }
+              {...register("remarks")}
               disabled={submitting}
               placeholder="Optional remarks..."
               className="w-full border rounded-lg px-4 py-3"
             />
+            {errors.remarks && (
+              <p className="mt-1 text-sm text-red-600">{errors.remarks.message}</p>
+            )}
           </div>
 
           <div className="flex gap-3">
             <button
               type="submit"
-              disabled={
-                loading ||
-                submitting ||
-                !employeeId
-              }
+              disabled={loading || submitting}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg disabled:opacity-50"
             >
               {submitting

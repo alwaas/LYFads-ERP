@@ -1,40 +1,49 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Wallet, Plus, Search, Trash2, Eye, Edit } from "lucide-react";
+import { Wallet, Plus, Search, Filter, Edit, Trash2, Eye } from "lucide-react";
 import toast from "react-hot-toast";
 
 import PageLoader from "../../components/common/PageLoader";
+import Pagination from "../../components/ui/Pagination";
 import { expenseService } from "../../services/expense.service";
-import type { Expense, ExpenseCategory, ExpenseStatus } from "../../types/expense";
+import type { PaymentMethod } from "../../types/expense";
 
-const categoryColors: Record<ExpenseCategory, string> = {
-  SALARY: "bg-blue-100 text-blue-800",
-  RENT: "bg-purple-100 text-purple-800",
-  UTILITIES: "bg-yellow-100 text-yellow-800",
-  SUPPLIES: "bg-green-100 text-green-800",
-  MARKETING: "bg-pink-100 text-pink-800",
-  TRAVEL: "bg-indigo-100 text-indigo-800",
-  MAINTENANCE: "bg-orange-100 text-orange-800",
-  OTHER: "bg-gray-100 text-gray-800",
+type PagedResponse = {
+  data: any[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 };
 
-const statusColors: Record<ExpenseStatus, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  APPROVED: "bg-green-100 text-green-800",
-  REJECTED: "bg-red-100 text-red-800",
-  PAID: "bg-blue-100 text-blue-800",
+const methodColors: Record<PaymentMethod, string> = {
+  CASH: "bg-green-100 text-green-800",
+  BANK_TRANSFER: "bg-blue-100 text-blue-800",
+  UPI: "bg-purple-100 text-purple-800",
+  CARD: "bg-orange-100 text-orange-800",
+  CHEQUE: "bg-gray-100 text-gray-800",
 };
 
 const ExpensesPage = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [methodFilter, setMethodFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
-  const { data: expenses = [], isLoading, isError } = useQuery<Expense[]>({
-    queryKey: ["expenses"],
-    queryFn: () => expenseService.getAllExpenses(),
+  const { data: result, isLoading, isError } = useQuery<PagedResponse>({
+    queryKey: ["expenses", page, limit, searchQuery, methodFilter, categoryFilter],
+    queryFn: () =>
+      expenseService.getAllExpenses({
+        search: searchQuery || undefined,
+        method: methodFilter !== "all" ? (methodFilter as PaymentMethod) : undefined,
+        category: categoryFilter !== "all" ? categoryFilter : undefined,
+      }),
   });
+
+  const expenses = result?.data || [];
+  const totalPages = result?.totalPages || 1;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => expenseService.deleteExpense(id),
@@ -47,22 +56,15 @@ const ExpensesPage = () => {
     },
   });
 
-  const filteredExpenses = expenses.filter((expense) => {
-    const matchesSearch =
-      expense.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      expense.vendor.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesCategory = categoryFilter === "all" || expense.category === categoryFilter;
-    const matchesStatus = statusFilter === "all" || expense.status === statusFilter;
-
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
-
   const handleDelete = (id: string) => {
     if (window.confirm("Are you sure you want to delete this expense?")) {
       deleteMutation.mutate(id);
     }
   };
+
+  const categories = Array.from(
+    new Set(expenses.map((e) => e.category))
+  );
 
   if (isLoading) {
     return <PageLoader />;
@@ -82,13 +84,13 @@ const ExpensesPage = () => {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Wallet className="h-6 w-6 text-emerald-600" />
+            <Wallet className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Expenses
             </h1>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Manage all expense records and transactions
+            Manage all expense records
           </p>
         </div>
 
@@ -101,72 +103,6 @@ const ExpensesPage = () => {
         </a>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Total Expenses
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {expenses.length}
-              </p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50">
-              <Wallet className="h-5 w-5 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Total Amount
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                ${expenses.reduce((sum, e) => sum + Number(e.amount), 0).toFixed(2)}
-              </p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-emerald-50">
-              <Wallet className="h-5 w-5 text-emerald-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Pending
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {expenses.filter((e) => e.status === "PENDING").length}
-              </p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-yellow-50">
-              <Wallet className="h-5 w-5 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Paid
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {expenses.filter((e) => e.status === "PAID").length}
-              </p>
-            </div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-green-50">
-              <Wallet className="h-5 w-5 text-green-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 p-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -176,38 +112,46 @@ const ExpensesPage = () => {
                 type="text"
                 placeholder="Search expenses..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-slate-400" />
               <select
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                onChange={(e) => {
+                  setCategoryFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">All Categories</option>
-                <option value="SALARY">Salary</option>
-                <option value="RENT">Rent</option>
-                <option value="UTILITIES">Utilities</option>
-                <option value="SUPPLIES">Supplies</option>
-                <option value="MARKETING">Marketing</option>
-                <option value="TRAVEL">Travel</option>
-                <option value="MAINTENANCE">Maintenance</option>
-                <option value="OTHER">Other</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
 
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={methodFilter}
+                onChange={(e) => {
+                  setMethodFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option value="all">All Statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="APPROVED">Approved</option>
-                <option value="REJECTED">Rejected</option>
-                <option value="PAID">Paid</option>
+                <option value="all">All Methods</option>
+                <option value="CASH">Cash</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+                <option value="CHEQUE">Cheque</option>
               </select>
             </div>
           </div>
@@ -218,22 +162,19 @@ const ExpensesPage = () => {
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Description
+                  Date
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Category
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Description
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Amount
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Vendor
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Status
+                  Method
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Actions
@@ -241,35 +182,30 @@ const ExpensesPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredExpenses.length === 0 ? (
+              {expenses.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
                     No expenses found
                   </td>
                 </tr>
               ) : (
-                filteredExpenses.map((expense) => (
+                expenses.map((expense) => (
                   <tr key={expense.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                      {expense.description}
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {new Date(expense.expenseDate).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${categoryColors[expense.category]}`}>
-                        {expense.category.replace("_", " ")}
-                      </span>
+                    <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                      {expense.category}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">
+                      {expense.description}
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold text-slate-900">
                       ${Number(expense.amount).toFixed(2)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {expense.vendor}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-slate-600">
-                      {new Date(expense.expenseDate).toLocaleDateString()}
-                    </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[expense.status]}`}>
-                        {expense.status.replace("_", " ")}
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${methodColors[expense.paymentMethod as PaymentMethod] || "bg-gray-100 text-gray-800"}`}>
+                        {expense.paymentMethod.replace("_", " ")}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -304,6 +240,17 @@ const ExpensesPage = () => {
           </table>
         </div>
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        limit={limit}
+        onLimitChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
+      />
     </div>
   );
 };

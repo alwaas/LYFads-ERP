@@ -1,22 +1,20 @@
 import api from "./api";
 
-export const getNotifications = async (search?: string) => {
-  const { data } = await api.get("/notifications", {
-    params: { search },
-  });
+export const getNotifications = async (page = 1, limit = 10, search?: string): Promise<any> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (search) params.search = search;
 
-  return data.data.data;
+  const { data } = await api.get("/notifications", { params });
+  return data.data;
 };
 
 export const getNotificationById = async (id: string) => {
   const { data } = await api.get(`/notifications/${id}`);
-
   return data.data;
 };
 
 export const updateNotification = async (id: string, data: Record<string, unknown>) => {
   const { data: response } = await api.patch(`/notifications/${id}`, data);
-
   return response.data;
 };
 
@@ -26,13 +24,11 @@ export const markNotificationRead = async (
   const { data } = await api.patch(
     `/notifications/${id}/read`,
   );
-
   return data.data;
 };
 
 export const deleteNotification = async (id: string) => {
   const { data } = await api.delete(`/notifications/${id}`);
-
   return data.data;
 };
 
@@ -42,6 +38,5 @@ export const getUnreadCount = async (
   const { data } = await api.get(
     `/notifications/unread-count/${userId}`,
   );
-
   return data.data;
 };

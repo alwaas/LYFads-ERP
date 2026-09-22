@@ -16,6 +16,7 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
 import { Prisma } from '@prisma/client';
+import { LeaveStatus } from '@prisma/client';
 
 @Injectable()
 export class LeavesService {
@@ -24,7 +25,7 @@ export class LeavesService {
     private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async create(dto: CreateLeaveDto, userTenantId: string) {
+  async create(dto: CreateLeaveDto, userTenantId: string, userRole?: string) {
     const employee = await this.prisma.employee.findUnique({
       where: {
         id: dto.employeeId,
@@ -35,9 +36,12 @@ export class LeavesService {
       throw new NotFoundException('Employee not found.');
     }
 
-    // Verify employee belongs to the same tenant
     if (employee.tenantId !== userTenantId) {
       throw new ForbiddenException('Access denied to this employee');
+    }
+
+    if (userRole === 'EMPLOYEE' && employee.userId !== dto.employeeId) {
+      throw new ForbiddenException('Employees can only create leave requests for themselves');
     }
 
     if (new Date(dto.endDate) < new Date(dto.startDate)) {
@@ -185,6 +189,7 @@ export class LeavesService {
     id: string,
     dto: UpdateLeaveStatusDto,
     userTenantId: string,
+    userId?: string,
   ) {
     const leave = await this.prisma.leave.findUnique({
       where: {
@@ -203,19 +208,99 @@ export class LeavesService {
       throw new NotFoundException('Leave request not found.');
     }
 
-    // Verify tenant ownership
     if (leave.tenantId !== userTenantId) {
       throw new ForbiddenException('Access denied to this leave request');
+    }
+
+    if (leave.employee.userId === userId && (dto.status === LeaveStatus.APPROVED || dto.status === LeaveStatus.REJECTED)) {
+      throw new ForbiddenException('Employee cannot approve or reject own leave');
+    }
+
+    const validTransitions: Record<string, string[]> = {
+      PENDING: ['APPROVED', 'REJECTED', 'CANCELLED'],
+      APPROVED: ['CANCELLED'],
+      REJECTED: [],
+      CANCELLED: [],
+    };
+
+    const currentStatus = leave.status;
+    const nextStatus = dto.status;
+
+    if (!validTransitions[currentStatus]?.includes(nextStatus)) {
+      throw new ConflictException(`Invalid transition from ${currentStatus} to ${nextStatus}`);
+    }
+
+    const data: Record<string, unknown> = {
+      status: dto.status,
+      remarks: dto.remarks ?? leave.remarks,
+    };
+
+    if (dto.status === LeaveStatus.APPROVED || dto.status === LeaveStatus.REJECTED) {
+      if (!userId) {
+        throw new ForbiddenException('User ID is required for approval/rejection');
+      }
+      data.approvedById = userId;
+      data.approvedAt = new Date();
+    }
+
+    if (dto.status === LeaveStatus.REJECTED) {
+      if (!dto.rejectionReason) {
+        throw new ForbiddenException('Rejection reason is required when rejecting leave');
+      }
+      data.rejectionReason = dto.rejectionReason;
+    }
+
+    if (dto.status === LeaveStatus.APPROVED) {
+      const leaveDays = this.calculateLeaveDays(leave.startDate, leave.endDate);
+      const balance = await this.prisma.leaveBalance.findFirst({
+        where: {
+          employeeId: leave.employeeId,
+          leaveType: leave.leaveType,
+          year: leave.startDate.getFullYear(),
+          tenantId: userTenantId,
+        },
+      });
+
+      if (!balance || balance.remaining < leaveDays) {
+        throw new ConflictException('Insufficient leave balance for this leave type');
+      }
+
+      await this.prisma.leaveBalance.update({
+        where: { id: balance.id },
+        data: {
+          used: { increment: leaveDays },
+          remaining: { decrement: leaveDays },
+        },
+      });
+    }
+
+    if (dto.status === LeaveStatus.CANCELLED || dto.status === LeaveStatus.REJECTED) {
+      const existingBalance = await this.prisma.leaveBalance.findFirst({
+        where: {
+          employeeId: leave.employeeId,
+          leaveType: leave.leaveType,
+          year: leave.startDate.getFullYear(),
+          tenantId: userTenantId,
+        },
+      });
+
+      if (existingBalance && leave.status === LeaveStatus.APPROVED) {
+        const leaveDays = this.calculateLeaveDays(leave.startDate, leave.endDate);
+        await this.prisma.leaveBalance.update({
+          where: { id: existingBalance.id },
+          data: {
+            used: { decrement: leaveDays },
+            remaining: { increment: leaveDays },
+          },
+        });
+      }
     }
 
     const updatedLeave = await this.prisma.leave.update({
       where: {
         id,
       },
-      data: {
-        status: dto.status,
-        remarks: dto.remarks ?? leave.remarks,
-      },
+      data,
       include: {
         employee: {
           include: {
@@ -226,6 +311,13 @@ export class LeavesService {
                 email: true,
               },
             },
+          },
+        },
+        approvedBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
           },
         },
       },
@@ -242,38 +334,53 @@ export class LeavesService {
     return updatedLeave;
   }
 
+  private calculateLeaveDays(startDate: Date, endDate: Date): number {
+    const diff = endDate.getTime() - startDate.getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+    return days > 0 ? days : 1;
+  }
+
   async findAll(
     pagination: PaginationDto,
     search: SearchDto,
-    userTenantId: string,
+    status?: string,
+    leaveType?: string,
+    userTenantId?: string,
   ) {
     const { skip, limit } = pagination;
 
-    const where: Prisma.LeaveWhereInput = search.search
-      ? {
-          tenantId: userTenantId,
-          OR: [
-            {
-              reason: {
+    const where: Record<string, unknown> = {
+      ...(userTenantId ? { tenantId: userTenantId } : {}),
+    };
+
+    if (search.search) {
+      where.OR = [
+        {
+          reason: {
+            contains: search.search,
+            mode: Prisma.QueryMode.insensitive,
+          },
+        },
+        {
+          employee: {
+            user: {
+              fullName: {
                 contains: search.search,
                 mode: Prisma.QueryMode.insensitive,
               },
             },
-            {
-              employee: {
-                user: {
-                  fullName: {
-                    contains: search.search,
-                    mode: Prisma.QueryMode.insensitive,
-                  },
-                },
-              },
-            },
-          ],
-        }
-      : {
-          tenantId: userTenantId,
-        };
+          },
+        },
+      ];
+    }
+
+    if (status && ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'].includes(status)) {
+      where.status = status;
+    }
+
+    if (leaveType && ['CASUAL', 'SICK', 'EARNED', 'UNPAID', 'MATERNITY', 'PATERNITY'].includes(leaveType)) {
+      where.leaveType = leaveType;
+    }
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.leave.findMany({

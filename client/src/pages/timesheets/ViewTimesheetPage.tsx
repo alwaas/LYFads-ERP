@@ -35,6 +35,13 @@ export default function ViewTimesheetPage() {
     );
   }
 
+  const statusColors: Record<string, string> = {
+    DRAFT: "bg-gray-100 text-gray-700",
+    SUBMITTED: "bg-yellow-100 text-yellow-700",
+    APPROVED: "bg-green-100 text-green-700",
+    REJECTED: "bg-red-100 text-red-700",
+  };
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -153,6 +160,34 @@ export default function ViewTimesheetPage() {
             {" "}
             hours
           </p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm md:col-span-2">
+          <p className="text-sm text-gray-500">
+            Status
+          </p>
+
+          <p className="mt-2">
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                statusColors[timesheet.status] || "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {timesheet.status}
+            </span>
+          </p>
+
+          {timesheet.status === "REJECTED" && timesheet.rejectionReason && (
+            <p className="mt-2 text-sm text-red-600">
+              Rejection Reason: {timesheet.rejectionReason}
+            </p>
+          )}
+
+          {timesheet.approvedBy && (
+            <p className="mt-2 text-sm text-gray-500">
+              Approved By: {timesheet.approvedBy.fullName}
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm md:col-span-2">

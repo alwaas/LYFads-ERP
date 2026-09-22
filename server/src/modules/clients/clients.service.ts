@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 import { PrismaService } from '../../database';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -65,14 +66,24 @@ export class ClientsService {
     return client;
   }
 
-  async findAll(pagination: PaginationDto, userTenantId: string) {
+  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
     const { skip, limit } = pagination;
+
+    const where: Record<string, unknown> = {
+      tenantId: userTenantId,
+    };
+
+    if (search.search) {
+      where.OR = [
+        { companyName: { contains: search.search, mode: 'insensitive' } },
+        { email: { contains: search.search, mode: 'insensitive' } },
+        { contactPerson: { contains: search.search, mode: 'insensitive' } },
+      ];
+    }
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.client.findMany({
-        where: {
-          tenantId: userTenantId,
-        },
+        where,
         skip,
         take: limit,
         include: {
@@ -89,11 +100,7 @@ export class ClientsService {
         },
       }),
 
-      this.prisma.client.count({
-        where: {
-          tenantId: userTenantId,
-        },
-      }),
+      this.prisma.client.count({ where }),
     ]);
 
     return {

@@ -1,97 +1,104 @@
+export type PurchaseOrderStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'APPROVED'
+  | 'RECEIVED'
+  | 'CANCELLED';
+
 export interface PurchaseOrderItem {
   id: string;
   purchaseOrderId: string;
-  description: string;
+  productId: string;
   quantity: number;
-  unit?: string;
-  unitPrice: number;
-  taxRate?: number;
-  taxAmount?: number;
-  discount?: number;
+  receivedQuantity: number;
+  unitCost: number;
+  discount: number;
+  tax: number;
   lineTotal: number;
-  receivedQuantity?: number;
+  sequence: number;
   createdAt: string;
-  updatedAt: string;
+  tenantId: string;
+  product?: {
+    id: string;
+    name: string;
+    sku: string;
+  };
 }
 
 export interface PurchaseOrder {
   id: string;
-  tenantId: string;
+  orderNumber: string;
   vendorId: string;
-  poNumber: string;
-  title: string;
-  description?: string;
+  warehouseId?: string | null;
   orderDate: string;
-  expectedDeliveryDate?: string;
+  expectedDeliveryDate?: string | null;
   status: PurchaseOrderStatus;
-  subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
-  totalAmount: number;
-  notes?: string;
-  createdById?: string;
-  approvedById?: string;
-  approvedAt?: string;
+  subtotal: number | string;
+  discount: number | string;
+  tax: number | string;
+  total: number | string;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
+  tenantId: string;
   vendor: {
     id: string;
     name: string;
-    vendorCode: string;
+    email?: string;
+    contactPerson?: string;
+    phone?: string;
   };
+  warehouse?: {
+    id: string;
+    name: string;
+  } | null;
   items: PurchaseOrderItem[];
-  createdBy?: {
-    id: string;
-    fullName: string;
-    email: string;
-  };
-  approvedBy?: {
-    id: string;
-    fullName: string;
-    email: string;
-  };
 }
 
-export type PurchaseOrderStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "APPROVED"
-  | "REJECTED"
-  | "PARTIALLY_RECEIVED"
-  | "RECEIVED"
-  | "CANCELLED";
+export interface CreatePurchaseOrderItemDto {
+  productId: string;
+  quantity: string | number;
+  unitCost: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  lineTotal?: string | number;
+  sequence?: number;
+}
 
 export interface CreatePurchaseOrderDto {
+  orderNumber: string;
   vendorId: string;
-  title: string;
-  description?: string;
+  warehouseId?: string;
   orderDate: string;
   expectedDeliveryDate?: string;
+  items: CreatePurchaseOrderItemDto[];
+  subtotal: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  total: string | number;
   notes?: string;
-  items: PurchaseOrderItemDto[];
 }
 
 export interface UpdatePurchaseOrderDto {
+  orderNumber?: string;
   vendorId?: string;
-  title?: string;
-  description?: string;
+  warehouseId?: string;
   orderDate?: string;
   expectedDeliveryDate?: string;
+  subtotal?: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  total?: string | number;
   notes?: string;
-  status?: PurchaseOrderStatus;
-  items?: PurchaseOrderItemDto[];
-}
-
-export interface PurchaseOrderItemDto {
-  description: string;
-  quantity: number;
-  unit?: string;
-  unitPrice: number;
-  taxRate?: number;
-  discount?: number;
 }
 
 export interface ReceiveItemDto {
   itemId: string;
-  receivedQuantity: number;
+  quantity: string | number;
+}
+
+export interface ReceivePurchaseOrderDto {
+  warehouseId: string;
+  items: ReceiveItemDto[];
+  notes?: string;
 }

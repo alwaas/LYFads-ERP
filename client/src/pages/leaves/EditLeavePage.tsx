@@ -4,12 +4,20 @@ import toast from "react-hot-toast";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
 
+import LeaveForm from "../../components/leaves/LeaveForm";
+
 import {
   getLeaveById,
   updateLeave,
 } from "../../services/leave.service";
 
+import { getEmployees } from "../../services/employee.service";
+
 import type { Leave } from "../../types/leave";
+
+import type { Employee } from "../../types/employee";
+
+import { mapServerValidationErrors } from "../../features/validation/errors";
 
 function EditLeavePage() {
   const { id } = useParams();
@@ -17,36 +25,26 @@ function EditLeavePage() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
-//   const [employeeId, setEmployeeId] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const [form, setForm] = useState({
-    leaveType: "",
-    fromDate: "",
-    toDate: "",
-    reason: "",
-    remarks: "",
-  });
+  const [leave, setLeave] = useState<Leave | null>(null);
+
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
+  const [serverErrors, setServerErrors] =
+    useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) {
       loadLeave(id);
     }
+    loadEmployees();
   }, [id]);
 
   const loadLeave = async (leaveId: string) => {
     try {
-      const leave: Leave = await getLeaveById(leaveId);
-
-    //   setEmployeeId(leave.employeeId);
-
-      setForm({
-        leaveType: leave.leaveType,
-        fromDate: leave.startDate.slice(0, 10),
-        toDate: leave.endDate.slice(0, 10),
-        reason: leave.reason,
-        remarks: "",
-      });
+      const leaveData: Leave = await getLeaveById(leaveId);
+      setLeave(leaveData);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load leave.");
@@ -55,41 +53,50 @@ function EditLeavePage() {
     }
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+  const loadEmployees = async () => {
+    try {
+      const data = await getEmployees();
+      setEmployees(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load employees.");
+    }
   };
 
-  const handleSubmit = async (
-    e: React.FormEvent
-  ) => {
-    e.preventDefault();
+  const handleSubmit = async (data: Record<string, any>) => {
+    if (!id || !leave) return;
 
-    if (!id) return;
-
+    setServerErrors({});
     setSaving(true);
 
     try {
-        await updateLeave(id, {
-            leaveType: form.leaveType as any,
-            startDate: `${form.fromDate}T00:00:00.000Z`,
-            endDate: `${form.toDate}T00:00:00.000Z`,
-            reason: form.reason,
-            remarks: form.remarks,
-        });
+      await updateLeave(id, {
+        leaveType: data.leaveType,
+        startDate: new Date(
+          data.startDate
+        ).toISOString(),
+        endDate: new Date(
+          data.endDate
+        ).toISOString(),
+        reason: data.reason,
+        remarks: data.remarks,
+      });
 
-        toast.success("Leave updated successfully.");
+      toast.success("Leave updated successfully.");
 
       navigate("/leaves");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error("Failed to update leave.");
+
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error(
+          (error as any)?.response?.data?.message ??
+            "Failed to update leave."
+        );
+      }
     } finally {
       setSaving(false);
     }
@@ -105,6 +112,24 @@ function EditLeavePage() {
     );
   }
 
+  if (!leave) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center py-20">
+          <div className="text-red-600">Leave not found</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const initialData = {
+    leaveType: leave.leaveType,
+    startDate: leave.startDate.slice(0, 10),
+    endDate: leave.endDate.slice(0, 10),
+    reason: leave.reason,
+    remarks: leave.remarks ?? "",
+  };
+
   return (
     <DashboardLayout>
 
@@ -114,122 +139,13 @@ function EditLeavePage() {
           Edit Leave
         </h1>
 
-        <form
+        <LeaveForm
+          initialData={initialData}
+          employees={employees}
           onSubmit={handleSubmit}
-          className="space-y-6"
-        >
-
-          <div>
-
-            <label className="block mb-2 font-medium">
-              Leave Type
-            </label>
-
-            <select
-              name="leaveType"
-              value={form.leaveType}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-3"
-            >
-              <option value="CASUAL">Casual</option>
-              <option value="SICK">Sick</option>
-              <option value="EARNED">Earned</option>
-              <option value="UNPAID">Unpaid</option>
-              <option value="MATERNITY">Maternity</option>
-              <option value="PATERNITY">Paternity</option>
-            </select>
-
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-
-            <div>
-
-              <label className="block mb-2 font-medium">
-                From Date
-              </label>
-
-              <input
-                type="date"
-                name="fromDate"
-                value={form.fromDate}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-3"
-              />
-
-            </div>
-
-            <div>
-
-              <label className="block mb-2 font-medium">
-                To Date
-              </label>
-
-              <input
-                type="date"
-                name="toDate"
-                value={form.toDate}
-                onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-3"
-              />
-
-            </div>
-
-          </div>
-
-          <div>
-
-            <label className="block mb-2 font-medium">
-              Reason
-            </label>
-
-            <textarea
-              rows={4}
-              name="reason"
-              value={form.reason}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-3"
-            />
-
-          </div>
-
-          <div>
-
-            <label className="block mb-2 font-medium">
-              Remarks
-            </label>
-
-            <textarea
-              rows={3}
-              name="remarks"
-              value={form.remarks}
-              onChange={handleChange}
-              className="w-full border rounded-lg px-4 py-3"
-            />
-
-          </div>
-
-          <div className="flex gap-4">
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg disabled:opacity-50"
-            >
-              {saving ? "Updating..." : "Update Leave"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate("/leaves")}
-              className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg"
-            >
-              Cancel
-            </button>
-
-          </div>
-
-        </form>
+          loading={saving}
+          serverErrors={serverErrors}
+        />
 
       </div>
 

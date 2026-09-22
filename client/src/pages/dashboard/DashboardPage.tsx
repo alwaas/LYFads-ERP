@@ -14,6 +14,7 @@ import RecentProjects from "../../components/dashboard/RecentProjects";
 import RecentTasks from "../../components/dashboard/RecentTasks";
 import PendingTasks from "../../components/dashboard/PendingTasks";
 import ActivityFeed from "../../components/dashboard/ActivityFeed";
+import LowStockAlertWidget from "../../components/dashboard/LowStockAlertWidget";
 
 import { getDashboardStats } from "../../services/dashboard.service";
 
@@ -93,6 +94,8 @@ function DashboardPage() {
       />
 
       <DashboardCharts />
+
+      <LowStockAlertWidget />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <EmployeeWorkload />

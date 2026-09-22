@@ -1,5 +1,8 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { createTaskSchema, editTaskSchema, type CreateTaskFormData, type EditTaskFormData } from "../../features/validation/task.schema";
 
 export type TaskFormData = {
   taskCode: string;
@@ -19,7 +22,10 @@ type Props = {
   initialData?: TaskFormData;
   projects: any[];
   employees: any[];
+  serverErrors?: Record<string, string>;
 };
+
+type FormData = CreateTaskFormData | EditTaskFormData;
 
 function TaskForm({
   loading,
@@ -27,12 +33,19 @@ function TaskForm({
   initialData,
   projects,
   employees,
+  serverErrors,
 }: Props) {
+  const schema = initialData ? editTaskSchema : createTaskSchema;
+
   const {
     register,
     handleSubmit,
     reset,
-  } = useForm<TaskFormData>({
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm<FormData>({
+    resolver: zodResolver(schema) as any,
     defaultValues: {
       taskCode: "",
       title: "",
@@ -43,7 +56,7 @@ function TaskForm({
       priority: "MEDIUM",
       dueDate: "",
       estimatedHours: undefined,
-    },
+    } as any,
   });
 
   useEffect(() => {
@@ -64,18 +77,27 @@ function TaskForm({
         initialData.estimatedHours !== undefined
           ? Number(initialData.estimatedHours)
           : undefined,
-    });
+    } as any);
   }, [initialData, reset]);
 
-  const submitForm = (data: TaskFormData) => {
+  useEffect(() => {
+    if (serverErrors && Object.keys(serverErrors).length > 0) {
+      clearErrors();
+      Object.entries(serverErrors).forEach(([field, message]) => {
+        setError(field as keyof FormData, { message });
+      });
+    }
+  }, [serverErrors, setError, clearErrors]);
+
+  const submitForm = (data: FormData) => {
     const payload: TaskFormData = {
-      taskCode: data.taskCode,
-      title: data.title,
+      taskCode: data.taskCode || "",
+      title: data.title || "",
       description: data.description || "",
-      projectId: data.projectId,
+      projectId: data.projectId || "",
       employeeId: data.employeeId || undefined,
-      status: data.status,
-      priority: data.priority,
+      status: data.status || "TODO",
+      priority: data.priority || "MEDIUM",
       dueDate: data.dueDate || undefined,
       estimatedHours:
         data.estimatedHours !== undefined &&
@@ -101,10 +123,13 @@ function TaskForm({
           </label>
 
           <input
-            {...register("taskCode", { required: true })}
+            {...register("taskCode")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="Enter task code"
           />
+          {errors.taskCode && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.taskCode.message}</p>
+          )}
         </div>
 
         {/* Task Title */}
@@ -114,10 +139,13 @@ function TaskForm({
           </label>
 
           <input
-            {...register("title", { required: true })}
+            {...register("title")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="Enter task title"
           />
+          {errors.title && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.title.message}</p>
+          )}
         </div>
 
         {/* Description */}
@@ -132,6 +160,9 @@ function TaskForm({
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="Enter task description"
           />
+          {errors.description && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.description.message}</p>
+          )}
         </div>
 
         {/* Project */}
@@ -141,7 +172,7 @@ function TaskForm({
           </label>
 
           <select
-            {...register("projectId", { required: true })}
+            {...register("projectId")}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition bg-white"
           >
             <option value="">Select Project</option>
@@ -152,6 +183,9 @@ function TaskForm({
               </option>
             ))}
           </select>
+          {errors.projectId && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.projectId.message}</p>
+          )}
         </div>
 
         {/* Employee */}
@@ -190,6 +224,9 @@ function TaskForm({
             <option value="COMPLETED">COMPLETED</option>
             <option value="CANCELLED">CANCELLED</option>
           </select>
+          {errors.status && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.status.message}</p>
+          )}
         </div>
 
         {/* Priority */}
@@ -207,6 +244,9 @@ function TaskForm({
             <option value="HIGH">HIGH</option>
             <option value="URGENT">URGENT</option>
           </select>
+          {errors.priority && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.priority.message}</p>
+          )}
         </div>
 
         {/* Due Date */}
@@ -237,6 +277,9 @@ function TaskForm({
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition"
             placeholder="e.g. 8"
           />
+          {errors.estimatedHours && (
+            <p className="text-red-500 text-xs mt-1 font-medium">{errors.estimatedHours.message}</p>
+          )}
         </div>
       </div>
 

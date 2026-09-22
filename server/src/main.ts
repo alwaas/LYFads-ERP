@@ -9,6 +9,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 import helmet from 'helmet';
 import compression from 'compression';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -59,7 +60,7 @@ async function bootstrap() {
   // Swagger Documentation
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('LYFads ERP API')
+      .setTitle('LYFADS ERP API')
       .setDescription('Enterprise ERP Backend API Documentation')
       .setVersion('1.0')
       .addBearerAuth()

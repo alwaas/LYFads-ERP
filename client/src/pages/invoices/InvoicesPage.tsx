@@ -4,8 +4,17 @@ import { FileText, Plus, Search, RefreshCw, Edit, Trash2, Eye } from "lucide-rea
 import toast from "react-hot-toast";
 
 import PageLoader from "../../components/common/PageLoader";
+import Pagination from "../../components/ui/Pagination";
 import { invoiceService } from "../../services/invoice.service";
-import type { Invoice, InvoiceStatus } from "../../types/invoice";
+import type { InvoiceStatus } from "../../types/invoice";
+
+type PagedResponse = {
+  data: any[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
 
 const statusColors: Record<InvoiceStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-800",
@@ -20,11 +29,16 @@ const InvoicesPage = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
-  const { data: invoices = [], isLoading, isError, refetch } = useQuery<Invoice[]>({
-    queryKey: ["invoices"],
-    queryFn: () => invoiceService.getAllInvoices(),
+  const { data: result, isLoading, isError, refetch } = useQuery<PagedResponse>({
+    queryKey: ["invoices", page, limit, searchQuery, statusFilter],
+    queryFn: () => invoiceService.getAllInvoices(page, limit, statusFilter, searchQuery),
   });
+
+  const invoices = result?.data || [];
+  const totalPages = result?.totalPages || 1;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => invoiceService.deleteInvoice(id),
@@ -36,17 +50,6 @@ const InvoicesPage = () => {
       const message = error.response?.data?.message || error.message || "Failed to delete invoice";
       toast.error(message);
     },
-  });
-
-  const filteredInvoices = invoices.filter((invoice) => {
-    const matchesSearch =
-      invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.client?.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.project?.name.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
   });
 
   const handleDelete = (id: string) => {
@@ -113,7 +116,7 @@ const InvoicesPage = () => {
                 Total Invoices
               </p>
               <p className="mt-2 text-2xl font-bold text-slate-900">
-                {invoices.length}
+                {result?.total || 0}
               </p>
             </div>
             <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-blue-50">
@@ -180,7 +183,10 @@ const InvoicesPage = () => {
                 type="text"
                 placeholder="Search invoices..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -188,7 +194,10 @@ const InvoicesPage = () => {
             <div className="flex items-center gap-2">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="rounded-lg border border-slate-300 py-2 px-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="all">All Status</option>
@@ -240,14 +249,14 @@ const InvoicesPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredInvoices.length === 0 ? (
+              {invoices.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-4 py-8 text-center text-sm text-slate-500">
                     No invoices found
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((invoice) => (
+                invoices.map((invoice) => (
                   <tr key={invoice.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm font-medium text-slate-900">
                       {invoice.invoiceNumber}
@@ -310,6 +319,17 @@ const InvoicesPage = () => {
           </table>
         </div>
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        limit={limit}
+        onLimitChange={(newLimit) => {
+          setLimit(newLimit);
+          setPage(1);
+        }}
+      />
     </div>
   );
 };

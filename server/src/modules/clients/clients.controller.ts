@@ -13,6 +13,7 @@ import {
 import { UserRole } from '@prisma/client';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -43,9 +44,10 @@ export class ClientsController {
   )
   findAll(
     @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.clientsService.findAll(pagination, user.tenantId);
+    return this.clientsService.findAll(pagination, search, user.tenantId);
   }
 
   @Get(':id')

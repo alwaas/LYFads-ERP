@@ -1,113 +1,112 @@
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ShoppingCart, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
-import PageLoader from "../../components/common/PageLoader";
 import { purchaseOrderService } from "../../services/purchase-order.service";
 import { vendorService } from "../../services/vendor.service";
-import type { UpdatePurchaseOrderDto, PurchaseOrderItemDto } from "../../types/purchase-order";
-import type { Vendor } from "../../types/vendor";
+import { warehouseService } from "../../services/warehouse.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
+import {
+  updatePurchaseOrderSchema,
+  type UpdatePurchaseOrderFormData,
+} from "../../features/validation/purchase-order.schema";
+import type { UpdatePurchaseOrderDto, PurchaseOrder } from "../../types/purchase-order";
+
+const statusColors: Record<string, string> = {
+  DRAFT: "bg-gray-100 text-gray-800",
+  SUBMITTED: "bg-blue-100 text-blue-800",
+  APPROVED: "bg-amber-100 text-amber-800",
+  RECEIVED: "bg-green-100 text-green-800",
+  CANCELLED: "bg-red-100 text-red-800",
+};
 
 const EditPurchaseOrderPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
-  const [formData, setFormData] = useState<UpdatePurchaseOrderDto>({});
-  const [items, setItems] = useState<PurchaseOrderItemDto[]>([]);
-
-  const { data: po, isLoading } = useQuery({
-    queryKey: ["purchase-orders", id],
+  const { data: po, isLoading } = useQuery<PurchaseOrder>({
+    queryKey: ["purchase-order", id],
     queryFn: () => purchaseOrderService.getPurchaseOrderById(id!),
     enabled: !!id,
   });
 
-  const { data: vendors = [] } = useQuery<Vendor[]>({
-    queryKey: ["vendors"],
-    queryFn: () => vendorService.getAllVendors(),
+  const { data: vendorsResp } = useQuery({
+    queryKey: ["vendors-all"],
+    queryFn: () => vendorService.getAllVendors({ limit: 100 }),
+  });
+  const vendors = (vendorsResp as any)?.data || [];
+
+  const { data: warehousesResp } = useQuery({
+    queryKey: ["warehouses-all"],
+    queryFn: () => warehouseService.getAllWarehouses(),
+  });
+  const warehouses = (warehousesResp as any)?.data || [];
+
+  useEffect(() => {
+    if (po) {
+      setIsReadOnly(po.status !== "DRAFT");
+    }
+  }, [po]);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+    reset,
+  } = useForm<UpdatePurchaseOrderFormData>({
+    resolver: zodResolver(updatePurchaseOrderSchema) as any,
   });
 
   useEffect(() => {
     if (po) {
-      setFormData({
+      reset({
+        orderNumber: po.orderNumber,
         vendorId: po.vendorId,
-        title: po.title,
-        description: po.description,
+        warehouseId: po.warehouseId || "",
         orderDate: po.orderDate.split("T")[0],
-        expectedDeliveryDate: po.expectedDeliveryDate?.split("T")[0],
-        notes: po.notes,
+        expectedDeliveryDate: po.expectedDeliveryDate ? po.expectedDeliveryDate.split("T")[0] : "",
+        notes: po.notes || "",
+        subtotal: po.subtotal.toString(),
+        discount: po.discount.toString(),
+        tax: po.tax.toString(),
+        total: po.total.toString(),
       });
-      setItems(
-        po.items.map((item) => ({
-          description: item.description,
-          quantity: Number(item.quantity),
-          unit: item.unit,
-          unitPrice: Number(item.unitPrice),
-          taxRate: item.taxRate ? Number(item.taxRate) : undefined,
-          discount: item.discount ? Number(item.discount) : undefined,
-        }))
-      );
     }
-  }, [po]);
+  }, [po, reset]);
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: UpdatePurchaseOrderDto }) =>
-      purchaseOrderService.updatePurchaseOrder(id, dto),
+    mutationFn: (dto: UpdatePurchaseOrderDto) => purchaseOrderService.updatePurchaseOrder(id!, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
-      toast.success("Purchase order updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["purchase-order", id] });
+      toast.success("Purchase order updated");
       navigate("/purchase-orders");
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || error.message || "Failed to update purchase order";
-      toast.error(message);
+    onError: (error: unknown) => {
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field as keyof UpdatePurchaseOrderFormData, { message });
+        });
+      } else {
+        toast.error(
+          (error as any)?.response?.data?.message ||
+            (error as any)?.message ||
+            "Failed to update purchase order",
+        );
+      }
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id) return;
-    updateMutation.mutate({ id, dto: { ...formData, items } });
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleItemChange = (index: number, field: keyof PurchaseOrderItemDto, value: string | number) => {
-    setItems((prev) => {
-      const newItems = [...prev];
-      (newItems[index] as any)[field] = value;
-      return newItems;
-    });
-  };
-
-  const addItem = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        description: "",
-        quantity: 1,
-        unit: "",
-        unitPrice: 0,
-        taxRate: 0,
-        discount: 0,
-      },
-    ]);
-  };
-
-  const removeItem = (index: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
   if (isLoading) {
-    return <PageLoader />;
+    return <div className="text-slate-500 text-center py-8">Loading purchase order...</div>;
   }
 
   if (!po) {
@@ -118,282 +117,195 @@ const EditPurchaseOrderPage = () => {
     );
   }
 
-  if (po.status !== "DRAFT") {
-    return (
-      <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6 text-center">
-        <h2 className="text-sm font-semibold text-yellow-800">
-          Only draft purchase orders can be edited.
-        </h2>
-      </div>
-    );
-  }
-
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const totalDiscount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
-  const taxableAmount = subtotal - totalDiscount;
-  const totalTax = items.reduce((sum, item) => {
-    const itemTaxable = item.quantity * item.unitPrice - (item.discount || 0);
-    return sum + (item.taxRate ? (itemTaxable * item.taxRate) / 100 : 0);
-  }, 0);
-  const grandTotal = taxableAmount + totalTax;
-
   return (
-    <div className="w-full space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate("/purchase-orders")}
-          className="p-2.5 border border-slate-200 bg-white rounded-xl hover:bg-slate-50 transition text-slate-600 shadow-2xs shrink-0"
-          title="Back"
-        >
-          <ArrowLeft size={20} />
+        <button onClick={() => navigate("/purchase-orders")} className="p-2 hover:bg-slate-100 rounded-lg">
+          <ArrowLeft className="h-5 w-5 text-slate-600" />
         </button>
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Edit Purchase Order
-          </h1>
-          <p className="text-sm text-slate-500 font-medium">
-            Update purchase order information
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-6 w-6 text-blue-600" />
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Edit Purchase Order</h1>
+            <span
+              className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusColors[po.status] || "bg-gray-100 text-gray-800"}`}
+            >
+              {po.status}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            {isReadOnly ? "Items are locked once the order leaves DRAFT" : "Update draft purchase order"}
           </p>
         </div>
       </div>
 
-      <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 sm:p-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <form onSubmit={handleSubmit((d) => updateMutation.mutate(d as UpdatePurchaseOrderDto))} className="space-y-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
-              <label htmlFor="vendorId" className="block text-sm font-medium text-slate-700 mb-2">
-                Vendor *
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Order Number *</label>
+              <input
+                type="text"
+                {...register("orderNumber")}
+                disabled={isReadOnly}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
+              />
+              {errors.orderNumber && (
+                <p className="mt-1 text-xs text-red-600">{errors.orderNumber.message}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Vendor *</label>
               <select
-                id="vendorId"
-                name="vendorId"
-                value={formData.vendorId}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                {...register("vendorId")}
+                disabled={isReadOnly}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
               >
                 <option value="">Select a vendor</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>
-                    {vendor.name} ({vendor.vendorCode})
+                {vendors.map((v: any) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+              {errors.vendorId && (
+                <p className="mt-1 text-xs text-red-600">{errors.vendorId.message}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Order Date *</label>
+              <input
+                type="date"
+                {...register("orderDate")}
+                disabled={isReadOnly}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Expected Delivery Date</label>
+              <input
+                type="date"
+                {...register("expectedDeliveryDate")}
+                disabled={isReadOnly}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Receiving Warehouse</label>
+              <select
+                {...register("warehouseId")}
+                disabled={isReadOnly}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
+              >
+                <option value="">Default warehouse</option>
+                {warehouses.map((w: any) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
                   </option>
                 ))}
               </select>
             </div>
-
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-2">
-                Title *
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Subtotal</label>
               <input
                 type="text"
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                {...register("subtotal")}
+                readOnly
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50"
               />
             </div>
-
-            <div className="lg:col-span-2">
-              <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-2">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
             <div>
-              <label htmlFor="orderDate" className="block text-sm font-medium text-slate-700 mb-2">
-                Order Date *
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Discount</label>
               <input
-                type="date"
-                id="orderDate"
-                name="orderDate"
-                value={formData.orderDate}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                type="text"
+                {...register("discount")}
+                disabled={isReadOnly}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
               />
             </div>
-
             <div>
-              <label htmlFor="expectedDeliveryDate" className="block text-sm font-medium text-slate-700 mb-2">
-                Expected Delivery Date
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Tax</label>
               <input
-                type="date"
-                id="expectedDeliveryDate"
-                name="expectedDeliveryDate"
-                value={formData.expectedDeliveryDate}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                type="text"
+                {...register("tax")}
+                disabled={isReadOnly}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
               />
             </div>
-
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Total</label>
+              <input
+                type="text"
+                {...register("total")}
+                readOnly
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-slate-50"
+              />
+            </div>
             <div className="lg:col-span-2">
-              <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
-                Notes
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
               <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
                 rows={3}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                {...register("notes")}
+                disabled={isReadOnly}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
               />
             </div>
           </div>
 
-          {/* Line Items */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">Line Items</h3>
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Line Items</h3>
+            {po.items.length === 0 ? (
+              <p className="text-sm text-slate-500 py-4 text-center">No items</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-600">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Product</th>
+                      <th className="px-4 py-3 font-medium text-right">Qty</th>
+                      <th className="px-4 py-3 font-medium text-right">Unit Cost</th>
+                      <th className="px-4 py-3 font-medium text-right">Discount</th>
+                      <th className="px-4 py-3 font-medium text-right">Tax</th>
+                      <th className="px-4 py-3 font-medium text-right">Received</th>
+                      <th className="px-4 py-3 font-medium text-right">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {po.items.map((it) => (
+                      <tr key={it.id}>
+                        <td className="px-4 py-3 text-slate-900">{it.product?.name || it.productId}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{Number(it.quantity).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">${Number(it.unitCost).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">${Number(it.discount).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">${Number(it.tax).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-slate-600">{Number(it.receivedQuantity).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-900">${Number(it.lineTotal).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {!isReadOnly && (
+            <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
-                onClick={addItem}
-                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                onClick={() => navigate("/purchase-orders")}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
-                Add Item
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updateMutation.isPending}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
               </button>
             </div>
-
-            {items.map((item, index) => (
-              <div key={index} className="grid grid-cols-1 gap-4 p-4 border border-slate-200 rounded-xl">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="sm:col-span-2 lg:col-span-4">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
-                    <input
-                      type="text"
-                      value={item.description}
-                      onChange={(e) => handleItemChange(index, "description", e.target.value)}
-                      required
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Quantity</label>
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, "quantity", parseFloat(e.target.value) || 0)}
-                      required
-                      min="0"
-                      step="0.01"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Unit Price</label>
-                    <input
-                      type="number"
-                      value={item.unitPrice}
-                      onChange={(e) => handleItemChange(index, "unitPrice", parseFloat(e.target.value) || 0)}
-                      required
-                      min="0"
-                      step="0.01"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Unit</label>
-                    <input
-                      type="text"
-                      value={item.unit}
-                      onChange={(e) => handleItemChange(index, "unit", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Tax Rate (%)</label>
-                    <input
-                      type="number"
-                      value={item.taxRate || 0}
-                      onChange={(e) => handleItemChange(index, "taxRate", parseFloat(e.target.value) || 0)}
-                      min="0"
-                      step="0.01"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Discount</label>
-                    <input
-                      type="number"
-                      value={item.discount || 0}
-                      onChange={(e) => handleItemChange(index, "discount", parseFloat(e.target.value) || 0)}
-                      min="0"
-                      step="0.01"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div className="flex items-end">
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      disabled={items.length === 1}
-                      className="flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Trash2 size={16} /> Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Totals */}
-          <div className="flex justify-end">
-            <div className="w-full sm:w-80 space-y-2">
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>Discount</span>
-                <span>-${totalDiscount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>Tax</span>
-                <span>${totalTax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-base font-bold text-slate-900 border-t border-slate-200 pt-2">
-                <span>Total</span>
-                <span>${grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/purchase-orders")}
-              className="px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={updateMutation.isPending}
-              className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {updateMutation.isPending ? "Updating..." : "Update Purchase Order"}
-            </button>
-          </div>
+          )}
         </form>
       </div>
     </div>

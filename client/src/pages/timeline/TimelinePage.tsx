@@ -40,7 +40,7 @@ const TimelinePage = () => {
     refetch,
   } = useQuery<TimelineItem[]>({
     queryKey: ["timeline"],
-    queryFn: getTimeline,
+    queryFn: () => getTimeline(),
   });
 
   const modules = useMemo(() => {

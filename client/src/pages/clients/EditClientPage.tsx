@@ -8,6 +8,8 @@ import PageContainer from "../../components/layout/PageContainer";
 import ClientForm, { type ClientFormData } from "../../components/clients/ClientForm";
 import { getClient, updateClient } from "../../services/client.service";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function EditClientPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ function EditClientPage() {
   const [client, setClient] = useState<ClientFormData | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) {
@@ -38,11 +41,13 @@ function EditClientPage() {
   const handleSubmit = async (values: ClientFormData) => {
     if (!id) return;
 
+    setServerErrors({});
     try {
       setSubmitting(true);
 
       const payload = {
         companyName: values.companyName,
+        contactPerson: values.contactPerson,
         email: values.email,
         phone: values.phone,
         website: values.website,
@@ -58,13 +63,14 @@ function EditClientPage() {
 
       toast.success("Client updated successfully.");
       navigate("/clients");
-    } catch (error: any) {
-      console.error("Update Client Error:", error);
-
-      toast.error(
-        error?.response?.data?.message ??
-        "Failed to update client."
-      );
+    } catch (error: unknown) {
+      console.error(error);
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error((error as any)?.response?.data?.message ?? "Failed to update client.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -105,10 +111,11 @@ function EditClientPage() {
           </div>
 
           <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 sm:p-8">
-            <ClientForm 
-              defaultValues={client} 
-              loading={submitting} 
-              onSubmit={handleSubmit} 
+            <ClientForm
+              defaultValues={client}
+              loading={submitting}
+              onSubmit={handleSubmit}
+              serverErrors={serverErrors}
             />
           </div>
         </div>

@@ -18,6 +18,7 @@ import { CurrentUser } from '../../common/decorators/tenant.decorator';
 import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 import { ProjectsService } from './projects.service';
 
@@ -53,9 +54,10 @@ export class ProjectsController {
   @Get()
   findAll(
     @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.projectsService.findAll(pagination, user.tenantId);
+    return this.projectsService.findAll(pagination, search, user.tenantId);
   }
 
   @Roles(

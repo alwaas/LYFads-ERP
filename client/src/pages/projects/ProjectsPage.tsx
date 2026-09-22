@@ -7,6 +7,7 @@ import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
 import ProjectTable from "../../components/projects/ProjectTable";
 import ProjectStats from "../../components/projects/ProjectStats";
+import Pagination from "../../components/ui/Pagination";
 
 import { getProjects, deleteProject } from "../../services/project.service";
 import type { Project } from "../../types/project";
@@ -18,16 +19,16 @@ function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    loadProjects();
-  }, []);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const data = await getProjects();
-      setProjects(data);
+      const result: any = await getProjects(page, limit, search);
+      setProjects(result.data || []);
+      setTotalPages(result.totalPages || 1);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load projects.");
@@ -36,11 +37,16 @@ function ProjectsPage() {
     }
   };
 
+  useEffect(() => {
+    loadProjects();
+  }, [page, limit]);
+
   const refresh = async () => {
     try {
       setRefreshing(true);
-      const data = await getProjects();
-      setProjects(data);
+      const result: any = await getProjects(page, limit, search);
+      setProjects(result.data || []);
+      setTotalPages(result.totalPages || 1);
       toast.success("Projects refreshed successfully.");
     } catch (error) {
       console.error(error);
@@ -63,13 +69,25 @@ function ProjectsPage() {
     }
   };
 
-  const filteredProjects = projects.filter((project) => {
-    const keyword = search.toLowerCase();
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  if (loading) {
     return (
-      project.name.toLowerCase().includes(keyword) ||
-      (project.description ?? "").toLowerCase().includes(keyword)
+      <DashboardLayout>
+        <PageContainer>
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+              <p className="mt-4 text-sm text-slate-500">Loading projects...</p>
+            </div>
+          </div>
+        </PageContainer>
+      </DashboardLayout>
     );
-  });
+  }
 
   return (
     <DashboardLayout>
@@ -119,18 +137,14 @@ function ProjectsPage() {
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search by project name or description..."
               className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none shadow-2xs transition"
             />
           </div>
 
           {/* Table Content */}
-          {loading ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-2xs">
-              <p className="text-slate-500 text-base animate-pulse font-medium">Loading Projects...</p>
-            </div>
-          ) : filteredProjects.length === 0 ? (
+          {projects.length === 0 ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-12 sm:p-16 text-center shadow-2xs space-y-3">
               <h3 className="text-lg sm:text-xl font-bold text-slate-800">No Projects Found</h3>
               <p className="text-slate-500 text-sm max-w-sm mx-auto">
@@ -148,11 +162,21 @@ function ProjectsPage() {
           ) : (
             <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
               <div className="w-full overflow-x-auto">
-                <ProjectTable projects={filteredProjects} onDelete={handleDelete} />
+                <ProjectTable projects={projects} onDelete={handleDelete} />
               </div>
             </div>
           )}
 
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            limit={limit}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setPage(1);
+            }}
+          />
         </div>
       </PageContainer>
     </DashboardLayout>

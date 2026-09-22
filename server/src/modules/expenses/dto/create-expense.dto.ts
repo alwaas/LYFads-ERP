@@ -4,42 +4,58 @@ import {
   IsDecimal,
   IsDateString,
   IsEnum,
+  IsUUID,
+  Length,
 } from 'class-validator';
-
-import { ExpenseCategory, ExpenseStatus, PaymentMethod } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { PaymentMethod } from '@prisma/client';
 
 export class CreateExpenseDto {
+  @IsDateString()
+  expenseDate: string;
+
+  @IsString()
+  category: string;
+
   @IsString()
   description: string;
 
   @IsDecimal()
   amount: string;
 
-  @IsDateString()
-  expenseDate: string;
-
-  @IsEnum(ExpenseCategory)
-  category: ExpenseCategory;
+  @IsOptional()
+  @IsDecimal()
+  taxAmount?: string;
 
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
 
-  @IsString()
-  vendor: string;
-
   @IsOptional()
   @IsString()
-  vendorId?: string;
-
-  @IsOptional()
-  @IsString()
-  receiptUrl?: string;
+  referenceNo?: string;
 
   @IsOptional()
   @IsString()
   notes?: string;
 
   @IsOptional()
-  @IsEnum(ExpenseStatus)
-  status?: ExpenseStatus;
+  @IsString()
+  @Length(3, 3)
+  currency?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptUrl?: string;
+
+  @IsOptional()
+  @IsUUID()
+  vendorId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  employeeId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  glAccountId?: string | null;
 }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { CreditCard, ArrowLeft } from "lucide-react";
@@ -6,19 +7,13 @@ import toast from "react-hot-toast";
 
 import { paymentService } from "../../services/payment.service";
 import { invoiceService } from "../../services/invoice.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
+import { createPaymentSchema, type CreatePaymentFormData } from "../../features/validation/payment.schema";
 import type { CreatePaymentDto } from "../../types/payment";
 import type { Invoice } from "../../types/invoice";
 
 const AddPaymentPage = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<CreatePaymentDto>({
-    invoiceId: "",
-    amount: "0",
-    paymentDate: new Date().toISOString().split("T")[0],
-    method: "BANK_TRANSFER",
-    referenceNo: "",
-    remarks: "",
-  });
 
   const { data: invoices = [], isLoading: isLoadingInvoices, isError: isInvoicesError } = useQuery<Invoice[]>({
     queryKey: ["invoices"],
@@ -31,51 +26,42 @@ const AddPaymentPage = () => {
       toast.success("Payment created successfully");
       navigate("/payments");
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || error.message || "Failed to create payment";
-      toast.error(message);
+    onError: (error: unknown) => {
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const message = axiosError.response?.data?.message || "Failed to create payment";
+        toast.error(message);
+      } else {
+        const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+        const message = axiosError.response?.data?.message || axiosError.message || "Failed to create payment";
+        toast.error(message);
+      }
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate amount is greater than zero
-    const paymentAmount = Number(formData.amount);
-    if (paymentAmount <= 0) {
-      toast.error("Payment amount must be greater than zero");
-      return;
-    }
-    
-    // Validate payment amount against invoice balance
-    const selectedInvoice = invoices.find(inv => inv.id === formData.invoiceId);
-    if (selectedInvoice) {
-      const invoiceBalance = Number(selectedInvoice.balanceAmount);
-      
-      if (paymentAmount > invoiceBalance) {
-        toast.error(`Payment amount cannot exceed invoice balance of $${invoiceBalance.toFixed(2)}`);
-        return;
-      }
-    }
-    
-    createMutation.mutate(formData);
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreatePaymentFormData>({
+    resolver: zodResolver(createPaymentSchema) as any,
+    defaultValues: {
+      invoiceId: "",
+      amount: 0,
+      paymentDate: new Date().toISOString().split("T")[0],
+      method: "BANK_TRANSFER",
+      referenceNo: "",
+      remarks: "",
+    },
+  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    // Ensure amount is always a string for the DTO
-    setFormData((prev) => ({
-      ...prev,
-      amount: value || "0",
-    }));
+  const onSubmit = async (data: CreatePaymentFormData) => {
+    const payload: CreatePaymentDto = {
+      ...data,
+      amount: String(data.amount),
+    };
+    createMutation.mutate(payload);
   };
 
   return (
@@ -101,7 +87,7 @@ const AddPaymentPage = () => {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
               <label htmlFor="invoiceId" className="block text-sm font-medium text-slate-700 mb-2">
@@ -109,10 +95,7 @@ const AddPaymentPage = () => {
               </label>
               <select
                 id="invoiceId"
-                name="invoiceId"
-                value={formData.invoiceId}
-                onChange={handleChange}
-                required
+                {...register("invoiceId")}
                 disabled={isLoadingInvoices}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -129,6 +112,9 @@ const AddPaymentPage = () => {
               {invoices.length === 0 && !isLoadingInvoices && !isInvoicesError && (
                 <p className="mt-1 text-xs text-amber-600">No invoices available. Please create an invoice first.</p>
               )}
+              {errors.invoiceId && (
+                <p className="mt-1 text-xs text-red-600">{errors.invoiceId.message}</p>
+              )}
             </div>
 
             <div>
@@ -138,15 +124,14 @@ const AddPaymentPage = () => {
               <input
                 type="number"
                 id="amount"
-                name="amount"
-                value={formData.amount}
-                onChange={handleAmountChange}
-                required
                 step="0.01"
-                min="0"
+                {...register("amount", { valueAsNumber: true })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="0.00"
               />
+              {errors.amount && (
+                <p className="mt-1 text-xs text-red-600">{errors.amount.message}</p>
+              )}
             </div>
 
             <div>
@@ -156,12 +141,12 @@ const AddPaymentPage = () => {
               <input
                 type="date"
                 id="paymentDate"
-                name="paymentDate"
-                value={formData.paymentDate}
-                onChange={handleChange}
-                required
+                {...register("paymentDate")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
+              {errors.paymentDate && (
+                <p className="mt-1 text-xs text-red-600">{errors.paymentDate.message}</p>
+              )}
             </div>
 
             <div>
@@ -170,10 +155,7 @@ const AddPaymentPage = () => {
               </label>
               <select
                 id="method"
-                name="method"
-                value={formData.method}
-                onChange={handleChange}
-                required
+                {...register("method")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="CASH">Cash</option>
@@ -182,6 +164,9 @@ const AddPaymentPage = () => {
                 <option value="CARD">Card</option>
                 <option value="CHEQUE">Cheque</option>
               </select>
+              {errors.method && (
+                <p className="mt-1 text-xs text-red-600">{errors.method.message}</p>
+              )}
             </div>
 
             <div>
@@ -191,12 +176,13 @@ const AddPaymentPage = () => {
               <input
                 type="text"
                 id="referenceNo"
-                name="referenceNo"
-                value={formData.referenceNo}
-                onChange={handleChange}
+                {...register("referenceNo")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Enter reference number"
               />
+              {errors.referenceNo && (
+                <p className="mt-1 text-xs text-red-600">{errors.referenceNo.message}</p>
+              )}
             </div>
           </div>
 
@@ -206,13 +192,14 @@ const AddPaymentPage = () => {
             </label>
             <textarea
               id="remarks"
-              name="remarks"
-              value={formData.remarks}
-              onChange={handleChange}
+              {...register("remarks")}
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Enter any additional notes"
             />
+            {errors.remarks && (
+              <p className="mt-1 text-xs text-red-600">{errors.remarks.message}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3">
@@ -225,7 +212,7 @@ const AddPaymentPage = () => {
             </button>
             <button
               type="submit"
-              disabled={createMutation.isPending || isLoadingInvoices || !formData.invoiceId}
+              disabled={createMutation.isPending || isLoadingInvoices}
               className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {createMutation.isPending ? "Creating..." : "Create Payment"}

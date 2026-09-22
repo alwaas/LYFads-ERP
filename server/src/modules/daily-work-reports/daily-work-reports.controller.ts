@@ -55,10 +55,12 @@ export class DailyWorkReportsController {
     @Query() pagination: PaginationDto,
     @Query() search: SearchDto,
     @GetUser() user: AuthenticatedUser,
+    @Query('status') status?: string,
   ) {
     return this.dailyWorkReportsService.findAll(
       pagination,
       search,
+      status,
       user.tenantId,
     );
   }

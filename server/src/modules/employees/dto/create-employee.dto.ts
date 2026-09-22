@@ -5,7 +5,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import { EmploymentStatus, UserRole } from '@prisma/client';
 
 export class CreateEmployeeDto {
   @IsString()
@@ -35,6 +35,34 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsString()
   department?: string;
+
+  @IsOptional()
+  @IsEnum(EmploymentStatus)
+  status?: EmploymentStatus;
+
+  @IsOptional()
+  @IsString()
+  managerId?: string;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  ifscCode?: string;
+
+  @IsOptional()
+  @IsString()
+  emergencyContactName?: string;
+
+  @IsOptional()
+  @IsString()
+  emergencyContactPhone?: string;
 
   @IsString()
   tenantId!: string;

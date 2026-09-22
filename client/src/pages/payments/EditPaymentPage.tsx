@@ -1,22 +1,19 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { CreditCard, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { paymentService } from "../../services/payment.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
+import { editPaymentSchema, type EditPaymentFormData } from "../../features/validation/payment.schema";
 import type { UpdatePaymentDto } from "../../types/payment";
 
 const EditPaymentPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const [formData, setFormData] = useState<UpdatePaymentDto>({
-    amount: "0",
-    paymentDate: "",
-    method: "BANK_TRANSFER",
-    referenceNo: "",
-    remarks: "",
-  });
 
   const { data: payment, isLoading } = useQuery({
     queryKey: ["payment", id],
@@ -24,17 +21,34 @@ const EditPaymentPage = () => {
     enabled: !!id,
   });
 
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+    reset,
+  } = useForm<EditPaymentFormData>({
+    resolver: zodResolver(editPaymentSchema) as any,
+    defaultValues: {
+      amount: 0,
+      paymentDate: "",
+      method: "BANK_TRANSFER",
+      referenceNo: "",
+      remarks: "",
+    },
+  });
+
   useEffect(() => {
     if (payment) {
-      setFormData({
-        amount: String(payment.amount),
+      reset({
+        amount: Number(payment.amount),
         paymentDate: payment.paymentDate.split("T")[0],
         method: payment.method,
         referenceNo: payment.referenceNo || "",
         remarks: payment.remarks || "",
       });
     }
-  }, [payment]);
+  }, [payment, reset]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, dto }: { id: string; dto: UpdatePaymentDto }) =>
@@ -43,24 +57,23 @@ const EditPaymentPage = () => {
       toast.success("Payment updated successfully");
       navigate("/payments");
     },
-    onError: () => {
-      toast.error("Failed to update payment");
+    onError: (error: unknown) => {
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field as keyof EditPaymentFormData, { message });
+        });
+      } else {
+        const axiosError = error as { response?: { data?: { message?: string } }; message?: string };
+        toast.error(axiosError.response?.data?.message || axiosError.message || "Failed to update payment");
+      }
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: EditPaymentFormData) => {
     if (id) {
-      updateMutation.mutate({ id, dto: formData });
+      updateMutation.mutate({ id, dto: data as UpdatePaymentDto });
     }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
   };
 
   if (isLoading) {
@@ -90,7 +103,7 @@ const EditPaymentPage = () => {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-2">
@@ -99,15 +112,14 @@ const EditPaymentPage = () => {
               <input
                 type="number"
                 id="amount"
-                name="amount"
-                value={formData.amount}
-                onChange={handleChange}
-                required
                 step="0.01"
-                min="0"
+                {...register("amount", { valueAsNumber: true })}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="0.00"
               />
+              {errors.amount && (
+                <p className="mt-1 text-xs text-red-600">{errors.amount.message}</p>
+              )}
             </div>
 
             <div>
@@ -117,12 +129,12 @@ const EditPaymentPage = () => {
               <input
                 type="date"
                 id="paymentDate"
-                name="paymentDate"
-                value={formData.paymentDate}
-                onChange={handleChange}
-                required
+                {...register("paymentDate")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
+              {errors.paymentDate && (
+                <p className="mt-1 text-xs text-red-600">{errors.paymentDate.message}</p>
+              )}
             </div>
 
             <div>
@@ -131,10 +143,7 @@ const EditPaymentPage = () => {
               </label>
               <select
                 id="method"
-                name="method"
-                value={formData.method}
-                onChange={handleChange}
-                required
+                {...register("method")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="CASH">Cash</option>
@@ -143,6 +152,9 @@ const EditPaymentPage = () => {
                 <option value="CARD">Card</option>
                 <option value="CHEQUE">Cheque</option>
               </select>
+              {errors.method && (
+                <p className="mt-1 text-xs text-red-600">{errors.method.message}</p>
+              )}
             </div>
 
             <div>
@@ -152,12 +164,13 @@ const EditPaymentPage = () => {
               <input
                 type="text"
                 id="referenceNo"
-                name="referenceNo"
-                value={formData.referenceNo}
-                onChange={handleChange}
+                {...register("referenceNo")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Enter reference number"
               />
+              {errors.referenceNo && (
+                <p className="mt-1 text-xs text-red-600">{errors.referenceNo.message}</p>
+              )}
             </div>
           </div>
 
@@ -167,13 +180,14 @@ const EditPaymentPage = () => {
             </label>
             <textarea
               id="remarks"
-              name="remarks"
-              value={formData.remarks}
-              onChange={handleChange}
+              {...register("remarks")}
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Enter any additional notes"
             />
+            {errors.remarks && (
+              <p className="mt-1 text-xs text-red-600">{errors.remarks.message}</p>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3">

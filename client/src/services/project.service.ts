@@ -1,9 +1,11 @@
 import api from "./api";
 import type { Project } from "../types/project";
 
-export const getProjects = async (): Promise<Project[]> => {
-  const response = await api.get("/projects");
-  return response.data.data.data;
+export const getProjects = async (page = 1, limit = 10, search?: string): Promise<any> => {
+  const params: Record<string, string | number> = { page, limit };
+  if (search) params.search = search;
+  const response = await api.get("/projects", { params });
+  return response.data.data;
 };
 
 export const getProject = async (

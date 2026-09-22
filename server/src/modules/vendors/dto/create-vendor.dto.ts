@@ -2,17 +2,12 @@ import {
   IsString,
   IsOptional,
   IsEmail,
-  IsEnum,
+  IsBoolean,
 } from 'class-validator';
-
-import { VendorStatus } from '@prisma/client';
 
 export class CreateVendorDto {
   @IsString()
-  name!: string;
-
-  @IsString()
-  vendorCode!: string;
+  name: string;
 
   @IsOptional()
   @IsString()
@@ -25,10 +20,6 @@ export class CreateVendorDto {
   @IsOptional()
   @IsString()
   phone?: string;
-
-  @IsOptional()
-  @IsString()
-  alternatePhone?: string;
 
   @IsOptional()
   @IsString()
@@ -48,24 +39,13 @@ export class CreateVendorDto {
 
   @IsOptional()
   @IsString()
-  postalCode?: string;
+  pincode?: string;
 
   @IsOptional()
   @IsString()
-  taxNumber?: string;
-
-  @IsOptional()
-  @IsString()
-  paymentTerms?: string;
+  gstNumber?: string;
 
   @IsOptional()
   @IsString()
   notes?: string;
-
-  @IsOptional()
-  @IsEnum(VendorStatus)
-  status?: VendorStatus;
-
-  @IsString()
-  tenantId!: string;
 }

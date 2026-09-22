@@ -1,349 +1,278 @@
-import { useQuery } from "@tanstack/react-query";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router-dom";
+import { ShoppingCart, ArrowLeft, Edit, Truck, CheckCircle2, XCircle, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
-import PageLoader from "../../components/common/PageLoader";
 import { purchaseOrderService } from "../../services/purchase-order.service";
 import type { PurchaseOrder, PurchaseOrderStatus } from "../../types/purchase-order";
 
 const statusColors: Record<PurchaseOrderStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-700",
-  SUBMITTED: "bg-yellow-100 text-yellow-700",
-  APPROVED: "bg-blue-100 text-blue-700",
-  REJECTED: "bg-red-100 text-red-700",
-  PARTIALLY_RECEIVED: "bg-orange-100 text-orange-700",
-  RECEIVED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-700",
+  DRAFT: "bg-gray-100 text-gray-800",
+  SUBMITTED: "bg-blue-100 text-blue-800",
+  APPROVED: "bg-amber-100 text-amber-800",
+  RECEIVED: "bg-green-100 text-green-800",
+  CANCELLED: "bg-red-100 text-red-800",
 };
 
 const ViewPurchaseOrderPage = () => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { id } = useParams<{ id: string }>();
 
-  const { data: purchaseOrder, isLoading, isError, refetch } = useQuery<PurchaseOrder>({
-    queryKey: ["purchase-orders", id],
+  const { data: po, isLoading, isError } = useQuery<PurchaseOrder>({
+    queryKey: ["purchase-order", id],
     queryFn: () => purchaseOrderService.getPurchaseOrderById(id!),
     enabled: !!id,
   });
 
-  const handleWorkflow = async (action: string) => {
-    if (!id || !purchaseOrder) return;
+  const submitMutation = useMutation({
+    mutationFn: () => purchaseOrderService.submitPurchaseOrder(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-order", id] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      toast.success("Submitted");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || e?.message || "Failed"),
+  });
 
-    try {
-      switch (action) {
-        case "submit":
-          await purchaseOrderService.submitPurchaseOrder(id);
-          break;
-        case "approve":
-          await purchaseOrderService.approvePurchaseOrder(id);
-          break;
-        case "reject":
-          await purchaseOrderService.rejectPurchaseOrder(id);
-          break;
-        case "cancel":
-          if (!window.confirm("Are you sure you want to cancel this purchase order?")) return;
-          await purchaseOrderService.cancelPurchaseOrder(id);
-          break;
-        default:
-          return;
-      }
-      toast.success(`Purchase order ${action}ed successfully`);
-      refetch();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || `Failed to ${action} purchase order`);
-    }
-  };
+  const approveMutation = useMutation({
+    mutationFn: () => purchaseOrderService.approvePurchaseOrder(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-order", id] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      toast.success("Approved");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || e?.message || "Failed"),
+  });
 
-  const handleReceive = async () => {
-    if (!id || !purchaseOrder) return;
+  const cancelMutation = useMutation({
+    mutationFn: () => purchaseOrderService.cancelPurchaseOrder(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-order", id] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      toast.success("Cancelled");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || e?.message || "Failed"),
+  });
 
-    const items = purchaseOrder.items.map((item) => ({
-      itemId: item.id,
-      receivedQuantity: Number(item.quantity) - Number(item.receivedQuantity || 0),
-    }));
-
-    try {
-      await purchaseOrderService.receivePurchaseOrder(id, items);
-      toast.success("Purchase order received successfully");
-      refetch();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to receive purchase order");
-    }
-  };
-
-  const handlePartialReceive = async () => {
-    if (!id) return;
-
-    const quantities = prompt(
-      "Enter received quantities for each item (comma separated):"
-    );
-    if (!quantities) return;
-
-    const values = quantities.split(",").map((q) => parseFloat(q.trim()));
-    if (values.some(isNaN)) {
-      toast.error("Invalid quantities");
-      return;
-    }
-
-    const items = purchaseOrder!.items.map((item, index) => ({
-      itemId: item.id,
-      receivedQuantity: values[index] || 0,
-    }));
-
-    try {
-      await purchaseOrderService.receivePurchaseOrder(id, items);
-      toast.success("Purchase order received successfully");
-      refetch();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Failed to receive purchase order");
-    }
-  };
+  const deleteMutation = useMutation({
+    mutationFn: () => purchaseOrderService.deletePurchaseOrder(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      toast.success("Deleted");
+      navigate("/purchase-orders");
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || e?.message || "Failed"),
+  });
 
   if (isLoading) {
-    return <PageLoader />;
+    return <div className="text-slate-500 text-center py-8">Loading purchase order...</div>;
   }
 
-  if (isError || !purchaseOrder) {
-    toast.error("Purchase order not found");
-    navigate("/purchase-orders");
-    return null;
+  if (isError || !po) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+        <h2 className="text-sm font-semibold text-red-800">Purchase order not found</h2>
+      </div>
+    );
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
+  const canSubmit = po.status === "DRAFT";
+  const canApprove = po.status === "SUBMITTED";
+  const canReceive = po.status === "SUBMITTED" || po.status === "APPROVED";
+  const canCancel = po.status === "DRAFT" || po.status === "SUBMITTED";
+  const canEdit = po.status === "DRAFT";
+  const canDelete = po.status === "DRAFT" || po.status === "CANCELLED";
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  const handleDelete = () => {
+    if (window.confirm("Delete this purchase order?")) {
+      deleteMutation.mutate();
+    }
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate("/purchase-orders")}
-          className="p-2.5 border border-slate-200 bg-white rounded-xl hover:bg-slate-50 transition text-slate-600 shadow-2xs shrink-0"
-          title="Back"
-        >
-          <ArrowLeft size={20} />
+        <button onClick={() => navigate("/purchase-orders")} className="p-2 hover:bg-slate-100 rounded-lg">
+          <ArrowLeft className="h-5 w-5 text-slate-600" />
         </button>
-        <div className="space-y-1 flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {purchaseOrder.poNumber}
-            </h1>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[purchaseOrder.status]}`}>
-              {purchaseOrder.status.replace(/_/g, " ")}
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-6 w-6 text-blue-600" />
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{po.orderNumber}</h1>
+            <span
+              className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusColors[po.status]}`}
+            >
+              {po.status}
             </span>
           </div>
-          <p className="text-sm text-slate-500 font-medium">
-            {purchaseOrder.title}
-          </p>
+          <p className="mt-1 text-sm text-slate-500">Purchase Order Details</p>
         </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex flex-wrap gap-3">
-        {purchaseOrder.status === "DRAFT" && (
-          <>
+        <div className="flex items-center gap-2">
+          {canSubmit && (
+            <button
+              onClick={() => submitMutation.mutate()}
+              disabled={submitMutation.isPending}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-4 w-4" /> Submit
+            </button>
+          )}
+          {canApprove && (
+            <button
+              onClick={() => approveMutation.mutate()}
+              disabled={approveMutation.isPending}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-amber-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-50"
+            >
+              <CheckCircle2 className="h-4 w-4" /> Approve
+            </button>
+          )}
+          {canReceive && (
             <a
-              href={`/purchase-orders/edit/${purchaseOrder.id}`}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+              href={`/purchase-orders/${po.id}/receive`}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-green-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-green-700"
             >
-              Edit
+              <Truck className="h-4 w-4" /> Receive
             </a>
+          )}
+          {canCancel && (
             <button
-              onClick={() => handleWorkflow("submit")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+              onClick={() => cancelMutation.mutate()}
+              disabled={cancelMutation.isPending}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-50"
             >
-              Submit
+              <XCircle className="h-4 w-4" /> Cancel
             </button>
+          )}
+          {canEdit && (
+            <a
+              href={`/purchase-orders/${po.id}/edit`}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              <Edit className="h-4 w-4" /> Edit
+            </a>
+          )}
+          {canDelete && (
             <button
-              onClick={() => handleWorkflow("cancel")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-50"
             >
-              Cancel
+              <Trash2 className="h-4 w-4" /> Delete
             </button>
-          </>
-        )}
-
-        {purchaseOrder.status === "SUBMITTED" && (
-          <>
-            <button
-              onClick={() => handleWorkflow("approve")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition"
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => handleWorkflow("reject")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
-            >
-              Reject
-            </button>
-            <button
-              onClick={() => handleWorkflow("cancel")}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
-            >
-              Cancel
-            </button>
-          </>
-        )}
-
-        {(purchaseOrder.status === "APPROVED" || purchaseOrder.status === "PARTIALLY_RECEIVED") && (
-          <button
-            onClick={handleReceive}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition"
-          >
-            Receive All
-          </button>
-        )}
-
-        {purchaseOrder.status === "PARTIALLY_RECEIVED" && (
-          <button
-            onClick={handlePartialReceive}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition"
-          >
-            Receive Partial
-          </button>
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="border-b border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900">Purchase Order Details</h2>
-        </div>
-
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Order Information</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendor</p>
-              <p className="mt-2 text-sm text-slate-900">{purchaseOrder.vendor.name}</p>
-              <p className="text-xs text-slate-500">{purchaseOrder.vendor.vendorCode}</p>
+              <p className="text-sm font-medium text-slate-500">Order Number</p>
+              <p className="mt-1 text-sm text-slate-900">{po.orderNumber}</p>
             </div>
-
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Order Date</p>
-              <p className="mt-2 text-sm text-slate-900">{formatDate(purchaseOrder.orderDate)}</p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Expected Delivery</p>
-              <p className="mt-2 text-sm text-slate-900">
-                {purchaseOrder.expectedDeliveryDate ? formatDate(purchaseOrder.expectedDeliveryDate) : "-"}
+              <p className="text-sm font-medium text-slate-500">Status</p>
+              <p className="mt-1">
+                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusColors[po.status]}`}>
+                  {po.status}
+                </span>
               </p>
             </div>
-
-            {purchaseOrder.createdBy && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created By</p>
-                <p className="mt-2 text-sm text-slate-900">{purchaseOrder.createdBy.fullName}</p>
-              </div>
-            )}
-
-            {purchaseOrder.approvedBy && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Approved By</p>
-                <p className="mt-2 text-sm text-slate-900">{purchaseOrder.approvedBy.fullName}</p>
-              </div>
-            )}
-
-            {purchaseOrder.approvedAt && (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Approved At</p>
-                <p className="mt-2 text-sm text-slate-900">{formatDate(purchaseOrder.approvedAt)}</p>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Order Date</p>
+              <p className="mt-1 text-sm text-slate-900">{new Date(po.orderDate).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Expected Delivery</p>
+              <p className="mt-1 text-sm text-slate-900">
+                {po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toLocaleDateString() : "-"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Subtotal</p>
+              <p className="mt-1 text-sm text-slate-900">${Number(po.subtotal).toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Discount</p>
+              <p className="mt-1 text-sm text-slate-900">${Number(po.discount).toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Tax</p>
+              <p className="mt-1 text-sm text-slate-900">${Number(po.tax).toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Total</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">${Number(po.total).toFixed(2)}</p>
+            </div>
+            {po.notes && (
+              <div className="sm:col-span-2">
+                <p className="text-sm font-medium text-slate-500">Notes</p>
+                <p className="mt-1 text-sm text-slate-900">{po.notes}</p>
               </div>
             )}
           </div>
+        </div>
 
-          {purchaseOrder.description && (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Vendor</h2>
+          <div className="space-y-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Description</p>
-              <p className="mt-2 text-sm text-slate-900 whitespace-pre-wrap">{purchaseOrder.description}</p>
+              <p className="text-sm font-medium text-slate-500">Name</p>
+              <p className="mt-1 text-sm text-slate-900">{po.vendor?.name || "-"}</p>
             </div>
-          )}
-
-          {purchaseOrder.notes && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Notes</p>
-              <p className="mt-2 text-sm text-slate-900 whitespace-pre-wrap">{purchaseOrder.notes}</p>
+              <p className="text-sm font-medium text-slate-500">Contact</p>
+              <p className="mt-1 text-sm text-slate-900">{po.vendor?.contactPerson || "-"}</p>
             </div>
-          )}
+            <div>
+              <p className="text-sm font-medium text-slate-500">Email</p>
+              <p className="mt-1 text-sm text-slate-900">{po.vendor?.email || "-"}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Warehouse</p>
+              <p className="mt-1 text-sm text-slate-900">{po.warehouse?.name || "Default"}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Line Items */}
-      <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="border-b border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900">Line Items</h2>
-        </div>
-
-        <div className="w-full overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-100">
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Line Items</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <th className="px-6 py-4 text-left">Description</th>
-                <th className="px-6 py-4 text-right">Qty</th>
-                <th className="px-6 py-4 text-left">Unit</th>
-                <th className="px-6 py-4 text-right">Unit Price</th>
-                <th className="px-6 py-4 text-right">Tax Rate</th>
-                <th className="px-6 py-4 text-right">Discount</th>
-                <th className="px-6 py-4 text-right">Line Total</th>
-                <th className="px-6 py-4 text-right">Received</th>
+                <th className="px-4 py-3 font-medium">Product</th>
+                <th className="px-4 py-3 font-medium text-right">Qty</th>
+                <th className="px-4 py-3 font-medium text-right">Unit Cost</th>
+                <th className="px-4 py-3 font-medium text-right">Discount</th>
+                <th className="px-4 py-3 font-medium text-right">Tax</th>
+                <th className="px-4 py-3 font-medium text-right">Received</th>
+                <th className="px-4 py-3 font-medium text-right">Line Total</th>
               </tr>
             </thead>
-            <tbody>
-              {purchaseOrder.items.length === 0 ? (
+            <tbody className="divide-y divide-slate-100">
+              {po.items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-gray-500">
-                    No items found
-                  </td>
+                  <td colSpan={7} className="px-4 py-4 text-center text-slate-500">No items</td>
                 </tr>
               ) : (
-                purchaseOrder.items.map((item) => (
-                  <tr key={item.id} className="border-b hover:bg-gray-50">
-                    <td className="px-6 py-4">{item.description}</td>
-                    <td className="px-6 py-4 text-right">{item.quantity}</td>
-                    <td className="px-6 py-4">{item.unit || "-"}</td>
-                    <td className="px-6 py-4 text-right">{formatCurrency(item.unitPrice)}</td>
-                    <td className="px-6 py-4 text-right">{item.taxRate ? `${item.taxRate}%` : "-"}</td>
-                    <td className="px-6 py-4 text-right">{item.discount ? formatCurrency(item.discount) : "-"}</td>
-                    <td className="px-6 py-4 text-right">{formatCurrency(item.lineTotal)}</td>
-                    <td className="px-6 py-4 text-right">
-                      {item.receivedQuantity != null ? Number(item.receivedQuantity) : 0}
-                    </td>
+                po.items.map((it) => (
+                  <tr key={it.id}>
+                    <td className="px-4 py-3 text-slate-900">{it.product?.name || it.productId}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{Number(it.quantity).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">${Number(it.unitCost).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">${Number(it.discount).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">${Number(it.tax).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{Number(it.receivedQuantity).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-slate-900">${Number(it.lineTotal).toFixed(2)}</td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
-        </div>
-
-        <div className="border-t border-slate-200 p-6">
-          <div className="flex justify-end">
-            <div className="w-full sm:w-80 space-y-2">
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>Subtotal</span>
-                <span>{formatCurrency(purchaseOrder.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>Discount</span>
-                <span>-{formatCurrency(purchaseOrder.discountAmount)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-slate-600">
-                <span>Tax</span>
-                <span>{formatCurrency(purchaseOrder.taxAmount)}</span>
-              </div>
-              <div className="flex justify-between text-base font-bold text-slate-900 border-t border-slate-200 pt-2">
-                <span>Total</span>
-                <span>{formatCurrency(purchaseOrder.totalAmount)}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

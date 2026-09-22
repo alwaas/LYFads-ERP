@@ -23,6 +23,8 @@ import type { Milestone } from "../../types/milestone";
 
 import { PATHS } from "../../routes/config/paths";
 
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
 function EditMilestonePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -38,6 +40,9 @@ function EditMilestonePage() {
 
   const [saving, setSaving] =
     useState(false);
+
+  const [serverErrors, setServerErrors] =
+    useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!id) {
@@ -84,6 +89,7 @@ function EditMilestonePage() {
       return;
     }
 
+    setServerErrors({});
     try {
       setSaving(true);
 
@@ -112,21 +118,26 @@ function EditMilestonePage() {
           id,
         ),
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         "Failed to update milestone:",
         error,
       );
 
-      const message =
-        error?.response?.data?.message;
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        const message =
+          (error as any)?.response?.data?.message;
 
-      toast.error(
-        Array.isArray(message)
-          ? message[0]
-          : message ||
-              "Failed to update milestone.",
-      );
+        toast.error(
+          Array.isArray(message)
+            ? message[0]
+            : message ||
+                "Failed to update milestone.",
+        );
+      }
     } finally {
       setSaving(false);
     }
@@ -190,6 +201,7 @@ function EditMilestonePage() {
               milestone.deadline,
             ),
           }}
+          serverErrors={serverErrors}
         />
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 
+import { Throttle } from '@nestjs/throttler';
+
 import { Public } from './decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -16,6 +18,7 @@ export class AuthController {
 
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @UseGuards(JwtAuthGuard)
+  @Throttle({ auth: { limit: 10, ttl: 60000 } })
   @Post('register')
   register(
     @Body() createUserDto: CreateUserDto,
@@ -24,7 +27,8 @@ export class AuthController {
     return this.authService.register(createUserDto, user.tenantId, user.role);
   }
 
-  @Public()
+@Public()
+  @Throttle({ auth: { limit: 5, ttl: 60000 } })
   @Post('login')
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
@@ -36,6 +40,7 @@ export class AuthController {
   }
   @Roles(UserRole.SUPER_ADMIN)
   @UseGuards(JwtAuthGuard)
+  @Throttle({ auth: { limit: 10, ttl: 60000 } })
   @Get('admin')
   admin() {
     return {

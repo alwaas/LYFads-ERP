@@ -1,104 +1,89 @@
-import {
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsDateString,
-  IsEnum,
-  IsArray,
-  ValidateNested,
-  Min,
-} from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsDateString,
+  IsDecimal,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Length,
+  ValidateNested,
+} from 'class-validator';
 
-import { PurchaseOrderStatus } from '@prisma/client';
-
-export class PurchaseOrderItemDto {
+export class CreatePurchaseOrderItemDto {
   @IsString()
-  description!: string;
+  @IsNotEmpty()
+  productId: string;
 
-  @IsNumber()
-  @Min(0)
-  quantity!: number;
+  @IsDecimal()
+  quantity: string;
 
-  @IsOptional()
-  @IsString()
-  unit?: string;
-
-  @IsNumber()
-  @Min(0)
-  unitPrice!: number;
+  @IsDecimal()
+  unitCost: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  taxRate?: number;
+  @IsDecimal()
+  discount?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  discount?: number;
+  @IsDecimal()
+  tax?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  lineTotal?: string;
+
+  @IsOptional()
+  sequence?: number;
 }
 
 export class CreatePurchaseOrderDto {
   @IsString()
-  vendorId!: string;
-
-  @IsString()
-  title!: string;
+  @IsNotEmpty()
+  orderNumber: string;
 
   @IsOptional()
   @IsString()
-  description?: string;
+  @Length(3, 3)
+  currency?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  vendorId: string;
+
+  @IsOptional()
+  @IsString()
+  warehouseId?: string;
 
   @IsDateString()
-  orderDate!: string;
-
-  @IsOptional()
-  @IsDateString()
-  expectedDeliveryDate?: string;
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => PurchaseOrderItemDto)
-  items!: PurchaseOrderItemDto[];
-}
-
-export class UpdatePurchaseOrderDto {
-  @IsOptional()
-  @IsString()
-  vendorId?: string;
-
-  @IsOptional()
-  @IsString()
-  title?: string;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @IsOptional()
-  @IsDateString()
-  orderDate?: string;
+  orderDate: string;
 
   @IsOptional()
   @IsDateString()
   expectedDeliveryDate?: string;
 
+  @IsArray()
+  @ArrayMinSize(1, { message: 'At least one item is required' })
+  @ValidateNested({ each: true })
+  @Type(() => CreatePurchaseOrderItemDto)
+  items!: CreatePurchaseOrderItemDto[];
+
+  @IsDecimal()
+  subtotal: string;
+
+  @IsOptional()
+  @IsDecimal()
+  discount?: string;
+
+  @IsOptional()
+  @IsDecimal()
+  tax?: string;
+
+  @IsDecimal()
+  total: string;
+
   @IsOptional()
   @IsString()
   notes?: string;
-
-  @IsOptional()
-  @IsEnum(PurchaseOrderStatus)
-  status?: PurchaseOrderStatus;
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => PurchaseOrderItemDto)
-  items?: PurchaseOrderItemDto[];
 }

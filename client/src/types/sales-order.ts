@@ -1,99 +1,79 @@
+export type SalesOrderStatus = 'DRAFT' | 'CONFIRMED' | 'PROCESSING' | 'FULFILLED' | 'CANCELLED';
+
 export interface SalesOrderItem {
   id: string;
   salesOrderId: string;
   productId: string;
-  description: string;
   quantity: number;
-  unit?: string;
   unitPrice: number;
-  taxRate?: number;
-  taxAmount?: number;
-  discount?: number;
+  discount: number;
+  tax: number;
   lineTotal: number;
-  fulfilledQuantity?: number;
+  sequence: number;
   createdAt: string;
-  updatedAt: string;
+  tenantId: string;
   product?: {
     id: string;
-    sku: string;
     name: string;
-    unit?: string;
+    sku: string;
   };
 }
 
 export interface SalesOrder {
   id: string;
-  tenantId: string;
-  clientId: string;
   orderNumber: string;
+  clientId: string;
   orderDate: string;
-  expectedDeliveryDate?: string;
+  expectedDeliveryDate?: string | null;
   status: SalesOrderStatus;
-  subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
-  totalAmount: number;
-  notes?: string;
-  createdById?: string;
-  approvedById?: string;
-  approvedAt?: string;
+  subtotal: number | string;
+  discount: number | string;
+  tax: number | string;
+  total: number | string;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
+  tenantId: string;
   client: {
     id: string;
     companyName: string;
-    contactPerson: string;
+    email?: string;
+    contactPerson?: string;
   };
   items: SalesOrderItem[];
-  createdBy?: {
-    id: string;
-    fullName: string;
-    email: string;
-  };
-  approvedBy?: {
-    id: string;
-    fullName: string;
-    email: string;
-  };
 }
 
-export type SalesOrderStatus =
-  | "DRAFT"
-  | "SUBMITTED"
-  | "APPROVED"
-  | "REJECTED"
-  | "PARTIALLY_FULFILLED"
-  | "FULFILLED"
-  | "CANCELLED";
+export interface CreateSalesOrderItemDto {
+  productId: string;
+  quantity: string | number;
+  unitPrice: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  lineTotal?: string | number;
+  sequence?: number;
+}
 
 export interface CreateSalesOrderDto {
+  orderNumber: string;
   clientId: string;
   orderDate: string;
   expectedDeliveryDate?: string;
+  items: CreateSalesOrderItemDto[];
+  subtotal: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  total: string | number;
   notes?: string;
-  items: SalesOrderItemDto[];
 }
 
 export interface UpdateSalesOrderDto {
+  orderNumber?: string;
   clientId?: string;
   orderDate?: string;
   expectedDeliveryDate?: string;
+  subtotal?: string | number;
+  discount?: string | number;
+  tax?: string | number;
+  total?: string | number;
   notes?: string;
-  status?: SalesOrderStatus;
-  items?: SalesOrderItemDto[];
-}
-
-export interface SalesOrderItemDto {
-  productId: string;
-  description: string;
-  quantity: number;
-  unit?: string;
-  unitPrice: number;
-  taxRate?: number;
-  discount?: number;
-}
-
-export interface FulfillItemDto {
-  itemId: string;
-  fulfillQuantity: number;
 }

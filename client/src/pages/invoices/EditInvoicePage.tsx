@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { FileText, ArrowLeft, Plus, Trash2 } from "lucide-react";
@@ -7,7 +9,9 @@ import toast from "react-hot-toast";
 import { invoiceService } from "../../services/invoice.service";
 import { getClients } from "../../services/client.service";
 import { projectService } from "../../services/project.service";
-import type { UpdateInvoiceDto, InvoiceStatus } from "../../types/invoice";
+import { mapServerValidationErrors } from "../../features/validation/errors";
+import { editInvoiceSchema, type EditInvoiceFormData } from "../../features/validation/invoice.schema";
+import type { UpdateInvoiceDto } from "../../types/invoice";
 import type { Client } from "../../types/client";
 import type { Project } from "../../types/project";
 
@@ -15,15 +19,15 @@ interface InvoiceItem {
   description: string;
   quantity: string;
   unitPrice: string;
-  lineTotal: string;
+  amount: string;
 }
 
 const EditInvoicePage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState<UpdateInvoiceDto>({});
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [itemErrors, setItemErrors] = useState<string[]>([]);
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ["invoice", id],
@@ -31,14 +35,44 @@ const EditInvoicePage = () => {
     enabled: !!id,
   });
 
+  const { data: clients = [], isLoading: isLoadingClients } = useQuery<Client[]>({
+    queryKey: ["clients"],
+    queryFn: () => getClients(),
+  });
+
+  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
+    queryKey: ["projects"],
+    queryFn: () => projectService.getAllProjects(),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+    reset,
+  } = useForm<EditInvoiceFormData>({
+    resolver: zodResolver(editInvoiceSchema) as any,
+    defaultValues: {
+      invoiceNumber: "",
+      clientId: "",
+      projectId: "",
+      issueDate: "",
+      dueDate: "",
+      status: "DRAFT",
+      notes: "",
+    },
+  });
+
   useEffect(() => {
     if (invoice) {
-      setFormData({
+      reset({
+        invoiceNumber: invoice.invoiceNumber,
         clientId: invoice.clientId,
         projectId: invoice.projectId || "",
         issueDate: invoice.issueDate.split("T")[0],
         dueDate: invoice.dueDate.split("T")[0],
-        status: (invoice.status || "DRAFT") as InvoiceStatus,
+        status: (invoice.status || "DRAFT") as EditInvoiceFormData["status"],
         notes: invoice.notes || "",
       });
       if (invoice.items) {
@@ -47,22 +81,12 @@ const EditInvoicePage = () => {
             description: item.description,
             quantity: item.quantity.toString(),
             unitPrice: item.unitPrice.toString(),
-            lineTotal: item.lineTotal.toString(),
+            amount: item.amount.toString(),
           }))
         );
       }
     }
-  }, [invoice]);
-
-  const { data: clients = [], isLoading: isLoadingClients } = useQuery<Client[]>({
-    queryKey: ["clients"],
-    queryFn: getClients,
-  });
-
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
-    queryKey: ["projects"],
-    queryFn: () => projectService.getAllProjects(),
-  });
+  }, [invoice, reset]);
 
   const updateMutation = useMutation({
     mutationFn: (dto: UpdateInvoiceDto) => invoiceService.updateInvoice(id!, dto),
@@ -72,38 +96,90 @@ const EditInvoicePage = () => {
       toast.success("Invoice updated successfully");
       navigate("/invoices");
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || error.message || "Failed to update invoice";
-      toast.error(message);
+    onError: (error: unknown) => {
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          setError(field as keyof EditInvoiceFormData, { message });
+        });
+      } else {
+        const message = (error as any)?.response?.data?.message || (error as any)?.message || "Failed to update invoice";
+        toast.error(message);
+      }
     },
   });
+
+  const calculateTotals = () => {
+    const subtotal = items.reduce((sum, item) => sum + Number(item.amount), 0);
+    const tax = Number((invoice?.tax ?? 0)) || 0;
+    const discount = Number((invoice?.discount ?? 0)) || 0;
+    const total = subtotal + tax - discount;
+    return { subtotal, total };
+  };
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: string) => {
     const newItems = [...items];
     newItems[index][field] = value;
+    
+    if (field === "quantity" || field === "unitPrice") {
+      const quantity = Number(newItems[index].quantity) || 0;
+      const unitPrice = Number(newItems[index].unitPrice) || 0;
+      newItems[index].amount = (quantity * unitPrice).toFixed(2);
+    }
+    
     setItems(newItems);
   };
 
   const addItem = () => {
-    setItems([...items, { description: "", quantity: "1", unitPrice: "0", lineTotal: "0" }]);
+    setItems([...items, { description: "", quantity: "1", unitPrice: "0", amount: "0" }]);
   };
 
   const removeItem = (index: number) => {
     if (items.length === 1) return;
-    setItems(items.filter((_, i) => i !== index));
+    const newItems = items.filter((_, i) => i !== index);
+    setItems(newItems);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateMutation.mutate(formData);
+  const validateItems = (): boolean => {
+    const errors: string[] = [];
+    items.forEach((item, index) => {
+      const qty = Number(item.quantity);
+      const price = Number(item.unitPrice);
+      if (!item.description.trim()) {
+        errors.push(`Item ${index + 1}: Description is required`);
+      }
+      if (Number.isNaN(qty) || qty <= 0) {
+        errors.push(`Item ${index + 1}: Quantity must be greater than 0`);
+      }
+      if (Number.isNaN(price) || price < 0) {
+        errors.push(`Item ${index + 1}: Unit price must be 0 or greater`);
+      }
+    });
+    setItemErrors(errors);
+    return errors.length === 0;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const onSubmit = async (data: EditInvoiceFormData) => {
+    if (!validateItems()) {
+      toast.error("Please fix the invoice item errors");
+      return;
+    }
+
+    const { subtotal, total } = calculateTotals();
+    const payload = {
+      ...data,
+      subtotal: subtotal.toFixed(2),
+      total: total.toFixed(2),
+      balanceAmount: total.toFixed(2),
+      items: items.map((item) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        amount: item.amount,
+      })),
+    } as any;
+
+    updateMutation.mutate(payload);
   };
 
   if (isLoading) {
@@ -145,18 +221,30 @@ const EditInvoicePage = () => {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div>
+              <label htmlFor="invoiceNumber" className="block text-sm font-medium text-slate-700 mb-2">
+                Invoice Number *
+              </label>
+              <input
+                type="text"
+                id="invoiceNumber"
+                {...register("invoiceNumber")}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              {errors.invoiceNumber && (
+                <p className="mt-1 text-xs text-red-600">{errors.invoiceNumber.message}</p>
+              )}
+            </div>
+
             <div>
               <label htmlFor="clientId" className="block text-sm font-medium text-slate-700 mb-2">
                 Client *
               </label>
               <select
                 id="clientId"
-                name="clientId"
-                value={formData.clientId || ""}
-                onChange={handleChange}
-                required
+                {...register("clientId")}
                 disabled={isLoadingClients}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               >
@@ -167,6 +255,9 @@ const EditInvoicePage = () => {
                   </option>
                 ))}
               </select>
+              {errors.clientId && (
+                <p className="mt-1 text-xs text-red-600">{errors.clientId.message}</p>
+              )}
             </div>
 
             <div>
@@ -175,9 +266,7 @@ const EditInvoicePage = () => {
               </label>
               <select
                 id="projectId"
-                name="projectId"
-                value={formData.projectId || ""}
-                onChange={handleChange}
+                {...register("projectId")}
                 disabled={isLoadingProjects}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               >
@@ -196,18 +285,19 @@ const EditInvoicePage = () => {
               </label>
               <select
                 id="status"
-                name="status"
-                value={formData.status || "DRAFT"}
-                onChange={handleChange}
+                {...register("status")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="DRAFT">Draft</option>
-                <option value="ISSUED">Issued</option>
+                <option value="SENT">Sent</option>
                 <option value="PARTIALLY_PAID">Partially Paid</option>
                 <option value="PAID">Paid</option>
                 <option value="OVERDUE">Overdue</option>
-                <option value="VOID">Void</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
+              {errors.status && (
+                <p className="mt-1 text-xs text-red-600">{errors.status.message}</p>
+              )}
             </div>
 
             <div>
@@ -217,12 +307,12 @@ const EditInvoicePage = () => {
               <input
                 type="date"
                 id="issueDate"
-                name="issueDate"
-                value={formData.issueDate || ""}
-                onChange={handleChange}
-                required
+                {...register("issueDate")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
+              {errors.issueDate && (
+                <p className="mt-1 text-xs text-red-600">{errors.issueDate.message}</p>
+              )}
             </div>
 
             <div>
@@ -232,12 +322,12 @@ const EditInvoicePage = () => {
               <input
                 type="date"
                 id="dueDate"
-                name="dueDate"
-                value={formData.dueDate || ""}
-                onChange={handleChange}
-                required
+                {...register("dueDate")}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
+              {errors.dueDate && (
+                <p className="mt-1 text-xs text-red-600">{errors.dueDate.message}</p>
+              )}
             </div>
           </div>
 
@@ -282,9 +372,8 @@ const EditInvoicePage = () => {
                   <div className="col-span-2">
                     <input
                       type="text"
-                      placeholder="Line Total"
-                      value={item.lineTotal}
-                      onChange={(e) => updateItem(index, "lineTotal", e.target.value)}
+                      placeholder="Amount"
+                      value={item.amount}
                       readOnly
                       className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
                     />
@@ -302,6 +391,13 @@ const EditInvoicePage = () => {
                 </div>
               ))}
             </div>
+            {itemErrors.length > 0 && (
+              <div className="mt-2 text-sm text-red-600">
+                {itemErrors.map((err, i) => (
+                  <p key={i}>{err}</p>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               onClick={addItem}
@@ -312,19 +408,22 @@ const EditInvoicePage = () => {
             </button>
           </div>
 
-          <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              value={formData.notes || ""}
-              onChange={handleChange}
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter any additional notes"
-            />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div>
+              <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-2">
+                Notes
+              </label>
+              <textarea
+                id="notes"
+                {...register("notes")}
+                rows={3}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Enter any additional notes"
+              />
+              {errors.notes && (
+                <p className="mt-1 text-xs text-red-600">{errors.notes.message}</p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3">

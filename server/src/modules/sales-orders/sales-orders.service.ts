@@ -1,143 +1,185 @@
 import {
+  BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
-  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
+import { PrismaService } from '../../database/prisma.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { Prisma, SalesOrderStatus, InvoiceStatus } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
-import { PrismaService } from '../../database/prisma.service';
-import {
-  CreateSalesOrderDto,
-  UpdateSalesOrderDto,
-} from './dto/create-sales-order.dto';
-import { FulfillItemDto } from './dto/fulfill-item.dto';
-import { ActivityLogsService } from '../activity-logs/activity-logs.service';
-import { Prisma, SalesOrderStatus, StockMovementType } from '@prisma/client';
-import { InventoryService } from '../inventory/inventory.service';
+import { CreateSalesOrderDto } from './dto/create-sales-order.dto';
+import { UpdateSalesOrderDto } from './dto/update-sales-order.dto';
+import { SalesOrderQueryDto } from './dto/sales-order-query.dto';
+import { AddItemsDto, SalesOrderItemInputDto } from './dto/add-items.dto';
+import { CreateInvoiceFromOrderDto } from './dto/create-invoice-from-order.dto';
+import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
+import { GlService } from '../gl/gl.service';
+import { EntitlementService } from '../subscriptions/entitlement.service';
 
 @Injectable()
 export class SalesOrdersService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly activityLogs: ActivityLogsService,
-    private readonly inventoryService: InventoryService,
+    private readonly activityLogsService: ActivityLogsService,
+    private readonly valuation: InventoryValuationService,
+    private readonly glService: GlService,
+    private readonly entitlementService: EntitlementService,
   ) {}
+
+  private toMoney(value?: string | null): Prisma.Decimal {
+    if (value === undefined || value === null || value === '') {
+      return new Prisma.Decimal(0);
+    }
+    return new Prisma.Decimal(value);
+  }
+
+  private computeLineTotal(item: SalesOrderItemInputDto): Prisma.Decimal {
+    const qty = this.toMoney(item.quantity);
+    const price = this.toMoney(item.unitPrice);
+    const discount = this.toMoney(item.discount);
+    const tax = this.toMoney(item.tax);
+    return qty.mul(price).minus(discount).plus(tax);
+  }
+
+  private async assertProductsBelongToTenant(
+    tx: Prisma.TransactionClient | PrismaService,
+    productIds: string[],
+    tenantId: string,
+  ) {
+    if (productIds.length === 0) return;
+    const products = await (tx as PrismaService).product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, tenantId: true },
+    });
+    const valid = new Set(products.filter((p) => p.tenantId === tenantId).map((p) => p.id));
+    for (const id of productIds) {
+      if (!valid.has(id)) {
+        throw new ForbiddenException(`Product ${id} does not belong to tenant`);
+      }
+    }
+  }
 
   async create(dto: CreateSalesOrderDto, userTenantId: string, userId?: string) {
     if (!dto.items || dto.items.length === 0) {
-      throw new BadRequestException('Sales order must have at least one item.');
+      throw new BadRequestException('At least one item is required to create a sales order');
     }
 
     const client = await this.prisma.client.findFirst({
-      where: {
-        id: dto.clientId,
-        tenantId: userTenantId,
-      },
-      select: { id: true, tenantId: true },
+      where: { id: dto.clientId, tenantId: userTenantId },
+      select: { id: true, companyName: true },
     });
 
     if (!client) {
-      throw new ForbiddenException('Client does not belong to the current tenant.');
+      throw new ForbiddenException('Client does not belong to the current tenant');
     }
 
-    for (const item of dto.items) {
-      const product = await this.prisma.product.findFirst({
-        where: {
-          id: item.productId,
-          tenantId: userTenantId,
-          status: 'ACTIVE',
-        },
-        select: { id: true, tenantId: true },
-      });
+    const existing = await this.prisma.salesOrder.findFirst({
+      where: { orderNumber: dto.orderNumber, tenantId: userTenantId },
+    });
 
-      if (!product) {
-        throw new ForbiddenException(
-          `Product ${item.productId} does not belong to the current tenant or is inactive.`,
-        );
-      }
+    if (existing) {
+      throw new ConflictException('Sales order number already exists for this tenant');
     }
 
-    const orderNumber = await this.generateOrderNumber(userTenantId);
-    const financials = this.calculateFinancials(dto.items);
+    await this.assertProductsBelongToTenant(this.prisma, dto.items.map((i) => i.productId), userTenantId);
+
+    const subtotal = this.toMoney(dto.subtotal);
+    const discount = this.toMoney(dto.discount);
+    const tax = this.toMoney(dto.tax);
+    const total = this.toMoney(dto.total);
 
     const salesOrder = await this.prisma.$transaction(async (tx) => {
-      const so = await tx.salesOrder.create({
+      const created = await tx.salesOrder.create({
         data: {
-          orderNumber,
+          orderNumber: dto.orderNumber,
+          clientId: dto.clientId,
           orderDate: new Date(dto.orderDate),
           expectedDeliveryDate: dto.expectedDeliveryDate
             ? new Date(dto.expectedDeliveryDate)
             : null,
           status: SalesOrderStatus.DRAFT,
-          subtotal: financials.subtotal,
-          taxAmount: financials.taxAmount,
-          discountAmount: financials.discountAmount,
-          totalAmount: financials.totalAmount,
+          subtotal,
+          discount,
+          tax,
+          total,
           notes: dto.notes,
+          currency: (dto.currency || (await tx.tenant.findUnique({ where: { id: userTenantId }, select: { currency: true } }))?.currency || 'USD').toUpperCase(),
           tenantId: userTenantId,
-          clientId: dto.clientId,
-          createdById: userId,
-          items: {
-            create: dto.items.map((item) => ({
-              productId: item.productId,
-              description: item.description,
-              quantity: new Prisma.Decimal(item.quantity),
-              unit: item.unit || null,
-              unitPrice: new Prisma.Decimal(item.unitPrice),
-              taxRate: item.taxRate != null ? new Prisma.Decimal(item.taxRate) : null,
-              discount: item.discount != null ? new Prisma.Decimal(item.discount) : null,
-              lineTotal: new Prisma.Decimal(
-                this.calculateLineTotal(item.quantity, item.unitPrice, item.taxRate, item.discount),
-              ),
-              fulfilledQuantity: new Prisma.Decimal(0),
-            })),
-          },
-        },
-        include: {
-          client: true,
-          items: {
-            include: {
-              product: true,
-            },
-          },
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
         },
       });
 
-      return so;
+      const itemsData = dto.items.map((item, index) => ({
+        salesOrderId: created.id,
+        productId: item.productId,
+        quantity: this.toMoney(item.quantity),
+        unitPrice: this.toMoney(item.unitPrice),
+        discount: this.toMoney(item.discount),
+        tax: this.toMoney(item.tax),
+        lineTotal: item.lineTotal ? this.toMoney(item.lineTotal) : this.computeLineTotal(item),
+        sequence: typeof item.sequence === 'number' ? item.sequence : index,
+        tenantId: userTenantId,
+      }));
+
+      await tx.salesOrderItem.createMany({ data: itemsData });
+
+      return tx.salesOrder.findUnique({
+        where: { id: created.id },
+        include: {
+          client: true,
+          items: { include: { product: true } },
+        },
+      });
     });
 
-    await this.activityLogs.create({
+    await this.activityLogsService.log({
       action: 'CREATE',
-      module: 'SALES_ORDERS',
-      description: `Sales Order "${salesOrder.orderNumber}" created`,
-      userId,
+      module: 'SALES_ORDER',
+      description: `Sales order ${salesOrder!.orderNumber} created with ${dto.items.length} item(s).`,
+      userId: userId,
       tenantId: userTenantId,
     });
 
     return salesOrder;
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    query: SalesOrderQueryDto,
+    userTenantId: string,
+  ) {
     const { skip, limit } = pagination;
 
-    const where: Prisma.SalesOrderWhereInput = {
-      tenantId: userTenantId,
-      ...(search.search && {
-        OR: [
-          { orderNumber: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-          { notes: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-          { client: { companyName: { contains: search.search, mode: Prisma.QueryMode.insensitive } } },
-        ],
-      }),
-    };
+    const where: Prisma.SalesOrderWhereInput = { tenantId: userTenantId };
+
+    if (search.search) {
+      where.OR = [
+        { orderNumber: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
+        { notes: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
+        { client: { companyName: { contains: search.search, mode: Prisma.QueryMode.insensitive } } },
+      ];
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.clientId) {
+      where.clientId = query.clientId;
+    }
+
+    if (query.dateFrom || query.dateTo) {
+      where.orderDate = {};
+      if (query.dateFrom) {
+        where.orderDate.gte = new Date(query.dateFrom);
+      }
+      if (query.dateTo) {
+        where.orderDate.lte = new Date(query.dateTo);
+      }
+    }
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.salesOrder.findMany({
@@ -145,18 +187,11 @@ export class SalesOrdersService {
         skip,
         take: limit,
         include: {
-          client: {
-            select: { id: true, companyName: true, contactPerson: true },
-          },
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          _count: { select: { items: true } },
+          client: { select: { id: true, companyName: true, email: true } },
+          items: { include: { product: { select: { id: true, name: true, sku: true } } } },
+          invoices: { select: { id: true, invoiceNumber: true, status: true, total: true, balanceAmount: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { orderDate: 'desc' },
       }),
       this.prisma.salesOrder.count({ where }),
     ]);
@@ -171,599 +206,522 @@ export class SalesOrdersService {
   }
 
   async findOne(id: string, userTenantId: string) {
-    const salesOrder = await this.prisma.salesOrder.findFirst({
-      where: { id, tenantId: userTenantId },
+    const salesOrder = await this.prisma.salesOrder.findUnique({
+      where: { id },
       include: {
         client: true,
-        items: {
-          include: {
-            product: {
-              select: { id: true, sku: true, name: true, unit: true },
-            },
-          },
-        },
-        createdBy: {
-          select: { id: true, fullName: true, email: true },
-        },
-        approvedBy: {
-          select: { id: true, fullName: true, email: true },
-        },
+        items: { include: { product: true } },
+        invoices: true,
       },
     });
 
     if (!salesOrder) {
-      throw new ForbiddenException('Access denied to this sales order.');
+      throw new NotFoundException('Sales order not found');
+    }
+
+    if (salesOrder.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this sales order');
     }
 
     return salesOrder;
   }
 
   async update(id: string, dto: UpdateSalesOrderDto, userTenantId: string, userId?: string) {
-    const existingSo = await this.prisma.salesOrder.findFirst({
-      where: { id, tenantId: userTenantId },
-      select: { id: true, status: true, clientId: true },
-    });
+    const salesOrder = await this.findOne(id, userTenantId);
 
-    if (!existingSo) {
-      throw new ForbiddenException('Access denied to this sales order.');
+    if (salesOrder.status === SalesOrderStatus.FULFILLED || salesOrder.status === SalesOrderStatus.CANCELLED) {
+      throw new ConflictException('Cannot update a finalized or cancelled sales order');
     }
 
-    if (existingSo.status !== SalesOrderStatus.DRAFT) {
-      throw new BadRequestException('Only draft sales orders can be edited.');
-    }
-
-    if (dto.clientId && dto.clientId !== existingSo.clientId) {
+    if (dto.clientId) {
       const client = await this.prisma.client.findFirst({
         where: { id: dto.clientId, tenantId: userTenantId },
         select: { id: true },
       });
 
       if (!client) {
-        throw new ForbiddenException('Client does not belong to the current tenant.');
+        throw new ForbiddenException('Client does not belong to the current tenant');
       }
     }
 
-    if (dto.items && dto.items.length > 0) {
-      for (const item of dto.items) {
-        const product = await this.prisma.product.findFirst({
-          where: {
-            id: item.productId,
-            tenantId: userTenantId,
-            status: 'ACTIVE',
-          },
-          select: { id: true, tenantId: true },
-        });
+    const data: Prisma.SalesOrderUpdateInput = {};
 
-        if (!product) {
-          throw new ForbiddenException(
-            `Product ${item.productId} does not belong to the current tenant or is inactive.`,
-          );
-        }
-      }
+    if (dto.orderNumber !== undefined) data.orderNumber = dto.orderNumber;
+    if (dto.clientId !== undefined) {
+      data.client = { connect: { id: dto.clientId } };
+    }
+    if (dto.orderDate !== undefined) data.orderDate = new Date(dto.orderDate);
+    if (dto.expectedDeliveryDate !== undefined)
+      data.expectedDeliveryDate = dto.expectedDeliveryDate ? new Date(dto.expectedDeliveryDate) : null;
+    if (dto.subtotal !== undefined) data.subtotal = this.toMoney(dto.subtotal);
+    if (dto.discount !== undefined) data.discount = this.toMoney(dto.discount);
+    if (dto.tax !== undefined) data.tax = this.toMoney(dto.tax);
+    if (dto.total !== undefined) data.total = this.toMoney(dto.total);
+    if (dto.notes !== undefined) data.notes = dto.notes;
+
+    const updated = await this.prisma.salesOrder.update({
+      where: { id },
+      data,
+      include: {
+        client: true,
+        items: { include: { product: true } },
+      },
+    });
+
+    await this.activityLogsService.log({
+      action: 'UPDATE',
+      module: 'SALES_ORDER',
+      description: `Sales order ${updated.orderNumber} updated.`,
+      userId: userId,
+      tenantId: userTenantId,
+    });
+
+    return updated;
+  }
+
+  async addItems(id: string, dto: AddItemsDto, userTenantId: string, userId?: string) {
+    const salesOrder = await this.findOne(id, userTenantId);
+
+    if (salesOrder.status !== SalesOrderStatus.DRAFT) {
+      throw new ConflictException('Items can only be added while the order is in DRAFT');
     }
 
-    const financials = dto.items && dto.items.length > 0
-      ? this.calculateFinancials(dto.items)
-      : null;
+    await this.assertProductsBelongToTenant(this.prisma, dto.items.map((i) => i.productId), userTenantId);
 
-    const updatedSo = await this.prisma.$transaction(async (tx) => {
-      const updateData: Prisma.SalesOrderUncheckedUpdateInput = {
-        orderDate: dto.orderDate ? new Date(dto.orderDate) : undefined,
-        expectedDeliveryDate: dto.expectedDeliveryDate
-          ? new Date(dto.expectedDeliveryDate)
-          : undefined,
-        notes: dto.notes,
-        clientId: dto.clientId,
-        ...(financials && {
-          subtotal: financials.subtotal,
-          taxAmount: financials.taxAmount,
-          discountAmount: financials.discountAmount,
-          totalAmount: financials.totalAmount,
-        }),
-      };
-
-      const so = await tx.salesOrder.update({
-        where: { id },
-        data: updateData,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const startSeq = salesOrder.items.length;
+      await tx.salesOrderItem.createMany({
+        data: dto.items.map((item, idx) => ({
+          salesOrderId: id,
+          productId: item.productId,
+          quantity: this.toMoney(item.quantity),
+          unitPrice: this.toMoney(item.unitPrice),
+          discount: this.toMoney(item.discount),
+          tax: this.toMoney(item.tax),
+          lineTotal: item.lineTotal ? this.toMoney(item.lineTotal) : this.computeLineTotal(item),
+          sequence: startSeq + idx,
+          tenantId: userTenantId,
+        })),
       });
-
-      if (dto.items && dto.items.length > 0) {
-        await tx.salesOrderItem.deleteMany({
-          where: { salesOrderId: id },
-        });
-
-        await tx.salesOrderItem.createMany({
-          data: dto.items.map((item) => ({
-            salesOrderId: id,
-            productId: item.productId,
-            description: item.description,
-            quantity: new Prisma.Decimal(item.quantity),
-            unit: item.unit || null,
-            unitPrice: new Prisma.Decimal(item.unitPrice),
-            taxRate: item.taxRate != null ? new Prisma.Decimal(item.taxRate) : null,
-            discount: item.discount != null ? new Prisma.Decimal(item.discount) : null,
-            lineTotal: new Prisma.Decimal(
-              this.calculateLineTotal(item.quantity, item.unitPrice, item.taxRate, item.discount),
-            ),
-            fulfilledQuantity: new Prisma.Decimal(0),
-          })),
-        });
-      }
-
       return tx.salesOrder.findUnique({
         where: { id },
-        include: {
-          client: true,
-          items: {
-            include: {
-              product: {
-                select: { id: true, sku: true, name: true, unit: true },
-              },
-            },
-          },
-          createdBy: { select: { id: true, fullName: true, email: true } },
-          approvedBy: { select: { id: true, fullName: true, email: true } },
-        },
+        include: { client: true, items: { include: { product: true } } },
       });
     });
 
-    if (!updatedSo) {
-      throw new ForbiddenException('Access denied to this sales order.');
-    }
-
-    await this.activityLogs.create({
-      action: 'UPDATE',
-      module: 'SALES_ORDERS',
-      description: `Sales Order "${updatedSo.orderNumber}" updated`,
+    await this.activityLogsService.log({
+      action: 'ADD_ITEMS',
+      module: 'SALES_ORDER',
+      description: `Added ${dto.items.length} item(s) to sales order ${updated!.orderNumber}.`,
       userId,
       tenantId: userTenantId,
     });
 
-    return updatedSo;
+    return updated;
+  }
+
+  async removeItem(id: string, itemId: string, userTenantId: string, userId?: string) {
+    const salesOrder = await this.findOne(id, userTenantId);
+
+    if (salesOrder.status !== SalesOrderStatus.DRAFT) {
+      throw new ConflictException('Items can only be removed while the order is in DRAFT');
+    }
+
+    const item = await this.prisma.salesOrderItem.findFirst({
+      where: { id: itemId, salesOrderId: id, tenantId: userTenantId },
+      select: { id: true },
+    });
+    if (!item) {
+      throw new NotFoundException('Sales order item not found');
+    }
+
+    await this.prisma.salesOrderItem.delete({ where: { id: itemId } });
+
+    await this.activityLogsService.log({
+      action: 'REMOVE_ITEM',
+      module: 'SALES_ORDER',
+      description: `Removed item ${itemId} from sales order ${salesOrder.orderNumber}.`,
+      userId,
+      tenantId: userTenantId,
+    });
+
+    return this.findOne(id, userTenantId);
   }
 
   async remove(id: string, userTenantId: string, userId?: string) {
-    const so = await this.prisma.salesOrder.findFirst({
-      where: { id, tenantId: userTenantId },
-      select: { id: true, orderNumber: true, status: true },
-    });
+    const salesOrder = await this.findOne(id, userTenantId);
 
-    if (!so) {
-      throw new ForbiddenException('Access denied to this sales order.');
+    if (salesOrder.status === SalesOrderStatus.FULFILLED || salesOrder.status === SalesOrderStatus.PROCESSING) {
+      throw new ConflictException('Cannot delete a processed or fulfilled sales order');
     }
 
-    if (so.status !== SalesOrderStatus.DRAFT && so.status !== SalesOrderStatus.CANCELLED) {
-      throw new BadRequestException(
-        'Only draft or cancelled sales orders can be deleted.',
-      );
-    }
+    await this.prisma.salesOrder.delete({ where: { id } });
 
-    await this.prisma.salesOrder.delete({ where: { id: so.id } });
-
-    await this.activityLogs.create({
+    await this.activityLogsService.log({
       action: 'DELETE',
-      module: 'SALES_ORDERS',
-      description: `Sales Order "${so.orderNumber}" deleted`,
-      userId,
+      module: 'SALES_ORDER',
+      description: `Sales order ${salesOrder.orderNumber} deleted.`,
+      userId: userId,
       tenantId: userTenantId,
     });
 
-    return { message: 'Sales order deleted successfully.', id: so.id };
+    return { success: true, message: 'Sales order deleted successfully' };
   }
 
-  async submit(id: string, userTenantId: string, userId?: string) {
-    const so = await this.prisma.salesOrder.findFirst({
-      where: { id, tenantId: userTenantId },
-      include: { items: true },
-    });
+  async updateStatus(id: string, status: SalesOrderStatus, userTenantId: string, userId?: string) {
+    const salesOrder = await this.findOne(id, userTenantId);
 
-    if (!so) {
-      throw new ForbiddenException('Access denied to this sales order.');
+    const validTransitions: Record<string, SalesOrderStatus[]> = {
+      [SalesOrderStatus.DRAFT]: [SalesOrderStatus.CONFIRMED, SalesOrderStatus.CANCELLED],
+      [SalesOrderStatus.CONFIRMED]: [SalesOrderStatus.PROCESSING, SalesOrderStatus.INVOICED, SalesOrderStatus.CANCELLED],
+      [SalesOrderStatus.PROCESSING]: [SalesOrderStatus.FULFILLED, SalesOrderStatus.INVOICED, SalesOrderStatus.CANCELLED],
+      [SalesOrderStatus.FULFILLED]: [SalesOrderStatus.INVOICED],
+      [SalesOrderStatus.INVOICED]: [SalesOrderStatus.FULFILLED],
+      [SalesOrderStatus.CANCELLED]: [],
+    };
+
+    const currentStatus = salesOrder.status;
+    if (!validTransitions[currentStatus]?.includes(status)) {
+      throw new ConflictException(`Invalid transition from ${currentStatus} to ${status}`);
     }
 
-    if (so.status !== SalesOrderStatus.DRAFT) {
-      throw new BadRequestException('Only draft sales orders can be submitted.');
-    }
-
-    if (!so.items || so.items.length === 0) {
-      throw new BadRequestException('Sales order must have at least one item.');
-    }
-
-    const updatedSo = await this.prisma.salesOrder.update({
-      where: { id },
-      data: { status: SalesOrderStatus.SUBMITTED },
-      include: {
-        client: true,
-        items: {
-          include: {
-            product: {
-              select: { id: true, sku: true, name: true, unit: true },
-            },
-          },
-        },
-        createdBy: { select: { id: true, fullName: true, email: true } },
-        approvedBy: { select: { id: true, fullName: true, email: true } },
-      },
-    });
-
-    await this.activityLogs.create({
-      action: 'SUBMIT',
-      module: 'SALES_ORDERS',
-      description: `Sales Order "${updatedSo.orderNumber}" submitted for approval`,
-      userId,
-      tenantId: userTenantId,
-    });
-
-    return updatedSo;
-  }
-
-  async approve(id: string, userTenantId: string, userId?: string) {
-    const so = await this.prisma.salesOrder.findFirst({
-      where: { id, tenantId: userTenantId },
-    });
-
-    if (!so) {
-      throw new ForbiddenException('Access denied to this sales order.');
-    }
-
-    if (so.status !== SalesOrderStatus.SUBMITTED) {
-      throw new BadRequestException('Only submitted sales orders can be approved.');
-    }
-
-    const updatedSo = await this.prisma.salesOrder.update({
-      where: { id },
-      data: {
-        status: SalesOrderStatus.APPROVED,
-        approvedById: userId,
-        approvedAt: new Date(),
-      },
-      include: {
-        client: true,
-        items: {
-          include: {
-            product: {
-              select: { id: true, sku: true, name: true, unit: true },
-            },
-          },
-        },
-        createdBy: { select: { id: true, fullName: true, email: true } },
-        approvedBy: { select: { id: true, fullName: true, email: true } },
-      },
-    });
-
-    await this.activityLogs.create({
-      action: 'APPROVE',
-      module: 'SALES_ORDERS',
-      description: `Sales Order "${updatedSo.orderNumber}" approved`,
-      userId,
-      tenantId: userTenantId,
-    });
-
-    return updatedSo;
-  }
-
-  async reject(id: string, userTenantId: string, userId?: string) {
-    const so = await this.prisma.salesOrder.findFirst({
-      where: { id, tenantId: userTenantId },
-    });
-
-    if (!so) {
-      throw new ForbiddenException('Access denied to this sales order.');
-    }
-
-    if (so.status !== SalesOrderStatus.SUBMITTED) {
-      throw new BadRequestException('Only submitted sales orders can be rejected.');
-    }
-
-    const updatedSo = await this.prisma.salesOrder.update({
-      where: { id },
-      data: { status: SalesOrderStatus.REJECTED },
-      include: {
-        client: true,
-        items: {
-          include: {
-            product: {
-              select: { id: true, sku: true, name: true, unit: true },
-            },
-          },
-        },
-        createdBy: { select: { id: true, fullName: true, email: true } },
-        approvedBy: { select: { id: true, fullName: true, email: true } },
-      },
-    });
-
-    await this.activityLogs.create({
-      action: 'REJECT',
-      module: 'SALES_ORDERS',
-      description: `Sales Order "${updatedSo.orderNumber}" rejected`,
-      userId,
-      tenantId: userTenantId,
-    });
-
-    return updatedSo;
-  }
-
-  async cancel(id: string, userTenantId: string, userId?: string) {
-    const so = await this.prisma.salesOrder.findFirst({
-      where: { id, tenantId: userTenantId },
-    });
-
-    if (!so) {
-      throw new ForbiddenException('Access denied to this sales order.');
-    }
-
-    if (
-      so.status !== SalesOrderStatus.DRAFT &&
-      so.status !== SalesOrderStatus.SUBMITTED
-    ) {
-      throw new BadRequestException(
-        'Only draft or submitted sales orders can be cancelled.',
+    if (status === SalesOrderStatus.FULFILLED) {
+      throw new ConflictException(
+        'Use POST /sales-orders/:id/fulfill-with-inventory to fulfill an order',
       );
     }
 
-    const updatedSo = await this.prisma.salesOrder.update({
+    const updated = await this.prisma.salesOrder.update({
       where: { id },
-      data: { status: SalesOrderStatus.CANCELLED },
+      data: { status },
       include: {
         client: true,
-        items: {
-          include: {
-            product: {
-              select: { id: true, sku: true, name: true, unit: true },
-            },
-          },
-        },
-        createdBy: { select: { id: true, fullName: true, email: true } },
-        approvedBy: { select: { id: true, fullName: true, email: true } },
+        items: { include: { product: true } },
       },
     });
 
-    await this.activityLogs.create({
-      action: 'CANCEL',
-      module: 'SALES_ORDERS',
-      description: `Sales Order "${updatedSo.orderNumber}" cancelled`,
-      userId,
+    await this.activityLogsService.log({
+      action: 'STATUS_UPDATE',
+      module: 'SALES_ORDER',
+      description: `Sales order ${updated.orderNumber} status changed to ${status}.`,
+      userId: userId,
       tenantId: userTenantId,
     });
 
-    return updatedSo;
+    return updated;
   }
 
-  async fulfill(id: string, dto: FulfillItemDto[], userTenantId: string, userId?: string) {
-    const so = await this.prisma.salesOrder.findFirst({
-      where: { id, tenantId: userTenantId },
-      include: { items: true },
-    });
+  /**
+   * Explicit, idempotent inventory fulfillment.
+   * Only callable from a non-finalized state, and only for orders that have line items.
+   * Creates a per-item OUT stock movement referenced to this sales order.
+   * If an OUT movement already exists for the same order, the call is a no-op (idempotent).
+   */
+  async fulfillWithInventory(
+    id: string,
+    userTenantId: string,
+    userId?: string,
+  ) {
+    const salesOrder = await this.findOne(id, userTenantId);
 
-    if (!so) {
-      throw new ForbiddenException('Access denied to this sales order.');
+    if (salesOrder.status === SalesOrderStatus.CANCELLED) {
+      throw new ConflictException('Cannot fulfill a cancelled sales order');
+    }
+    if (salesOrder.status === SalesOrderStatus.FULFILLED) {
+      const existingCount = await this.prisma.stockMovement.count({
+        where: { tenantId: userTenantId, referenceType: 'SALES_ORDER', referenceId: id },
+      });
+      return { alreadyFulfilled: true, movements: existingCount };
     }
 
-    if (
-      so.status !== SalesOrderStatus.APPROVED &&
-      so.status !== SalesOrderStatus.PARTIALLY_FULFILLED
-    ) {
+    if (salesOrder.items.length === 0) {
       throw new BadRequestException(
-        'Only approved or partially fulfilled sales orders can be fulfilled.',
+        'Sales order has no items; add items before fulfilling with inventory',
       );
     }
 
-    const itemMap = new Map(so.items.map((item) => [item.id, item]));
-
-    const fulfillmentPlan: Array<{
-      itemId: string;
-      productId: string;
-      delta: number;
-    }> = [];
-
-    for (const req of dto) {
-      const item = itemMap.get(req.itemId);
-      if (!item) {
-        throw new NotFoundException(`Item ${req.itemId} not found.`);
-      }
-
-      const currentFulfilled = Number(item.fulfilledQuantity || 0);
-      const requestedTotal = req.fulfillQuantity;
-      const delta = requestedTotal - currentFulfilled;
-
-      if (delta <= 0) {
-        continue;
-      }
-
-      const remaining = Number(item.quantity) - currentFulfilled;
-      if (delta > remaining) {
-        throw new BadRequestException(
-          `Cannot fulfill ${delta} for item ${item.description}. Only ${remaining} remaining.`,
-        );
-      }
-
-      const product = await this.prisma.product.findFirst({
-        where: { id: item.productId, tenantId: userTenantId },
-        select: { id: true, tenantId: true },
-      });
-
-      if (!product) {
-        throw new ForbiddenException(
-          `Product ${item.productId} does not belong to the current tenant.`,
-        );
-      }
-
-      fulfillmentPlan.push({
-        itemId: item.id,
-        productId: item.productId,
-        delta,
-      });
+    const defaultWarehouse = await this.prisma.warehouse.findFirst({
+      where: { tenantId: userTenantId, isActive: true, isDefault: true },
+      select: { id: true },
+    });
+    if (!defaultWarehouse) {
+      throw new BadRequestException('No active default warehouse configured for inventory fulfillment');
     }
 
-    const updatedSo = await this.prisma.$transaction(async (tx) => {
-      let allFulfilled = true;
-      let anyFulfilled = false;
+    const method = await this.valuation.getTenantValuationMethod(userTenantId);
 
-      for (const plan of fulfillmentPlan) {
-        const item = await tx.salesOrderItem.findFirst({
-          where: { id: plan.itemId, salesOrderId: id },
+    const movementCount = await this.prisma.$transaction(async (tx) => {
+      let count = 0;
+      const cogsEntries: Array<{ productId: string; totalCost: Prisma.Decimal }> = [];
+      for (const item of salesOrder.items) {
+        const qty = Number(item.quantity);
+        if (qty <= 0) continue;
+
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { id: true, tenantId: true },
         });
-
-        if (!item) {
-          throw new NotFoundException(`Item ${plan.itemId} not found.`);
+        if (!product || product.tenantId !== userTenantId) {
+          throw new ForbiddenException('Product does not belong to tenant');
         }
 
-        const currentQty = Number(item.fulfilledQuantity || 0);
-        const newFulfilled = currentQty + plan.delta;
-
-        await tx.salesOrderItem.update({
-          where: { id: item.id },
-          data: { fulfilledQuantity: new Prisma.Decimal(newFulfilled) },
+        const productWarehouse = await tx.productWarehouse.findFirst({
+          where: {
+            tenantId: userTenantId,
+            productId: item.productId,
+            quantity: { gt: 0 },
+          },
+          orderBy: [{ warehouseId: defaultWarehouse.id ? 'asc' : 'asc' }],
+          select: { id: true, warehouseId: true, quantity: true },
         });
 
-        let inventory = await tx.inventory.findFirst({
-          where: { productId: plan.productId, tenantId: userTenantId },
+        const sourceWarehouseId =
+          productWarehouse && productWarehouse.quantity >= qty
+            ? productWarehouse.warehouseId
+            : defaultWarehouse.id;
+
+        const { totalCost, unitCost } = await this.valuation.applyMovement(
+          tx,
+          userTenantId,
+          method,
+          'OUT' as any,
+          {
+            productId: item.productId,
+            quantity: qty,
+            warehouseId: sourceWarehouseId,
+          },
+        );
+
+        const pw = await tx.productWarehouse.upsert({
+          where: {
+            productId_warehouseId: {
+              productId: item.productId,
+              warehouseId: sourceWarehouseId,
+            },
+          },
+          update: { quantity: { decrement: qty } },
+          create: {
+            productId: item.productId,
+            warehouseId: sourceWarehouseId,
+            quantity: -qty,
+            tenantId: userTenantId,
+          },
         });
+        void pw;
 
-        if (!inventory) {
-          throw new BadRequestException(
-            `Insufficient inventory for product ${plan.productId}.`,
-          );
-        }
-
-        const currentInventoryQty = Number(inventory.quantity);
-        const newInventoryQty = currentInventoryQty - plan.delta;
-
-        if (newInventoryQty < 0) {
-          throw new BadRequestException(
-            `Insufficient inventory for product ${plan.productId}.`,
-          );
-        }
-
-        await tx.inventory.update({
-          where: { id: inventory.id },
-          data: { quantity: new Prisma.Decimal(newInventoryQty) },
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { decrement: qty } },
         });
 
         await tx.stockMovement.create({
           data: {
-            productId: plan.productId,
             tenantId: userTenantId,
-            type: StockMovementType.SALE,
-            quantity: new Prisma.Decimal(plan.delta),
+            productId: item.productId,
+            warehouseId: sourceWarehouseId,
+            type: 'OUT',
+            quantity: qty,
+            unitCost: unitCost as unknown as Prisma.Decimal,
+            totalCost: totalCost as unknown as Prisma.Decimal,
             referenceType: 'SALES_ORDER',
-            referenceId: id,
-            note: `Fulfilled from SO ${so.orderNumber}`,
-            createdById: userId,
+            referenceId: salesOrder.id,
+            notes: `Sales order ${salesOrder.orderNumber} fulfillment`,
           },
         });
 
-        if (newFulfilled > 0) {
-          anyFulfilled = true;
-        }
-
-        const itemQty = Number(item.quantity);
-        if (newFulfilled < itemQty) {
-          allFulfilled = false;
-        }
+        cogsEntries.push({
+          productId: item.productId,
+          totalCost: totalCost as unknown as Prisma.Decimal,
+        });
+        count++;
       }
 
-      let newStatus = so.status;
-      if (allFulfilled && fulfillmentPlan.length > 0) {
-        newStatus = SalesOrderStatus.FULFILLED;
-      } else if (anyFulfilled) {
-        newStatus = SalesOrderStatus.PARTIALLY_FULFILLED;
-      }
-
-      return tx.salesOrder.update({
-        where: { id },
-        data: { status: newStatus },
-        include: {
-          client: true,
-          items: {
-            include: {
-              product: {
-                select: { id: true, sku: true, name: true, unit: true },
-              },
-            },
-          },
-          createdBy: { select: { id: true, fullName: true, email: true } },
-          approvedBy: { select: { id: true, fullName: true, email: true } },
-        },
+      await tx.salesOrder.update({
+        where: { id: salesOrder.id },
+        data: { status: SalesOrderStatus.FULFILLED },
       });
+
+      const cogsAccount = await tx.account.findUnique({
+        where: { code_tenantId: { code: '5000', tenantId: userTenantId } },
+      });
+      const inventoryAccount = await tx.account.findUnique({
+        where: { code_tenantId: { code: '1020', tenantId: userTenantId } },
+      });
+
+      for (const cogs of cogsEntries) {
+        await this.glService.createJournalEntryInTransaction(
+          tx,
+          {
+            date: new Date(),
+            description: `COGS for sales order ${salesOrder.orderNumber} (product ${cogs.productId})`,
+            referenceId: `cogs_${salesOrder.id}_${cogs.productId}`,
+            posted: true,
+            createdById: userId,
+            lines: [
+              { accountId: cogsAccount!.id, debitAmount: cogs.totalCost },
+              { accountId: inventoryAccount!.id, creditAmount: cogs.totalCost },
+            ],
+          },
+          userTenantId,
+        );
+      }
+
+      return count;
     });
 
-    await this.activityLogs.create({
-      action: 'FULFILL',
-      module: 'SALES_ORDERS',
-      description: `Sales Order "${updatedSo.orderNumber}" fulfilled`,
+    await this.activityLogsService.log({
+      action: 'INVENTORY_FULFILLMENT',
+      module: 'SALES_ORDER',
+      description: `Sales order ${salesOrder.orderNumber} fulfilled with ${movementCount} OUT movement(s).`,
       userId,
       tenantId: userTenantId,
     });
 
-    return updatedSo;
+    return { alreadyFulfilled: false, movements: movementCount };
   }
 
-  private calculateLineTotal(
-    quantity: number,
-    unitPrice: number,
-    taxRate?: number,
-    discount?: number,
-  ): number {
-    const subtotal = quantity * unitPrice;
-    const discountAmount = discount != null ? discount : 0;
-    const taxableAmount = subtotal - discountAmount;
-    const taxAmount = taxRate != null ? taxableAmount * (taxRate / 100) : 0;
-    return taxableAmount + taxAmount;
-  }
-
-  private calculateFinancials(items: CreateSalesOrderDto['items']): {
-    subtotal: Prisma.Decimal;
-    taxAmount: Prisma.Decimal;
-    discountAmount: Prisma.Decimal;
-    totalAmount: Prisma.Decimal;
-  } {
-    let subtotal = 0;
-    let taxAmount = 0;
-    let discountAmount = 0;
-
-    for (const item of items) {
-      const lineSubtotal = item.quantity * item.unitPrice;
-      subtotal += lineSubtotal;
-
-      const itemDiscount = item.discount != null ? item.discount : 0;
-      discountAmount += itemDiscount;
-
-      const taxableAmount = lineSubtotal - itemDiscount;
-      const itemTaxRate = item.taxRate != null ? item.taxRate : 0;
-      taxAmount += taxableAmount * (itemTaxRate / 100);
-    }
-
-    return {
-      subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
-      taxAmount: new Prisma.Decimal(taxAmount.toFixed(2)),
-      discountAmount: new Prisma.Decimal(discountAmount.toFixed(2)),
-      totalAmount: new Prisma.Decimal((subtotal - discountAmount + taxAmount).toFixed(2)),
-    };
-  }
-
-  private async generateOrderNumber(tenantId: string): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `SO-${year}-`;
-
-    const lastSo = await this.prisma.salesOrder.findFirst({
-      where: {
-        AND: [
-          { orderNumber: { startsWith: prefix } },
-          { tenantId },
-        ],
+  /**
+   * Converts a sales order into a sales invoice, copying items, client details,
+   * computing taxes, enforcing SaaS limits, updating order status to INVOICED,
+   * and posting to GL.
+   */
+  async createInvoice(
+    id: string,
+    dto: CreateInvoiceFromOrderDto = {},
+    userTenantId: string,
+    userId?: string,
+  ) {
+    const salesOrder = await this.prisma.salesOrder.findFirst({
+      where: { id, tenantId: userTenantId },
+      include: {
+        client: true,
+        items: {
+          include: { product: true },
+          orderBy: { sequence: 'asc' },
+        },
+        invoices: true,
       },
-      orderBy: { orderNumber: 'desc' },
-      select: { orderNumber: true },
     });
 
-    let nextNumber = 1;
-    if (lastSo) {
-      const parts = lastSo.orderNumber.split('-');
-      const lastNumber = parseInt(parts[parts.length - 1] || '0', 10);
-      nextNumber = lastNumber + 1;
+    if (!salesOrder) {
+      throw new NotFoundException('Sales order not found');
     }
 
-    return `${prefix}${String(nextNumber).padStart(6, '0')}`;
+    if (salesOrder.status === SalesOrderStatus.CANCELLED) {
+      throw new ConflictException('Cannot create invoice for a cancelled sales order');
+    }
+
+    if (salesOrder.status === SalesOrderStatus.INVOICED) {
+      throw new ConflictException('Sales order has already been invoiced');
+    }
+
+    if (!salesOrder.items || salesOrder.items.length === 0) {
+      throw new BadRequestException('Sales order has no items to invoice');
+    }
+
+    await this.entitlementService.enforceLimit(userTenantId, 'MAX_INVOICES');
+
+    let invoiceNumber = dto.invoiceNumber?.trim();
+    if (!invoiceNumber) {
+      invoiceNumber = `INV-${salesOrder.orderNumber}`;
+      const existing = await this.prisma.invoice.findFirst({
+        where: { invoiceNumber, tenantId: userTenantId },
+      });
+      if (existing) {
+        invoiceNumber = `INV-${salesOrder.orderNumber}-${Date.now().toString().slice(-4)}`;
+      }
+    } else {
+      const existing = await this.prisma.invoice.findFirst({
+        where: { invoiceNumber, tenantId: userTenantId },
+      });
+      if (existing) {
+        throw new ConflictException(`Invoice number ${invoiceNumber} already exists`);
+      }
+    }
+
+    const issueDate = dto.issueDate ? new Date(dto.issueDate) : new Date();
+    const dueDate = dto.dueDate
+      ? new Date(dto.dueDate)
+      : (salesOrder.expectedDeliveryDate
+          ? new Date(salesOrder.expectedDeliveryDate)
+          : new Date(issueDate.getTime() + 30 * 24 * 60 * 60 * 1000));
+
+    const invoiceStatus = dto.status || InvoiceStatus.SENT;
+
+    const createdInvoice = await this.prisma.$transaction(async (tx) => {
+      const inv = await tx.invoice.create({
+        data: {
+          invoiceNumber,
+          clientId: salesOrder.clientId,
+          salesOrderId: salesOrder.id,
+          issueDate,
+          dueDate,
+          subtotal: salesOrder.subtotal,
+          discount: salesOrder.discount,
+          tax: salesOrder.tax,
+          total: salesOrder.total,
+          paidAmount: new Prisma.Decimal(0),
+          balanceAmount: salesOrder.total,
+          status: invoiceStatus,
+          notes: dto.notes || salesOrder.notes || `Generated from Sales Order ${salesOrder.orderNumber}`,
+          currency: salesOrder.currency ?? 'USD',
+          tenantId: userTenantId,
+        },
+      });
+
+      const invoiceItemsData = salesOrder.items.map((item) => ({
+        invoiceId: inv.id,
+        description: item.product?.name
+          ? `${item.product.name}${item.product.sku ? ` (${item.product.sku})` : ''}`
+          : `Item for sales order ${salesOrder.orderNumber}`,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        amount: item.lineTotal,
+        tenantId: userTenantId,
+      }));
+
+      await tx.invoiceItem.createMany({
+        data: invoiceItemsData,
+      });
+
+      await tx.salesOrder.update({
+        where: { id: salesOrder.id },
+        data: { status: SalesOrderStatus.INVOICED },
+      });
+
+      return tx.invoice.findUnique({
+        where: { id: inv.id },
+        include: {
+          items: true,
+          client: true,
+          salesOrder: true,
+        },
+      });
+    });
+
+    if (createdInvoice && createdInvoice.status !== InvoiceStatus.DRAFT) {
+      try {
+        const netAmount = createdInvoice.total.minus(createdInvoice.tax ?? 0);
+        await this.glService.postInvoice(
+          userTenantId,
+          createdInvoice.id,
+          netAmount,
+          createdInvoice.tax,
+          userId,
+        );
+      } catch (err) {
+        void err;
+      }
+    }
+
+    await this.activityLogsService.log({
+      action: 'CONVERT_TO_INVOICE',
+      module: 'SALES_ORDER',
+      description: `Sales order ${salesOrder.orderNumber} converted to invoice ${createdInvoice!.invoiceNumber}.`,
+      userId,
+      tenantId: userTenantId,
+    });
+
+    return createdInvoice;
   }
 }

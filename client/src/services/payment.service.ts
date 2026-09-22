@@ -3,44 +3,17 @@ import type {
   Payment,
   CreatePaymentDto,
   UpdatePaymentDto,
-  PaymentResponse,
+  PaymentAllocation,
+  CreatePaymentAllocationDto,
 } from "../types/payment";
 
-const extractPaymentData = (payload: unknown): Payment[] => {
-  if (!payload || typeof payload !== "object") {
-    return [];
-  }
-
-  const response = payload as Record<string, unknown>;
-
-  const candidates: unknown[] = [
-    response.data,
-    response,
-  ];
-
-  if (response.data && typeof response.data === "object") {
-    const nested = response.data as Record<string, unknown>;
-
-    candidates.push(
-      nested.data,
-      nested.items,
-      nested.results,
-    );
-  }
-
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate as Payment[];
-    }
-  }
-
-  return [];
-};
-
 export const paymentService = {
-  getAllPayments: async (): Promise<Payment[]> => {
-    const response = await api.get("/payments");
-    return extractPaymentData(response.data);
+  getAllPayments: async (page = 1, limit = 10, method?: string, search?: string) => {
+    const params: Record<string, string | number> = { page, limit };
+    if (method && method !== "all") params.method = method;
+    if (search) params.search = search;
+    const response = await api.get("/payments", { params });
+    return response.data.data;
   },
 
   getPaymentById: async (id: string): Promise<Payment> => {
@@ -62,20 +35,24 @@ export const paymentService = {
     await api.delete(`/payments/${id}`);
   },
 
-  getPaymentsResponse: async (): Promise<PaymentResponse> => {
-    const response = await api.get("/payments");
-    const items = extractPaymentData(response.data);
-
-    return {
-      data: items,
-      total: items.length,
-      page: 1,
-      limit: items.length,
-    };
+  voidPayment: async (id: string): Promise<Payment> => {
+    const response = await api.post(`/payments/${id}/void`);
+    return response.data.data || response.data;
   },
 
-  allocatePayment: async (paymentId: string, dto: { invoiceId: string; amount: string }): Promise<any> => {
-    const response = await api.post(`/payments/${paymentId}/allocate`, dto);
+  getAllPaymentAllocations: async (page = 1, limit = 10, search?: string) => {
+    const params: Record<string, string | number> = { page, limit };
+    if (search) params.search = search;
+    const response = await api.get("/payment-allocations", { params });
+    return response.data.data;
+  },
+
+  createPaymentAllocation: async (dto: CreatePaymentAllocationDto): Promise<PaymentAllocation> => {
+    const response = await api.post("/payment-allocations", dto);
     return response.data.data || response.data;
+  },
+
+  deletePaymentAllocation: async (id: string): Promise<void> => {
+    await api.delete(`/payment-allocations/${id}`);
   },
 };

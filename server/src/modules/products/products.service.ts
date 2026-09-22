@@ -4,27 +4,26 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PaginationDto } from '../../common/dto/pagination.dto';
-import { SearchDto } from '../../common/dto/search.dto';
 import { PrismaService } from '../../database/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { ActivityLogsService } from '../activity-logs/activity-logs.service';
-import { Prisma, ProductStatus } from '@prisma/client';
+import { ProductQueryDto } from './dto/product-query.dto';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
+import { Prisma, StockMovementType } from '@prisma/client';
+import { InventoryValuationService } from '../inventory-valuation/inventory-valuation.service';
+import { EntitlementService } from '../subscriptions/entitlement.service';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly activityLogs: ActivityLogsService,
+    private readonly valuation: InventoryValuationService,
+    private readonly entitlementService: EntitlementService,
   ) {}
 
-  async create(dto: CreateProductDto, userTenantId: string, userId?: string) {
-    if (dto.tenantId && dto.tenantId !== userTenantId) {
-      throw new ForbiddenException(
-        'Cannot create product for a different tenant',
-      );
-    }
+  async create(dto: CreateProductDto, userTenantId: string) {
+    await this.entitlementService.enforceLimit(userTenantId, 'MAX_PRODUCTS');
 
     const existing = await this.prisma.product.findFirst({
       where: {
@@ -35,92 +34,167 @@ export class ProductsService {
 
     if (existing) {
       throw new ConflictException(
-        'Product SKU already exists in this tenant.',
+        'A product with this SKU already exists in your organization.',
       );
     }
 
-    const product = await this.prisma.product.create({
-      data: {
-        sku: dto.sku,
-        name: dto.name,
-        description: dto.description,
-        category: dto.category,
-        unit: dto.unit,
-        purchasePrice: dto.purchasePrice,
-        sellingPrice: dto.sellingPrice,
-        taxRate: dto.taxRate,
-        reorderLevel: dto.reorderLevel,
-        status: dto.status,
-        tenantId: userTenantId,
-      },
-    });
+    const product = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          sku: dto.sku,
+          name: dto.name,
+          description: dto.description,
+          unitPrice: new Prisma.Decimal(dto.unitPrice),
+          costPrice: new Prisma.Decimal(dto.costPrice),
+          stockQuantity: dto.stockQuantity ?? 0,
+          minStockLevel: dto.minStockLevel ?? 0,
+          isActive: dto.isActive ?? true,
+          tenantId: userTenantId,
+        },
+      });
 
-    await this.activityLogs.create({
-      action: 'CREATE',
-      module: 'PRODUCTS',
-      description: `Product "${product.name}" created`,
-      userId,
-      tenantId: userTenantId,
+      // If a default warehouse exists and an initial stockQuantity is provided,
+      // seed the per-warehouse stock and valuation layer so reports and COGS are consistent.
+      const initialQty = dto.stockQuantity ?? 0;
+      if (initialQty > 0) {
+        const defaultWarehouse = await tx.warehouse.findFirst({
+          where: { tenantId: userTenantId, isDefault: true, isActive: true },
+          select: { id: true },
+        });
+        if (defaultWarehouse) {
+          const method = await this.valuation.getTenantValuationMethod(userTenantId);
+          const { totalCost, unitCost } = await this.valuation.applyMovement(
+            tx,
+            userTenantId,
+            method,
+            StockMovementType.IN,
+            {
+              productId: created.id,
+              quantity: initialQty,
+              unitCostInput: new Prisma.Decimal(dto.costPrice),
+              warehouseId: defaultWarehouse.id,
+            },
+          );
+          const pw = await tx.productWarehouse.upsert({
+            where: {
+              productId_warehouseId: {
+                productId: created.id,
+                warehouseId: defaultWarehouse.id,
+              },
+            },
+            update: { quantity: { increment: initialQty } },
+            create: {
+              productId: created.id,
+              warehouseId: defaultWarehouse.id,
+              quantity: initialQty,
+              tenantId: userTenantId,
+            },
+          });
+          await tx.stockMovement.create({
+            data: {
+              productId: created.id,
+              warehouseId: defaultWarehouse.id,
+              type: StockMovementType.IN,
+              quantity: initialQty,
+              unitCost: unitCost as unknown as Prisma.Decimal,
+              totalCost: totalCost as unknown as Prisma.Decimal,
+              referenceType: 'INITIAL_STOCK',
+              notes: 'Initial stock on product creation',
+              tenantId: userTenantId,
+            },
+          });
+          void pw;
+        }
+      }
+
+      return created;
     });
 
     return product;
   }
 
-  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
+  async findAll(
+    pagination: PaginationDto,
+    search: SearchDto,
+    query: ProductQueryDto,
+    userTenantId: string,
+  ) {
     const { skip, limit } = pagination;
 
     const where: Prisma.ProductWhereInput = {
       tenantId: userTenantId,
-      ...(search.search && {
-        OR: [
-          { name: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-          { sku: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-          { description: { contains: search.search, mode: Prisma.QueryMode.insensitive } },
-        ],
-      }),
     };
+
+    if (query.isActive !== undefined) {
+      where.isActive = query.isActive === 'true';
+    }
+
+    if (search.search) {
+      where.OR = [
+        { sku: { contains: search.search, mode: 'insensitive' } },
+        { name: { contains: search.search, mode: 'insensitive' } },
+      ];
+    }
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          name: 'asc',
+        },
       }),
       this.prisma.product.count({ where }),
     ]);
 
     return {
-      total,
-      page: pagination.page,
-      limit: pagination.limit,
-      totalPages: Math.ceil(total / pagination.limit),
       data,
+      meta: {
+        total,
+        page: pagination.page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
   async findOne(id: string, userTenantId: string) {
-    const product = await this.prisma.product.findFirst({
-      where: { id, tenantId: userTenantId },
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        warehouseStocks: {
+          include: {
+            warehouse: {
+              select: {
+                id: true,
+                name: true,
+                location: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            stockMovements: true,
+          },
+        },
+      },
     });
 
     if (!product) {
-      const exists = await this.prisma.product.findUnique({
-        where: { id },
-        select: { id: true },
-      });
+      throw new NotFoundException('Product not found');
+    }
 
-      if (exists) {
-        throw new ForbiddenException('Access denied to this product.');
-      }
-
-      throw new NotFoundException('Product not found.');
+    if (product.tenantId !== userTenantId) {
+      throw new ForbiddenException('Access denied to this product');
     }
 
     return product;
   }
 
-  async update(id: string, dto: UpdateProductDto, userTenantId: string, userId?: string) {
+  async update(id: string, dto: UpdateProductDto, userTenantId: string) {
     const product = await this.findOne(id, userTenantId);
 
     if (dto.sku && dto.sku !== product.sku) {
@@ -128,68 +202,81 @@ export class ProductsService {
         where: {
           sku: dto.sku,
           tenantId: userTenantId,
-          id: { not: id },
+          NOT: { id },
         },
-        select: { id: true },
       });
 
       if (existing) {
         throw new ConflictException(
-          'Product SKU already exists in this tenant.',
+          'A product with this SKU already exists in your organization.',
         );
       }
     }
 
-    const updatedProduct = await this.prisma.product.update({
+    const updated = await this.prisma.product.update({
       where: { id },
       data: {
         sku: dto.sku,
         name: dto.name,
         description: dto.description,
-        category: dto.category,
-        unit: dto.unit,
-        purchasePrice: dto.purchasePrice,
-        sellingPrice: dto.sellingPrice,
-        taxRate: dto.taxRate,
-        reorderLevel: dto.reorderLevel,
-        status: dto.status,
+        unitPrice: dto.unitPrice !== undefined ? new Prisma.Decimal(dto.unitPrice) : undefined,
+        costPrice: dto.costPrice !== undefined ? new Prisma.Decimal(dto.costPrice) : undefined,
+        minStockLevel: dto.minStockLevel,
+        isActive: dto.isActive,
+      },
+      include: {
+        warehouseStocks: {
+          include: {
+            warehouse: {
+              select: {
+                id: true,
+                name: true,
+                location: true,
+                isActive: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: { stockMovements: true },
+        },
       },
     });
 
-    await this.activityLogs.create({
-      action: 'UPDATE',
-      module: 'PRODUCTS',
-      description: `Product "${updatedProduct.name}" updated`,
-      userId,
-      tenantId: userTenantId,
-    });
-
-    return updatedProduct;
+    return updated;
   }
 
-  async remove(id: string, userTenantId: string, userId?: string) {
-    const product = await this.prisma.product.findFirst({
-      where: { id, tenantId: userTenantId },
-      select: { id: true, name: true },
+  async remove(id: string, userTenantId: string) {
+    const product = await this.findOne(id, userTenantId);
+
+    const movementCount = await this.prisma.stockMovement.count({
+      where: { productId: id },
     });
 
-    if (!product) {
-      throw new NotFoundException('Product not found.');
+    const warehouseStockCount = await this.prisma.productWarehouse.count({
+      where: { productId: id },
+    });
+
+    if (movementCount > 0 || warehouseStockCount > 0) {
+      await this.prisma.product.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      return {
+        success: true,
+        message: `Product deactivated because it is referenced by ${movementCount} movement record(s) and ${warehouseStockCount} warehouse stock record(s).`,
+        deactivated: true,
+      };
     }
 
-    await this.prisma.product.update({
+    await this.prisma.product.delete({
       where: { id },
-      data: { status: ProductStatus.INACTIVE },
     });
 
-    await this.activityLogs.create({
-      action: 'DELETE',
-      module: 'PRODUCTS',
-      description: `Product "${product.name}" deactivated`,
-      userId,
-      tenantId: userTenantId,
-    });
-
-    return { message: 'Product deactivated successfully.', id: product.id };
+    return {
+      success: true,
+      message: 'Product deleted successfully',
+    };
   }
 }

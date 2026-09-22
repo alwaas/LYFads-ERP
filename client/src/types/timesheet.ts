@@ -13,6 +13,16 @@ export type Timesheet = {
 
   description?: string | null;
 
+  status: "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED";
+
+  rejectionReason?: string | null;
+
+  approvedBy?: {
+    id: string;
+    fullName: string;
+    email: string;
+  } | null;
+
   employee: {
     id: string;
     employeeCode: string;

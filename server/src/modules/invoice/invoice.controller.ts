@@ -10,17 +10,23 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import { UserRole } from '@prisma/client';
+
+import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
 import { InvoiceService } from './invoice.service';
 
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
-import { CreateInvoiceFromSalesOrderDto } from './dto/create-invoice-from-sales-order.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/tenant.decorator';
 import type { AuthenticatedUser } from '../../common/types/auth-user.type';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
-@Controller('invoice')
+@Controller(['invoice', 'invoices'])
 @UseGuards(JwtAuthGuard)
+@Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.MANAGER)
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
@@ -32,35 +38,19 @@ export class InvoiceController {
     return this.invoiceService.create(dto, user.tenantId, user.id);
   }
 
-  @Post('from-sales-order/:salesOrderId')
-  createFromSalesOrder(
-    @Param('salesOrderId') salesOrderId: string,
-    @Body() dto: CreateInvoiceFromSalesOrderDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.invoiceService.createFromSalesOrder(salesOrderId, dto, user.tenantId, user.id);
-  }
-
   @Get()
   findAll(
+    @Query() pagination: PaginationDto,
+    @Query() search: SearchDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Query('search') searchQuery?: string,
     @Query('status') status?: string,
   ) {
-    return this.invoiceService.findAll(user.tenantId, searchQuery, status);
+    return this.invoiceService.findAll(pagination, search, status, user.tenantId);
   }
 
-  @Get('ar-summary')
+  @Get('summary/ar')
   getARSummary(@CurrentUser() user: AuthenticatedUser) {
     return this.invoiceService.getARSummary(user.tenantId);
-  }
-
-  @Get('client-ledger/:clientId')
-  getCustomerLedger(
-    @Param('clientId') clientId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.invoiceService.getCustomerLedger(clientId, user.tenantId);
   }
 
   @Get(':id')
@@ -75,16 +65,6 @@ export class InvoiceController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.invoiceService.update(id, dto, user.tenantId, user.id);
-  }
-
-  @Post(':id/issue')
-  issue(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.invoiceService.issue(id, user.tenantId, user.id);
-  }
-
-  @Post(':id/void')
-  voidInvoice(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.invoiceService.voidInvoice(id, user.tenantId, user.id);
   }
 
   @Delete(':id')

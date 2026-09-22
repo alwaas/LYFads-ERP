@@ -1,52 +1,40 @@
 import {
   IsString,
   IsOptional,
-  IsEmail,
-  IsEnum,
-  IsDecimal,
+  IsInt,
+  IsBoolean,
+  Min,
+  IsNumberString,
 } from 'class-validator';
-
-import { ProductStatus } from '@prisma/client';
 
 export class CreateProductDto {
   @IsString()
-  sku!: string;
+  sku: string;
 
   @IsString()
-  name!: string;
+  name: string;
 
   @IsOptional()
   @IsString()
   description?: string;
 
-  @IsOptional()
-  @IsString()
-  category?: string;
+  @IsNumberString()
+  unitPrice: string;
+
+  @IsNumberString()
+  costPrice: string;
 
   @IsOptional()
-  @IsString()
-  unit?: string;
+  @IsInt()
+  @Min(0)
+  stockQuantity?: number;
 
   @IsOptional()
-  @IsDecimal()
-  purchasePrice?: string;
+  @IsInt()
+  @Min(0)
+  minStockLevel?: number;
 
   @IsOptional()
-  @IsDecimal()
-  sellingPrice?: string;
-
-  @IsOptional()
-  @IsDecimal()
-  taxRate?: string;
-
-  @IsOptional()
-  @IsDecimal()
-  reorderLevel?: string;
-
-  @IsOptional()
-  @IsEnum(ProductStatus)
-  status?: ProductStatus;
-
-  @IsString()
-  tenantId!: string;
+  @IsBoolean()
+  isActive?: boolean;
 }

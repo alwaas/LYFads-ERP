@@ -5,16 +5,20 @@ import { ArrowLeft } from "lucide-react";
 
 import DashboardLayout from "../../layouts/DashboardLayout";
 import PageContainer from "../../components/layout/PageContainer";
-import EmployeeForm, { type EmployeeFormData } from "../../components/employees/EmployeeForm";
+import EmployeeForm from "../../components/employees/EmployeeForm";
 import { getEmployee, updateEmployee } from "../../services/employee.service";
+import { mapServerValidationErrors } from "../../features/validation/errors";
+
+import type { EditEmployeeFormData } from "../../features/validation/employee.schema";
 
 function EditEmployeePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [employee, setEmployee] = useState<EmployeeFormData | undefined>(undefined);
+  const [employee, setEmployee] = useState<Partial<EditEmployeeFormData> | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (id) loadEmployee(id);
@@ -23,19 +27,22 @@ function EditEmployeePage() {
   const loadEmployee = async (empId: string) => {
     try {
       setLoading(true);
-
       const response = await getEmployee(empId);
-
-      const employee = response;
-
       setEmployee({
-        fullName: employee.user?.fullName || "",
-        email: employee.user?.email || "",
-        employeeCode: employee.employeeCode || "",
-        phone: employee.phone || "",
-        department: employee.department || "",
-        designation: employee.designation || "",
-        role: employee.user?.role || "EMPLOYEE",
+        fullName: response.user?.fullName || "",
+        email: response.user?.email || "",
+        employeeCode: response.employeeCode || "",
+        phone: response.phone || "",
+        department: response.department || "",
+        designation: response.designation || "",
+        role: response.user?.role as EditEmployeeFormData["role"] || "EMPLOYEE",
+        status: response.status as EditEmployeeFormData["status"] || "ACTIVE",
+        managerId: response.managerId || "",
+        bankName: response.bankName || "",
+        bankAccountNumber: response.bankAccountNumber || "",
+        ifscCode: response.ifscCode || "",
+        emergencyContactName: response.emergencyContactName || "",
+        emergencyContactPhone: response.emergencyContactPhone || "",
       });
     } catch (error) {
       console.error(error);
@@ -45,16 +52,24 @@ function EditEmployeePage() {
     }
   };
 
-  const handleSubmit = async (values: EmployeeFormData) => {
+  const handleSubmit = async (values: EditEmployeeFormData) => {
     if (!id) return;
+    setServerErrors({});
     try {
       setSubmitting(true);
       await updateEmployee(id, values);
       toast.success("Employee updated successfully.");
       navigate("/employees");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error?.response?.data?.message ?? "Failed to update employee.");
+      const fieldErrors = mapServerValidationErrors(error);
+      if (fieldErrors) {
+        setServerErrors(fieldErrors);
+      } else {
+        toast.error(
+          (error as any)?.response?.data?.message ?? "Failed to update employee."
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -95,7 +110,13 @@ function EditEmployeePage() {
           </div>
 
           <div className="w-full">
-            <EmployeeForm defaultValues={employee} loading={submitting} onSubmit={handleSubmit} />
+            <EmployeeForm
+              defaultValues={employee}
+              loading={submitting}
+              onSubmit={handleSubmit}
+              serverErrors={serverErrors}
+              managers={[]}
+            />
           </div>
         </div>
       </PageContainer>

@@ -4,42 +4,56 @@ export interface Product {
   sku: string;
   name: string;
   description?: string;
-  category?: string;
-  unit?: string;
-  purchasePrice?: number;
-  sellingPrice?: number;
-  taxRate?: number;
-  reorderLevel?: number;
-  status: ProductStatus;
+  unitPrice: number;
+  costPrice: number;
+  stockQuantity: number;
+  minStockLevel: number;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  warehouseStocks?: ProductWarehouseStock[];
+  _count?: {
+    stockMovements: number;
+  };
 }
 
-export type ProductStatus = "ACTIVE" | "INACTIVE";
+export interface ProductWarehouseStock {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  warehouse: {
+    id: string;
+    name: string;
+    location?: string;
+    isActive: boolean;
+  };
+}
 
 export interface CreateProductDto {
   sku: string;
   name: string;
   description?: string;
-  category?: string;
-  unit?: string;
-  purchasePrice?: string;
-  sellingPrice?: string;
-  taxRate?: string;
-  reorderLevel?: string;
-  status?: ProductStatus;
-  tenantId: string;
+  unitPrice: number;
+  costPrice: number;
+  stockQuantity?: number;
+  minStockLevel?: number;
+  isActive?: boolean;
 }
 
 export interface UpdateProductDto {
   sku?: string;
   name?: string;
   description?: string;
-  category?: string;
-  unit?: string;
-  purchasePrice?: string;
-  sellingPrice?: string;
-  taxRate?: string;
-  reorderLevel?: string;
-  status?: ProductStatus;
+  unitPrice?: number;
+  costPrice?: number;
+  minStockLevel?: number;
+  isActive?: boolean;
+}
+
+export interface ProductQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  isActive?: boolean;
 }

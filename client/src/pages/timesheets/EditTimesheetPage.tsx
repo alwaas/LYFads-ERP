@@ -32,17 +32,17 @@ export default function EditTimesheetPage() {
 
   const employeesQuery = useQuery({
     queryKey: ["employees"],
-    queryFn: getEmployees,
+    queryFn: () => getEmployees(),
   });
 
   const projectsQuery = useQuery({
     queryKey: ["projects"],
-    queryFn: getProjects,
+    queryFn: () => getProjects(),
   });
 
   const tasksQuery = useQuery({
     queryKey: ["tasks"],
-    queryFn: getTasks,
+    queryFn: () => getTasks(),
   });
 
   const mutation = useMutation({

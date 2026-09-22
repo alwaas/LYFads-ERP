@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -19,21 +19,24 @@ import {
 
 import TimesheetStats from "../../components/timesheets/TimesheetStats";
 import TimesheetTable from "../../components/timesheets/TimesheetTable";
+import Pagination from "../../components/ui/Pagination";
 
 export default function TimesheetsPage() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const {
-    data: timesheets = [],
+    data: result = { data: [], total: 0, page: 1, limit: 10, totalPages: 1 },
     isLoading,
     isError,
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ["timesheets"],
-    queryFn: getTimesheets,
+    queryKey: ["timesheets", page, limit, search],
+    queryFn: () => getTimesheets(page, limit, search),
   });
 
   const deleteMutation = useMutation({
@@ -62,35 +65,7 @@ export default function TimesheetsPage() {
     },
   });
 
-  const filteredTimesheets = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    if (!query) return timesheets;
-
-    return timesheets.filter((item) => {
-      const employee =
-        item.employee?.user?.fullName ?? "";
-
-      const employeeCode =
-        item.employee?.employeeCode ?? "";
-
-      const project =
-        item.project?.name ?? "";
-
-      const task =
-        item.task?.title ?? "";
-
-      return [
-        employee,
-        employeeCode,
-        project,
-        task,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
-    });
-  }, [timesheets, search]);
+  const timesheets = result.data || [];
 
   const handleDelete = async (id: string) => {
     const result = await Swal.fire({
@@ -163,9 +138,10 @@ export default function TimesheetsPage() {
 
             <input
               value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search employee, project or task..."
               className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:border-blue-500 focus:outline-none"
             />
@@ -194,16 +170,33 @@ export default function TimesheetsPage() {
             Loading timesheets...
           </p>
         </div>
+      ) : timesheets.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+          <p className="text-sm text-gray-500">No timesheets found.</p>
+        </div>
       ) : (
-        <TimesheetTable
-          timesheets={filteredTimesheets}
-          onDelete={handleDelete}
-          deletingId={
-            deleteMutation.isPending
-              ? deleteMutation.variables
-              : null
-          }
-        />
+        <>
+          <TimesheetTable
+            timesheets={timesheets}
+            onDelete={handleDelete}
+            deletingId={
+              deleteMutation.isPending
+                ? deleteMutation.variables
+                : null
+            }
+          />
+
+          <Pagination
+            page={page}
+            totalPages={result.totalPages}
+            onPageChange={setPage}
+            limit={limit}
+            onLimitChange={(newLimit) => {
+              setLimit(newLimit);
+              setPage(1);
+            }}
+          />
+        </>
       )}
     </div>
   );

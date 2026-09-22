@@ -7,13 +7,15 @@ import { PrismaService } from '../../database/prisma.service';
 
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
 import { UpdateInvoiceItemDto } from './dto/update-invoice-item.dto';
-import { Prisma } from '@prisma/client';
+import { PaginationDto } from '../../common/dto/pagination.dto';
+import { SearchDto } from '../../common/dto/search.dto';
 
 @Injectable()
 export class InvoiceItemsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateInvoiceItemDto, userTenantId: string) {
+    // ... existing create code
     const invoice = await this.prisma.invoice.findUnique({
       where: { id: dto.invoiceId },
       select: { id: true, tenantId: true },
@@ -23,6 +25,7 @@ export class InvoiceItemsService {
       throw new NotFoundException('Invoice not found');
     }
 
+    // Verify invoice belongs to the same tenant
     if (invoice.tenantId !== userTenantId) {
       throw new ForbiddenException('Access denied to this invoice');
     }
@@ -30,27 +33,45 @@ export class InvoiceItemsService {
     return this.prisma.invoiceItem.create({
       data: {
         description: dto.description,
-        quantity: new Prisma.Decimal(dto.quantity),
-        unitPrice: new Prisma.Decimal(dto.unitPrice),
-        taxRate: dto.taxRate ? new Prisma.Decimal(dto.taxRate) : undefined,
-        taxAmount: dto.taxAmount ? new Prisma.Decimal(dto.taxAmount) : undefined,
-        discount: dto.discount ? new Prisma.Decimal(dto.discount) : undefined,
-        lineTotal: new Prisma.Decimal(dto.lineTotal),
+        quantity: dto.quantity,
+        unitPrice: dto.unitPrice,
+        amount: (dto.amount ?? dto.lineTotal ?? '0') as any,
         invoiceId: dto.invoiceId,
         tenantId: userTenantId,
       },
     });
   }
 
-  findAll(userTenantId: string) {
-    return this.prisma.invoiceItem.findMany({
-      where: {
-        tenantId: userTenantId,
-      },
-      include: {
-        invoice: true,
-      },
-    });
+  async findAll(pagination: PaginationDto, search: SearchDto, userTenantId: string) {
+    const { skip, limit } = pagination;
+
+    const where: Record<string, unknown> = {
+      tenantId: userTenantId,
+    };
+
+    if (search.search) {
+      where.description = { contains: search.search, mode: 'insensitive' };
+    }
+
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.invoiceItem.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          invoice: true,
+        },
+      }),
+      this.prisma.invoiceItem.count({ where }),
+    ]);
+
+    return {
+      total,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(total / pagination.limit),
+      data,
+    };
   }
 
   async findOne(id: string, userTenantId: string) {
@@ -65,6 +86,7 @@ export class InvoiceItemsService {
       throw new NotFoundException('Invoice item not found');
     }
 
+    // Verify tenant ownership
     if (invoiceItem.tenantId !== userTenantId) {
       throw new ForbiddenException('Access denied to this invoice item');
     }
@@ -75,19 +97,16 @@ export class InvoiceItemsService {
   async update(id: string, dto: UpdateInvoiceItemDto, userTenantId: string) {
     await this.findOne(id, userTenantId);
 
-    const data: Prisma.InvoiceItemUpdateInput = {};
-
-    if (dto.description !== undefined) data.description = dto.description;
-    if (dto.quantity !== undefined) data.quantity = new Prisma.Decimal(dto.quantity);
-    if (dto.unitPrice !== undefined) data.unitPrice = new Prisma.Decimal(dto.unitPrice);
-    if (dto.taxRate !== undefined) data.taxRate = dto.taxRate ? new Prisma.Decimal(dto.taxRate) : undefined;
-    if (dto.taxAmount !== undefined) data.taxAmount = dto.taxAmount ? new Prisma.Decimal(dto.taxAmount) : undefined;
-    if (dto.discount !== undefined) data.discount = dto.discount ? new Prisma.Decimal(dto.discount) : undefined;
-    if (dto.lineTotal !== undefined) data.lineTotal = new Prisma.Decimal(dto.lineTotal);
-
     return this.prisma.invoiceItem.update({
       where: { id },
-      data,
+      data: {
+        description: dto.description,
+        quantity: dto.quantity,
+        unitPrice: dto.unitPrice,
+        ...(dto.amount !== undefined || dto.lineTotal !== undefined
+          ? { amount: (dto.amount ?? dto.lineTotal) as any }
+          : {}),
+      },
     });
   }
 

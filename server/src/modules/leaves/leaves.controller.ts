@@ -6,11 +6,13 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 
 import { UserRole } from '@prisma/client';
 
 import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import type { AuthenticatedUser } from '../../common/types/auth-user.type';
 
@@ -24,6 +26,7 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 import { SearchDto } from '../../common/dto/search.dto';
 
 @Controller('leaves')
+@UseGuards(JwtAuthGuard)
 export class LeavesController {
   constructor(private readonly leavesService: LeavesService) {}
 
@@ -35,7 +38,7 @@ export class LeavesController {
   )
   @Post()
   create(@Body() dto: CreateLeaveDto, @GetUser() user: AuthenticatedUser) {
-    return this.leavesService.create(dto, user.tenantId);
+    return this.leavesService.create(dto, user.tenantId, user.role);
   }
 
   @Roles(
@@ -49,8 +52,10 @@ export class LeavesController {
     @Query() pagination: PaginationDto,
     @Query() search: SearchDto,
     @GetUser() user: AuthenticatedUser,
+    @Query('status') status?: string,
+    @Query('leaveType') leaveType?: string,
   ) {
-    return this.leavesService.findAll(pagination, search, user.tenantId);
+    return this.leavesService.findAll(pagination, search, status, leaveType, user.tenantId);
   }
 
   @Roles(
@@ -86,6 +91,6 @@ export class LeavesController {
     @Body() dto: UpdateLeaveStatusDto,
     @GetUser() user: AuthenticatedUser,
   ) {
-    return this.leavesService.updateStatus(id, dto, user.tenantId);
+    return this.leavesService.updateStatus(id, dto, user.tenantId, user.userId);
   }
 }
