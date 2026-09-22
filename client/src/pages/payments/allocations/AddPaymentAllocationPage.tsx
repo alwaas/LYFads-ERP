@@ -16,15 +16,23 @@ const AddPaymentAllocationPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: payments = [], isLoading: isLoadingPayments } = useQuery<Payment[]>({
+  const { data: rawPayments, isLoading: isLoadingPayments } = useQuery<any>({
     queryKey: ["payments"],
     queryFn: () => paymentService.getAllPayments(1, 100, undefined, undefined),
   });
 
-  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
+  const { data: rawInvoices, isLoading: isLoadingInvoices } = useQuery<any>({
     queryKey: ["invoices"],
     queryFn: () => invoiceService.getAllInvoices(1, 1000, undefined, undefined),
   });
+
+  const payments: Payment[] = Array.isArray(rawPayments)
+    ? rawPayments
+    : (rawPayments?.data || []);
+
+  const invoices: Invoice[] = Array.isArray(rawInvoices)
+    ? rawInvoices
+    : (rawInvoices?.data || []);
 
   const activePayments = payments.filter((p) => p.status === "ACTIVE");
 

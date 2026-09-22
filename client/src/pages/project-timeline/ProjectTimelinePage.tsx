@@ -12,10 +12,14 @@ const ProjectTimelinePage = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
+  const { data: rawProjects, isLoading: projectsLoading } = useQuery<any>({
     queryKey: ["projects"],
-    queryFn: () => projectService.getAllProjects(),
+    queryFn: () => projectService.getAllProjects(1, 100),
   });
+
+  const projects: Project[] = Array.isArray(rawProjects)
+    ? rawProjects
+    : (rawProjects?.data || []);
 
   const { data: timeline, isLoading: timelineLoading, isError } = useQuery<ProjectTimeline>({
     queryKey: ["project-timeline", selectedProjectId],

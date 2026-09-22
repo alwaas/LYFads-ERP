@@ -17,11 +17,15 @@ const ViewInventoryPage = () => {
     enabled: !!productId,
   });
 
-  const { data: movements = [], isLoading: movementsLoading } = useQuery<StockMovement[]>({
+  const { data: rawMovements, isLoading: movementsLoading } = useQuery<any>({
     queryKey: ["inventory-movements", productId],
     queryFn: () => inventoryService.getStockMovements(productId!),
     enabled: !!productId,
   });
+
+  const movements: StockMovement[] = Array.isArray(rawMovements)
+    ? rawMovements
+    : (rawMovements?.data || []);
 
   if (inventoryLoading || movementsLoading) {
     return <PageLoader />;

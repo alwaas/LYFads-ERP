@@ -35,15 +35,23 @@ const EditInvoicePage = () => {
     enabled: !!id,
   });
 
-  const { data: clients = [], isLoading: isLoadingClients } = useQuery<Client[]>({
+  const { data: clientsData, isLoading: isLoadingClients } = useQuery<any>({
     queryKey: ["clients"],
-    queryFn: () => getClients(),
+    queryFn: () => getClients(1, 100),
   });
 
-  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
+  const { data: projectsData, isLoading: isLoadingProjects } = useQuery<any>({
     queryKey: ["projects"],
-    queryFn: () => projectService.getAllProjects(),
+    queryFn: () => projectService.getAllProjects(1, 100),
   });
+
+  const clients: Client[] = Array.isArray(clientsData)
+    ? clientsData
+    : (clientsData?.data || []);
+
+  const projects: Project[] = Array.isArray(projectsData)
+    ? projectsData
+    : (projectsData?.data || []);
 
   const {
     register,
